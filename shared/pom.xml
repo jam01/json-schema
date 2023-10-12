@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.github.jam01</groupId>
+        <artifactId>reales-aggregate</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>json-schema</artifactId>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <!-- https://github.com/davidB/scala-maven-plugin/blob/4.8.0/src/it/test_scala3/pom.xml -->
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala3-library_3</artifactId>
+            <version>3.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lihaoyi</groupId>
+            <artifactId>upickle-core_3</artifactId>
+            <version>3.1.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.plokhotnyuk.jsoniter-scala</groupId>
+            <artifactId>jsoniter-scala-core_3</artifactId>
+            <version>2.23.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.9.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.lihaoyi</groupId>
+            <artifactId>ujson_3</artifactId>
+            <version>3.1.3</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- https://github.com/davidB/scala-maven-plugin/blob/4.8.0/src/it/testJavaAndScala/pom.xml -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <skipMain>true</skipMain> <!-- skip compile -->
+                    <skip>true</skip> <!-- skip test-compile -->
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>4.8.0</version>
+                <executions>
+                    <execution>
+                        <id>scala-compile-first</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>scala-test-compile</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- see: https://github.com/lampepfl/dotty/issues/18639 -->
+                    <!-- https://github.com/lampepfl/dotty/issues/14846 -->
+                    <!-- https://www.scala-sbt.org/1.x/docs/Java-Sources.html -->
+                    <compileOrder>JavaThenScala</compileOrder>
+                    <!--                    <sendJavaToScalac>false</sendJavaToScalac>-->
+                    <!-- https://youtrack.jetbrains.com/issue/SCL-21480/scala-No-scalac-found-to-compile-scala-sources?s=scala-No-scalac-found-to-compile-scala-sources -->
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
