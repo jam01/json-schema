@@ -3,7 +3,7 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 import scala.collection.mutable
 
-class PointerVisitor(insloc: mutable.Stack[String] = mutable.Stack("")) extends JSONVisitor[Unit, Unit] {
+class PointerVisitor(insloc: mutable.Stack[String] = mutable.Stack("")) extends JsonVisitor[Unit, Unit] {
 
   private def path = {
     insloc.reverseIterator.mkString("/")

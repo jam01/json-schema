@@ -32,7 +32,7 @@ object BooleanSchemaVisitor {
   }
 }
 
-private abstract class BooleanSchemaVisitor[T](bool: Boolean) extends JSONVisitor[T, Boolean] {
+private abstract class BooleanSchemaVisitor[T](bool: Boolean) extends JsonVisitor[T, Boolean] {
   override def visitNull(index: Int): Boolean = bool
 
   override def visitFalse(index: Int): Boolean = bool

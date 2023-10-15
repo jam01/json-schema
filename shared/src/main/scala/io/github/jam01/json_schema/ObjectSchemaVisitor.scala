@@ -1,20 +1,26 @@
 package io.github.jam01.json_schema
 
 import java.time.{Duration, LocalDate, OffsetDateTime}
-import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
+import upickle.core.{ArrVisitor, ObjVisitor, StringVisitor, Visitor}
 
 import java.net.{URI, URISyntaxException}
 import java.time.format.DateTimeParseException
 import scala.collection.mutable
 
-class ObjectSchemaVisitor extends JSONVisitor[Any, Boolean] {
-  val tyype: Seq[String] = Seq("string")
-  val pattern: Option[String] = Some(".*")
-  val maxLength: Option[Int] = Some(16)
-  val minLength: Option[Int] = Some(4)
-  val format: Option[String] = None
-  val maximum: Option[Int | Double] = None
-  val minimum: Option[Int | Double] = None
+class ObjectSchemaVisitor(val schema: ObjectSchema) extends JsonVisitor[Any, Boolean] {
+  val tyype: collection.Seq[String] = schema.getAsStringArray("type")
+  val pattern: Option[String] = schema.getString("pattern")
+  val format: Option[String] = schema.getString("format")
+  val maxLength: Option[Int] = schema.getInt("maxLength")
+  val minLength: Option[Int] = schema.getInt("minLength")
+  val maximum: Option[Long | Double] = None
+  val minimum: Option[Long | Double] = None
+  val maxItems: Option[Int] = schema.getInt("maxItems")
+  val minItems: Option[Int] = schema.getInt("minItems")
+  val required: collection.Seq[String] = schema.getStringArray("required")
+  val maxProperties: Option[Int] = schema.getInt("maxProperties")
+  val minProperties: Option[Int] = schema.getInt("minProperties")
+  val items: Option[_ >: Schema] = schema.getSchema("items")
 
   override def visitNull(index: Int): Boolean = {
     tyype.exists("null".eq)
@@ -31,20 +37,20 @@ class ObjectSchemaVisitor extends JSONVisitor[Any, Boolean] {
   override def visitInt64(i: Long, index: Int): Boolean = {
     tyype.exists("integer".eq) &&
       maximum.forall(_ match
-        case mxi: Int => i <= mxi
+        case mxi: Long => i <= mxi
         case mxd: Double => i <= mxd) &&
       minimum.forall(_ match
-        case mxi: Int => i >= mxi
+        case mxi: Long => i >= mxi
         case mxd: Double => i >= mxd)
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
     tyype.exists("number".eq) &&
       maximum.forall(_ match
-        case mxi: Int => d <= mxi
+        case mxi: Long => d <= mxi
         case mxd: Double => d <= mxd) &&
       minimum.forall(_ match
-        case mxi: Int => d >= mxi
+        case mxi: Long => d >= mxi
         case mxd: Double => d >= mxd)
   }
 
@@ -66,29 +72,33 @@ class ObjectSchemaVisitor extends JSONVisitor[Any, Boolean] {
   }
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Any, Boolean] = new ArrVisitor[Any, Boolean] {
-    val maxItems: Option[Int] = None
-    val minItems: Option[Int] = None
-
     private var counter = 0
+    private var subsch = true
 
-    override def subVisitor: Visitor[_, _] = ???
+    override def subVisitor: Visitor[_, _] = {
+      if (items.isEmpty) BooleanSchemaVisitor.True
+      else items.get match
+        case BooleanSchema.True => BooleanSchemaVisitor.True
+        case BooleanSchema.False => BooleanSchemaVisitor.False
+        case os: ObjectSchema => ObjectSchemaVisitor(os)
+    }
 
-    override def visitValue(v: Any, index: Int): Unit = counter += 1
+    override def visitValue(v: Any, index: Int): Unit = {
+      counter += 1
+      subsch = subsch && v.asInstanceOf[Boolean]
+    }
 
     override def visitEnd(index: Int): Boolean = {
-      minItems.forall(counter >= _) &&
+      subsch &&
+        minItems.forall(counter >= _) &&
         maxItems.forall(counter <= _)
     }
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Any, Boolean] = new ObjVisitor[Any, Boolean] {
-    val required: Seq[String] = Seq.empty
-    val maxProperties: Option[Int] = None
-    val minProperties: Option[Int] = None
-
     private val props: mutable.Buffer[String] = mutable.Buffer()
 
-    override def visitKey(index: Int): Visitor[_, _] = ???
+    override def visitKey(index: Int): Visitor[_, _] = StringVisitor
 
     override def visitKeyValue(v: Any): Unit = {
       props.addOne(v.asInstanceOf[String])

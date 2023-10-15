@@ -2,7 +2,7 @@ package io.github.jam01.json_schema
 
 import upickle.core.{Abort, ObjVisitor, Visitor}
 
-trait JSONVisitor[-T, +J] extends Visitor[T, J] {
+trait JsonVisitor[-T, +J] extends Visitor[T, J] {
   def expectedMsg = "expected string, integer, number, object, array, or null;"
 
   override def visitUInt64(i: Long, index: Int): J = {
