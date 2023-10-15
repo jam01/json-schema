@@ -15,7 +15,7 @@ class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends JsonObject(mMap) {
     val elems = mMap.getValue(s).asInstanceOf[ArrayBuffer[Any]]
     val schs = elems.mapInPlace {
       case b: Boolean => if (b) BooleanSchema.True else BooleanSchema.False
-      case obj: JsonObject => Option(new ObjectSchema(obj.mMap))
+      case obj: JsonObject => new ObjectSchema(obj.mMap)
       case _ => asInstanceOf[Schema]
     }
 
@@ -27,7 +27,7 @@ class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends JsonObject(mMap) {
     val elems = if (arr != null) arr.asInstanceOf[ArrayBuffer[Any]] else new ArrayBuffer[Any](0)
     val schs = elems.mapInPlace {
       case b: Boolean => if (b) BooleanSchema.True else BooleanSchema.False
-      case obj: JsonObject => Option(new ObjectSchema(obj.mMap))
+      case obj: JsonObject => new ObjectSchema(obj.mMap)
       case _ => asInstanceOf[Schema]
     }
 
