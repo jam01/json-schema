@@ -45,7 +45,7 @@ object LinkedHashMap extends MapFactory[LinkedHashMap] {
   def apply[K, V](): LinkedHashMap[K, V] =
     new LinkedHashMap[K, V](new java.util.LinkedHashMap[K, V])
 
-  def apply[K, V](items: IterableOnce[(K, V)]): LinkedHashMap[K, V] = {
+  def apply[K, V](items: collection.IterableOnce[(K, V)]): LinkedHashMap[K, V] = {
     items match {
       case lhm: LinkedHashMap[K, V] => lhm // IDE complains but check works
       case _ => mutable.Growable.from(empty[K, V], items)

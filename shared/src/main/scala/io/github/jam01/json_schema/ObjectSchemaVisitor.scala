@@ -13,14 +13,14 @@ class ObjectSchemaVisitor(val schema: ObjectSchema) extends JsonVisitor[Any, Boo
   val format: Option[String] = schema.getString("format")
   val maxLength: Option[Int] = schema.getInt("maxLength")
   val minLength: Option[Int] = schema.getInt("minLength")
-  val maximum: Option[Long | Double] = None
-  val minimum: Option[Long | Double] = None
+  val maximum: Option[Long | Double] = schema.getLongOrDouble("maximum")
+  val minimum: Option[Long | Double] = schema.getLongOrDouble("minimum")
   val maxItems: Option[Int] = schema.getInt("maxItems")
   val minItems: Option[Int] = schema.getInt("minItems")
   val required: collection.Seq[String] = schema.getStringArray("required")
   val maxProperties: Option[Int] = schema.getInt("maxProperties")
   val minProperties: Option[Int] = schema.getInt("minProperties")
-  val items: Option[_ >: Schema] = schema.getSchema("items")
+  val items: Option[_ >: Schema] = schema.getAsSchemaOpt("items")
 
   override def visitNull(index: Int): Boolean = {
     tyype.exists("null".eq)

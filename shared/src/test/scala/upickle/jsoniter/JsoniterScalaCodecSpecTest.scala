@@ -8,7 +8,7 @@ import upickle.core.{LogVisitor, NoOpVisitor, Visitor}
 import com.github.plokhotnyuk.jsoniter_scala.upickle.JsoniterScalaCodec
 
 import java.io.StringWriter
-class JsoniterScalaCodecSpec {
+class JsoniterScalaCodecSpecTest {
   val strRender: JsonValueCodec[StringWriter] = JsoniterScalaCodec.visitorCodec(visitor = StringRenderer())
   val noOp: JsonValueCodec[Unit] = JsoniterScalaCodec.visitorCodec(visitor = NoOpVisitor)
 

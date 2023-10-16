@@ -2,7 +2,7 @@ package upickle.jsoniter
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
 import upickle.core.Visitor
-import upickle.jsoniter.JsoniterScalaCodec.NIDX
+import upickle.jsoniter.VisitorDecoder.NIDX
 
 import java.nio.charset.StandardCharsets
 
@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets
 // https://github.com/evolution-gaming/play-json-tools/blob/v1.0.0/play-json-jsoniter/shared/src/main/scala/play/api/libs/json/JsonValueCodecJsValue.scala
 // https://github.com/com-lihaoyi/upickle/pull/467#issuecomment-1473358589
 // https://github.com/com-lihaoyi/upickle/blob/3.1.3/ujson/src/ujson/JsVisitor.scala
-object JsoniterScalaCodec {
+object VisitorDecoder {
   private val NIDX = -1
 
   def defaultNumberParser[J]: (JsonReader, Visitor[_, J]) => J = (in, v) => {
@@ -56,7 +56,7 @@ object JsoniterScalaCodec {
   }
 }
 
-final class JsoniterScalaCodec[J](
+final class VisitorDecoder[J](
                                    maxDepth: Int,
                                    numberParser: (JsonReader, Visitor[_, J]) => J,
                                    v: Visitor[_, J]) extends JsonValueCodec[J] {

@@ -2,8 +2,9 @@ package io.github.jam01.json_schema
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertThrows, assertTrue}
+import upickle.core.Visitor
 
-import scala.language.implicitConversions
+//import scala.language.implicitConversions
 
 class ObjectSchemaValidatorTest {
   val lhm: LinkedHashMap[String, Any] = LinkedHashMap.empty
@@ -65,7 +66,8 @@ class ObjectSchemaValidatorTest {
 
   @Test
   def lhms(): Unit = {
-    val x: LinkedHashMap[String, Any] = LinkedHashMap.from(LinkedHashMap.empty)
+    val prev: LinkedHashMap[Int, Any] = LinkedHashMap().addOne((23, "bloop"))
+    val x: LinkedHashMap[_, Any] = LinkedHashMap.from(prev)
     println("")
 
 //    x.getString("")
@@ -73,8 +75,9 @@ class ObjectSchemaValidatorTest {
 //    val y: IterableOnce[(String, String)] = null
 //    y.
 
-//    val j = scala.collection.mutable.LinkedHashMap[String, ujson.Value]()
-//    j.value.put("n", ujson.Str(""))
-//    ujson.Obj.from(j)
+    val j = scala.collection.mutable.LinkedHashMap[String, ujson.Value]()
+    j.value.put("n", ujson.Str(""))
+    ujson.Obj.from(j)
+    j.transform(null.asInstanceOf[Visitor[_,_]])
   }
 }

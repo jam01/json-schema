@@ -15,7 +15,7 @@ object JsoniterScalaCodec {
    */
   def visitorCodec[J](
                        maxDepth: Int = 128,
-                       numberParser: (JsonReader, Visitor[_, J]) => J = upickle.jsoniter.JsoniterScalaCodec.defaultNumberParser.asInstanceOf,
+                       numberParser: (JsonReader, Visitor[_, J]) => J = upickle.jsoniter.VisitorDecoder.defaultNumberParser.asInstanceOf,
                        visitor: Visitor[_, J]): JsonValueCodec[J] =
-    new upickle.jsoniter.JsoniterScalaCodec(maxDepth, numberParser, visitor)
+    new upickle.jsoniter.VisitorDecoder(maxDepth, numberParser, visitor)
 }
