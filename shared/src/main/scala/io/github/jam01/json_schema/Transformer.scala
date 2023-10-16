@@ -2,8 +2,7 @@ package io.github.jam01.json_schema
 
 import upickle.core.Visitor
 
-object Reader {
-
+object Transformer {
   def transform[T](o: Any, v: Visitor[_, T]): T = {
     o match
       case null => v.visitNull(-1)
@@ -12,7 +11,7 @@ object Reader {
       case l: Long => v.visitInt64(l, -1)
       case d: Float => v.visitFloat32(d, -1)
       case d: Double => v.visitFloat64(d, -1)
-      case obj: Iterable[(String, Any)] => {
+      case obj: Iterable[(String, Any)] =>  { // consider specialized StringMap[V]-like
         val ctx = v.visitObject(obj.size, true, -1).narrow
         for (kv <- obj) {
           val keyVisitor = ctx.visitKey(-1)

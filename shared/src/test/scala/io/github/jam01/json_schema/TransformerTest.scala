@@ -2,9 +2,9 @@ package io.github.jam01.json_schema
 
 import org.junit.jupiter.api.Test
 
-class ReaderTest {
+class TransformerTest {
   val lhm: LinkedHashMap[String, Any] = LinkedHashMap.empty
-  val strSch: ObjectSchema = ObjectSchema(lhm)
+//  val strSch: ObjectSchema = ObjectSchema(lhm)
 
   lhm.put("type", "string")
   lhm.put("pattern", ".*")
@@ -13,6 +13,6 @@ class ReaderTest {
 
   @Test
   def simple(): Unit = {
-   Reader.transform(lhm, new PointerVisitor())
+   Transformer.transform(lhm, new PointerVisitor())
   }
 }

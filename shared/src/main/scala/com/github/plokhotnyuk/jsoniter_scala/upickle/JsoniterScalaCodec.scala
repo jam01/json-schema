@@ -6,14 +6,14 @@ import upickle.core.Visitor
 object JsoniterScalaCodec {
 
   /**
-   * Creates a JSON value codec that parses and serialize to/from circe's JSON AST.
+   * Creates a JSON value decoder that parses and composes a given type through a Visitor.
    *
    * @param maxDepth the maximum depth for decoding
    * @param numberParser a function that parses JSON numbers
-   * @param visitor ???
-   * @return The JSON codec
+   * @param visitor the visitor to compose the given type
+   * @return A JSON codec that supports decoding only
    */
-  def visitorCodec[J](
+  def visitorDecoder[J](
                        maxDepth: Int = 128,
                        numberParser: (JsonReader, Visitor[_, J]) => J = upickle.jsoniter.VisitorDecoder.defaultNumberParser.asInstanceOf,
                        visitor: Visitor[_, J]): JsonValueCodec[J] =

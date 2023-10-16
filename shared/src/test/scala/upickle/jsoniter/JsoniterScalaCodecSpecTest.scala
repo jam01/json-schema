@@ -9,8 +9,8 @@ import com.github.plokhotnyuk.jsoniter_scala.upickle.JsoniterScalaCodec
 
 import java.io.StringWriter
 class JsoniterScalaCodecSpecTest {
-  val strRender: JsonValueCodec[StringWriter] = JsoniterScalaCodec.visitorCodec(visitor = StringRenderer())
-  val noOp: JsonValueCodec[Unit] = JsoniterScalaCodec.visitorCodec(visitor = NoOpVisitor)
+  val strRender: JsonValueCodec[StringWriter] = JsoniterScalaCodec.visitorDecoder(visitor = StringRenderer())
+  val noOp: JsonValueCodec[Unit] = JsoniterScalaCodec.visitorDecoder(visitor = NoOpVisitor)
 
   @Test
   def parse(): Unit = {
@@ -73,6 +73,6 @@ class JsoniterScalaCodecSpecTest {
   @Test
   def log(): Unit = {
     val jsonStr = """{"n":null,"s":"VVV","n1":1.0,"n2":2,"a":[null,"WWW",[],{}],"o":{"a":[]}}"""
-    readFromString(jsonStr)(JsoniterScalaCodec.visitorCodec(visitor = LogVisitor(NoOpVisitor)))
+    readFromString(jsonStr)(JsoniterScalaCodec.visitorDecoder(visitor = LogVisitor(NoOpVisitor)))
   }
 }
