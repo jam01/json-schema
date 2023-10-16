@@ -3,7 +3,7 @@ package io.github.jam01.json_schema
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Map, Seq}
 
-case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
+case class ObjectSchema(private val mMap: LinkedHashMap[String, Any]) extends Schema {
 
   /**
    * Optionally returns the boolean associated with the given key.
@@ -61,7 +61,7 @@ case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
       case l: Long => Option(l)
       case d: Double => Option(d)
       case null => None
-      case _ => throw ClassCastException() // TODO: set similar message
+      case x => throw ClassCastException(s"class ${x.getClass.getName} cannot be cast to class java.lang.Long or java.lang.Double")
   }
 
   /**
@@ -171,7 +171,7 @@ case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
   def getAsSchemaOpt(s: String): Option[_ >: Schema] = {
     mMap.getValue(s) match
       case b: Boolean => Option(BooleanSchema.of(b))
-      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj))
+      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj)) // consider specialized StringMap[V]-like
       case x => Option(x.asInstanceOf[Schema])
   }
 

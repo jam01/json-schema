@@ -11,7 +11,7 @@ object Transformer {
       case l: Long => v.visitInt64(l, -1)
       case d: Float => v.visitFloat32(d, -1)
       case d: Double => v.visitFloat64(d, -1)
-      case obj: Iterable[(String, Any)] =>  { // consider specialized StringMap[V]-like
+      case obj: collection.Map[String, Any] =>  { // consider specialized StringMap[V]-like
         val ctx = v.visitObject(obj.size, true, -1).narrow
         for (kv <- obj) {
           val keyVisitor = ctx.visitKey(-1)
@@ -20,7 +20,7 @@ object Transformer {
         }
         ctx.visitEnd(-1)
       }
-      case arr: Iterable[Any] => {
+      case arr: collection.Seq[Any] => {
         val ctx = v.visitArray(arr.size, -1).narrow
         for (item <- arr) ctx.visitValue(transform(item, ctx.subVisitor), -1)
         ctx.visitEnd(-1)
