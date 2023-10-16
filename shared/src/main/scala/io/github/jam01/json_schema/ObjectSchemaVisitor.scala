@@ -78,8 +78,7 @@ class ObjectSchemaVisitor(val schema: ObjectSchema) extends JsonVisitor[Any, Boo
     override def subVisitor: Visitor[_, _] = {
       if (items.isEmpty) BooleanSchemaVisitor.True
       else items.get match
-        case BooleanSchema.True => BooleanSchemaVisitor.True
-        case BooleanSchema.False => BooleanSchemaVisitor.False
+        case bs: BooleanSchema => BooleanSchemaVisitor.of(bs)
         case os: ObjectSchema => ObjectSchemaVisitor(os)
     }
 

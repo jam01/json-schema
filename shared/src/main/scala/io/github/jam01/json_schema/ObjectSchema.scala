@@ -49,8 +49,6 @@ case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
     Option(mMap.getValue(s).asInstanceOf[Double])
   }
 
-
-
   /**
    * Optionally returns the long or double associated with the given key.
    *
@@ -65,8 +63,6 @@ case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
       case null => None
       case _ => throw ClassCastException() // TODO: set similar message
   }
-
-
 
   /**
    * Optionally returns the String associated with the given key.
@@ -110,7 +106,7 @@ case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
    */
   def getArray(s: String): Seq[Any] = {
     mMap.getValue(s) match
-      case null => new ArrayBuffer[Any](0)
+      case null => Seq.empty
       case x: Any => x.asInstanceOf[Seq[Any]]
   }
 
@@ -134,7 +130,7 @@ case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
    */
   def getStringArray(s: String): Seq[String] = {
     mMap.getValue(s) match
-      case null => new ArrayBuffer[String](0)
+      case null => Seq.empty
       case x: Any => x.asInstanceOf[Seq[String]]
   }
 
@@ -174,7 +170,7 @@ case class ObjectSchema(mMap: LinkedHashMap[String, Any]) extends Schema {
    */
   def getAsSchemaOpt(s: String): Option[_ >: Schema] = {
     mMap.getValue(s) match
-      case b: Boolean => Option(if (b) BooleanSchema.True else BooleanSchema.False)
+      case b: Boolean => Option(BooleanSchema.of(b))
       case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj))
       case x => Option(x.asInstanceOf[Schema])
   }
