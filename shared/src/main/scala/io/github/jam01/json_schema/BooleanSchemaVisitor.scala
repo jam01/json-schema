@@ -31,8 +31,8 @@ object BooleanSchemaVisitor {
     override def visitObject(length: Int, index: Int): ObjVisitor[Boolean, Boolean] = FalseObjVisitor
   }
   
-  def of(sch: BooleanSchema): BooleanSchemaVisitor =
-    if (sch == BooleanSchema.True) True else False
+  def of(bsch: BooleanSchema): BooleanSchemaVisitor =
+    if (bsch.value) True else False
 }
 
 private abstract class BooleanSchemaVisitor(bool: Boolean) extends JsonVisitor[Boolean, Boolean] {

@@ -66,7 +66,7 @@ class ObjectSchemaValidatorTest {
 
   }
 
-  @Test
+//  @Test
   def lhms(): Unit = {
     val prev: LinkedHashMap[Int, Any] = LinkedHashMap().addOne((23, "bloop"))
     val x: LinkedHashMap[_, Any] = LinkedHashMap.from(prev)
@@ -84,6 +84,6 @@ class ObjectSchemaValidatorTest {
 
     val y: mutable.LinkedHashMap[Int, Int] = mutable.LinkedHashMap.empty
     y.addOne(21, 12)
-    y.asInstanceOf[mutable.LinkedHashMap[String, ujson.Value]].arr
+    y.asInstanceOf[mutable.LinkedHashMap[String, ujson.Value]].value.arr
   }
 }

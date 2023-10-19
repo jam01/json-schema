@@ -1,13 +1,14 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.json_schema.ObjectSchema.refError
+import io.github.jam01.json_schema.ObjSchema.{appendedRefToken, refError}
 
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.{Map, Seq}
+import scala.collection.{Map, Seq, immutable}
 
-case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
-                        private val base: String,
-                        private val location: String = null) extends Schema {
+private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any],
+                                     private val base: String,
+                                     private val location: String = null) {
+  self: ObjectSchema =>
   def getId: Option[String] = {
     getString("$id")
   }
@@ -21,7 +22,7 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
   }
 
   def getSchemaByPointer(ptr: JsonPointer): Schema = {
-    if (ptr.refTokens.isEmpty) return this
+    if (ptr.refTokens.head.isEmpty) return self
 
     var i = 0
     var res: Any = this
@@ -32,7 +33,7 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
         case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
         case arr: collection.IndexedSeq[Any] =>
           val i = key.toInt;
-          if (arr.length <= i) ObjectSchema.refError(ptr, i)
+          if (arr.length <= i) ObjSchema.refError(ptr, i)
           arr(i)
         case x: Any => throw new IllegalArgumentException(s"unsupported type ${x.getClass.getName}")
 
@@ -40,7 +41,7 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
     }
 
     res match
-      case b: Boolean => BooleanSchema.of(b)
+      case b: Boolean => BooleanSchema(b)
       case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, location + "/s") // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
   }
@@ -182,10 +183,10 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
    * @param s the entry key
    * @return the value cast or wrapped as Seq[String], or an empty Seq if the entry has a null value or does not exist
    */
-  def getAsStringArray(s: String): Seq[String] = {
+  def getAsStringArray(s: String): collection.IndexedSeq[String] = {
     mMap.getValue(s) match
-      case seq: collection.Seq[Any] => seq.asInstanceOf[Seq[String]]
-      case x => ArrayBuffer(x.asInstanceOf[String])
+      case seq: collection.IndexedSeq[Any] => seq.asInstanceOf[collection.IndexedSeq[String]]
+      case x => immutable.IndexedSeq(x.asInstanceOf[String])
   }
 
   /**
@@ -195,10 +196,10 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
    * @param s the entry key
    * @return the value cast as Seq[Map[String, Any]], or an empty Seq if the entry has a null value or does not exist
    */
-  def getObjectArray(s: String): Seq[Map[String, Any]] = {
+  def getObjectArray(s: String): collection.IndexedSeq[Map[String, Any]] = {
     mMap.getValue(s) match
-      case seq: collection.Seq[Any] => seq.asInstanceOf[Seq[Map[String, Any]]]
-      case x => ArrayBuffer(x.asInstanceOf[Map[String, Any]])
+      case seq: collection.IndexedSeq[Any] => seq.asInstanceOf[collection.IndexedSeq[Map[String, Any]]]
+      case x => immutable.IndexedSeq(x.asInstanceOf[Map[String, Any]])
   }
 
   /**
@@ -210,8 +211,8 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
    */
   def getAsSchemaOpt(s: String): Option[_ >: Schema] = {
     mMap.getValue(s) match
-      case b: Boolean => Option(BooleanSchema.of(b))
-      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, location + "/" + s)) // consider specialized StringMap[V]-like
+      case b: Boolean => Option(BooleanSchema(b))
+      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, appendedRefToken(location, s))) // consider specialized StringMap[V]-like
       case x => Option(x.asInstanceOf[Schema])
   }
 
@@ -226,8 +227,8 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
   def getAsSchemaArrayOpt(s: String): Option[Seq[_ >: Schema]] = {
     val elems = mMap.getValue(s).asInstanceOf[ArrayBuffer[Any]]
     val schs = elems.mapInPlace {
-      case b: Boolean => if (b) BooleanSchema.True else BooleanSchema.False
-      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, location + "/" + s)) // consider specialized StringMap[V]-like
+      case b: Boolean => BooleanSchema(b)
+      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, appendedRefToken(location, s))) // consider specialized StringMap[V]-like
       case _ => asInstanceOf[Schema]
     }
 
@@ -246,8 +247,8 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
     val arr = mMap.getValue(s)
     val elems = if (arr != null) arr.asInstanceOf[ArrayBuffer[_ >: Schema]] else ArrayBuffer.empty
     val schs = elems.mapInPlace {
-      case b: Boolean => if (b) BooleanSchema.True else BooleanSchema.False
-      case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, location + "/" + s) // consider specialized StringMap[V]-like
+      case b: Boolean => BooleanSchema(b)
+      case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, appendedRefToken(location, s)) // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
     }
 
@@ -255,7 +256,10 @@ case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
   }
 }
 
-object ObjectSchema {
+object ObjSchema {
+  private def appendedRefToken(loc: String, refTok: String): String =
+    loc + "/" + refTok // TODO: escape and check if needs to add #
+
   private def refError(ptr: JsonPointer, idx: Int): Unit =
     throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.view.slice(0, idx).mkString("/")}")
 }

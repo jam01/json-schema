@@ -20,7 +20,7 @@ object Transformer {
         }
         ctx.visitEnd(-1)
       }
-      case arr: collection.Seq[Any] => {
+      case arr: collection.IndexedSeq[Any] => {
         val ctx = v.visitArray(arr.size, -1).narrow
         for (item <- arr) ctx.visitValue(transform(item, ctx.subVisitor), -1)
         ctx.visitEnd(-1)
