@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertThrows, assertTrue}
 import upickle.core.Visitor
 
+import scala.collection.mutable
+
 //import scala.language.implicitConversions
 
 class ObjectSchemaValidatorTest {
   val lhm: LinkedHashMap[String, Any] = LinkedHashMap.empty
-  val strSch: ObjectSchema = ObjectSchema(lhm)
+  val strSch: ObjectSchema = ObjectSchema(lhm, "mem://test")
 
   lhm.put("type", "string")
   lhm.put("pattern", ".*")
@@ -16,7 +18,7 @@ class ObjectSchemaValidatorTest {
   lhm.put("minLength", 4)
 
   val lhm2: LinkedHashMap[String, Any] = LinkedHashMap.empty
-  val arrSch: ObjectSchema = ObjectSchema(lhm2)
+  val arrSch: ObjectSchema = ObjectSchema(lhm2, "mem://test")
   lhm2.put("maxItems", 4)
   lhm2.put("minItems", 2)
   lhm2.put("items", strSch)
@@ -78,6 +80,10 @@ class ObjectSchemaValidatorTest {
     val j = scala.collection.mutable.LinkedHashMap[String, ujson.Value]()
     j.value.put("n", ujson.Str(""))
     ujson.Obj.from(j)
-    j.transform(null.asInstanceOf[Visitor[_,_]])
+//    j.transform(null.asInstanceOf[Visitor[_,_]])
+
+    val y: mutable.LinkedHashMap[Int, Int] = mutable.LinkedHashMap.empty
+    y.addOne(21, 12)
+    y.asInstanceOf[mutable.LinkedHashMap[String, ujson.Value]].arr
   }
 }
