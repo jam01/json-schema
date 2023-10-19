@@ -7,7 +7,7 @@ import scala.collection.{Map, Seq, immutable}
 
 private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any],
                                      private val base: String,
-                                     private val location: String = null) {
+                                     private val location: String = "") {
   self: ObjectSchema =>
   def getId: Option[String] = {
     getString("$id")
@@ -42,7 +42,8 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
 
     res match
       case b: Boolean => BooleanSchema(b)
-      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, location + "/s") // consider specialized StringMap[V]-like
+      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, location + "/s") // TODO: loc + ptr.mkstring escaped
+      // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
   }
 
@@ -259,7 +260,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
 object ObjSchema {
   private def appendedRefToken(loc: String, refTok: String): String =
     loc + "/" + refTok // TODO: escape and check if needs to add #
-
+    // check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Unit =
     throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.view.slice(0, idx).mkString("/")}")
 }
