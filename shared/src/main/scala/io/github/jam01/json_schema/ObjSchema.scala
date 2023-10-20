@@ -7,8 +7,7 @@ import scala.collection.{Map, Seq, immutable}
 
 private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any],
                                      private val base: String,
-                                     private val location: String = "") {
-  self: ObjectSchema =>
+                                     private val location: String = "") { self: ObjectSchema =>
   def getId: Option[String] = {
     getString("$id")
   }

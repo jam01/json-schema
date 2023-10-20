@@ -4,11 +4,12 @@ import org.junit.jupiter.api.Test
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import org.junit.jupiter.api.Assertions.{assertEquals, assertThrows, assertTrue}
 import ujson.StringRenderer
-import upickle.core.{LogVisitor, NoOpVisitor, Visitor}
+import upickle.core.{NoOpVisitor, Visitor}
 import com.github.plokhotnyuk.jsoniter_scala.upickle.JsoniterScalaCodec
 
 import java.io.StringWriter
-class JsoniterScalaCodecSpecTest {
+
+class VisitorDecoderTest {
   val strRender: JsonValueCodec[StringWriter] = JsoniterScalaCodec.visitorDecoder(visitor = StringRenderer())
   val noOp: JsonValueCodec[Unit] = JsoniterScalaCodec.visitorDecoder(visitor = NoOpVisitor)
 
@@ -68,11 +69,5 @@ class JsoniterScalaCodecSpecTest {
     val res = readFromString(jsonStr)(strRender).toString
 
     assertEquals(expected, res)
-  }
-
-  @Test
-  def log(): Unit = {
-    val jsonStr = """{"n":null,"s":"VVV","n1":1.0,"n2":2,"a":[null,"WWW",[],{}],"o":{"a":[]}}"""
-    readFromString(jsonStr)(JsoniterScalaCodec.visitorDecoder(visitor = LogVisitor(NoOpVisitor)))
   }
 }

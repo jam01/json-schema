@@ -9,19 +9,21 @@ import scala.collection.mutable
 //import scala.language.implicitConversions
 
 class ObjectSchemaValidatorTest {
-  val lhm: LinkedHashMap[String, Any] = LinkedHashMap.empty
+  val lhm: LinkedHashMap[String, Any] = LinkedHashMap(
+    "type" -> "string",
+    "pattern" -> ".*",
+    "maxLength" -> 16,
+    "minLength" -> 4,
+  )
   val strSch: ObjectSchema = ObjectSchema(lhm, "mem://test")
 
-  lhm.put("type", "string")
-  lhm.put("pattern", ".*")
-  lhm.put("maxLength", 16)
-  lhm.put("minLength", 4)
-
-  val lhm2: LinkedHashMap[String, Any] = LinkedHashMap.empty
+  val lhm2: LinkedHashMap[String, Any] = LinkedHashMap(
+    "type" -> "array",
+    "maxItems" -> 4,
+    "minItems" -> 2,
+    "items" -> strSch
+  )
   val arrSch: ObjectSchema = ObjectSchema(lhm2, "mem://test")
-  lhm2.put("maxItems", 4)
-  lhm2.put("minItems", 2)
-  lhm2.put("items", strSch)
 
   @Test
   def valid_str(): Unit = {
@@ -35,55 +37,61 @@ class ObjectSchemaValidatorTest {
 
   @Test
   def valid_arr(): Unit = {
-    val r = ujson.Readable.fromString("""["valid", "valid2", "valid3"]""").transform(ObjectSchemaVisitor(arrSch))
+    val r = ujson.Readable
+      .fromString("""["valid", "valid2", "valid3"]""")
+      .transform(ObjectSchemaVisitor(arrSch))
     assertTrue(r)
   }
 
   @Test
   def invalid_arr_length(): Unit = {
-    val r = ujson.Readable.fromString("""["valid", "valid2", "valid3", "valid4", "valid5"]""").transform(ObjectSchemaVisitor(arrSch))
+    val r = ujson.Readable
+      .fromString("""["valid", "valid2", "valid3", "valid4", "valid5"]""")
+      .transform(ObjectSchemaVisitor(arrSch))
     assertFalse(r)
   }
 
   @Test
   def invalid_arr_subsch(): Unit = {
-    val r = ujson.Readable.fromString("""["valid", "12345678901234567", "valid3"]""").transform(ObjectSchemaVisitor(arrSch))
+    val r = ujson.Readable
+      .fromString("""["valid", "12345678901234567", "valid3"]""")
+      .transform(ObjectSchemaVisitor(arrSch))
     assertFalse(r)
   }
   
-  @Test
-  def test(): Unit = {
-//    println(java.lang.Long.toUnsignedString(Long.MinValue))
-//    println(java.lang.Long.toUnsignedString(Long.MaxValue))
-    val lng = java.lang.Long.parseUnsignedLong("9223372036854775807")
-
-    System.out.println(lng) // 10000000000000000000
-    System.out.println(java.lang.Long.toUnsignedString(lng)) // 10000000000000000000
-    println(lng > Long.MaxValue)
-    println(lng < 0)
-    
-    
-
-  }
-
 //  @Test
-  def lhms(): Unit = {
-    val prev: LinkedHashMap[Int, Any] = LinkedHashMap().addOne((23, "bloop"))
-    val x: LinkedHashMap[_, Any] = LinkedHashMap.from(prev)
-    println("")
-
-//    x.getString("")
-
-//    val y: IterableOnce[(String, String)] = null
-//    y.
-
-    val j = scala.collection.mutable.LinkedHashMap[String, ujson.Value]()
-    j.value.put("n", ujson.Str(""))
-    ujson.Obj.from(j)
-//    j.transform(null.asInstanceOf[Visitor[_,_]])
-
-    val y: mutable.LinkedHashMap[Int, Int] = mutable.LinkedHashMap.empty
-    y.addOne(21, 12)
-    y.asInstanceOf[mutable.LinkedHashMap[String, ujson.Value]].value.arr
-  }
+//  def test(): Unit = {
+////    println(java.lang.Long.toUnsignedString(Long.MinValue))
+////    println(java.lang.Long.toUnsignedString(Long.MaxValue))
+//    val lng = java.lang.Long.parseUnsignedLong("9223372036854775807")
+//
+//    System.out.println(lng) // 10000000000000000000
+//    System.out.println(java.lang.Long.toUnsignedString(lng)) // 10000000000000000000
+//    println(lng > Long.MaxValue)
+//    println(lng < 0)
+//
+//
+//
+//  }
+//
+////  @Test
+//  def lhms(): Unit = {
+//    val prev: LinkedHashMap[Int, Any] = LinkedHashMap().addOne((23, "bloop"))
+//    val x: LinkedHashMap[_, Any] = LinkedHashMap.from(prev)
+//    println("")
+//
+////    x.getString("")
+//
+////    val y: IterableOnce[(String, String)] = null
+////    y.
+//
+//    val j = scala.collection.mutable.LinkedHashMap[String, ujson.Value]()
+//    j.value.put("n", ujson.Str(""))
+//    ujson.Obj.from(j)
+////    j.transform(null.asInstanceOf[Visitor[_,_]])
+//
+//    val y: mutable.LinkedHashMap[Int, Int] = mutable.LinkedHashMap.empty
+//    y.addOne(21, 12)
+//    y.asInstanceOf[mutable.LinkedHashMap[String, ujson.Value]].value.arr
+//  }
 }

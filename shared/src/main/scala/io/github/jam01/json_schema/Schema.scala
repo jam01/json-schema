@@ -33,4 +33,4 @@ case object False extends BooleanSchema {
 // https://github.com/BalmungSan/scala-multifile-adt
 final case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
                         private val base: String,
-                        private val location: String = null) extends ObjSchema(mMap, base, location) with Schema
+                        private val location: String = "") extends ObjSchema(mMap, base, location) with Schema
