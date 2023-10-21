@@ -27,19 +27,19 @@ class ObjectSchemaValidatorTest {
 
   @Test
   def valid_str(): Unit = {
-    assertTrue(ObjectSchemaVisitor(strSch).visitString("valid", -1))
+    assertTrue(ObjectSchemaValidator(strSch).visitString("valid", -1))
   }
 
   @Test
   def invalid_str(): Unit = {
-    assertFalse(ObjectSchemaVisitor(strSch).visitString("12345678901234567", -1))
+    assertFalse(ObjectSchemaValidator(strSch).visitString("12345678901234567", -1))
   }
 
   @Test
   def valid_arr(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaVisitor(arrSch))
+      .transform(ObjectSchemaValidator(arrSch))
     assertTrue(r)
   }
 
@@ -47,7 +47,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_length(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3", "valid4", "valid5"]""")
-      .transform(ObjectSchemaVisitor(arrSch))
+      .transform(ObjectSchemaValidator(arrSch))
     assertFalse(r)
   }
 
@@ -55,7 +55,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_subsch(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "12345678901234567", "valid3"]""")
-      .transform(ObjectSchemaVisitor(arrSch))
+      .transform(ObjectSchemaValidator(arrSch))
     assertFalse(r)
   }
   

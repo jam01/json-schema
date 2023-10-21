@@ -1,16 +1,16 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
-
-import java.time.{Duration, LocalDate, OffsetDateTime}
-import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, StringVisitor, Visitor}
+import upickle.core.Visitor.MapArrContext
+import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 import java.net.{URI, URISyntaxException}
 import java.time.format.DateTimeParseException
+import java.time.{Duration, LocalDate, OffsetDateTime}
 import scala.collection.mutable
 
-class ObjectSchemaVisitor(val schema: ObjectSchema,
-                          val ctx: Context = Context.empty) extends JsonVisitor[Any, Boolean] {
+class ObjectSchemaValidator(val schema: ObjectSchema,
+                            val ctx: Context = Context.empty) extends JsonVisitor[Boolean, Boolean] {
   val tyype: collection.Seq[String] = schema.getAsStringArray("type")
   val pattern: Option[String] = schema.getString("pattern")
   val format: Option[String] = schema.getString("format")
@@ -85,32 +85,39 @@ class ObjectSchemaVisitor(val schema: ObjectSchema,
       _refVis.forall(_.visitString(s, index))
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[Any, Boolean] = new ArrVisitor[Any, Boolean] {
-    ctx.insloc.push("0")
-    private var counter = 0
-    private var subsch = true
+  override def visitArray(length: Int, index: Int): ArrVisitor[Boolean, Boolean] = {
+    val itemsArrVis: ArrVisitor[Boolean, Boolean] = items.map(sch => new ArrVisitor[Boolean, Boolean] {
+      private var subsch = true
+      override def subVisitor: Visitor[_, _] = SchemaValidator.from(sch.asInstanceOf, ctx)
+      override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
+      override def visitEnd(index: Int): Boolean = subsch
+    }).getOrElse(BooleanSchemaVisitor.True.visitArray(length, index))
 
-    override def subVisitor: Visitor[_, _] = {
-      items.map(sch => SchemaValidator.from(sch.asInstanceOf, ctx))
-        .getOrElse(BooleanSchemaVisitor.True)
-    }
+    val delegArrVis: Seq[upickle.core.ArrVisitor[Boolean, Boolean]] =
+      Seq(itemsArrVis, _refVis.map(_.visitArray(length, index)).get)
 
-    override def visitValue(v: Any, index: Int): Unit = {
-      ctx.insloc.pop
-      counter += 1
-      ctx.insloc.push(String.valueOf(counter))
-      subsch = subsch && v.asInstanceOf[Boolean]
-    }
+    new MapArrContext[Seq[Boolean], Seq[Boolean], Boolean](new CompositeArrVisitor[Boolean, Boolean](delegArrVis: _*), _.forall(identity)) {
+      ctx.insloc.push("0")
+      private var counter = 0
 
-    override def visitEnd(index: Int): Boolean = {
-      ctx.insloc.pop
-      subsch &&
+      override def visitValue(v: Seq[Boolean], index: Int): Unit = {
+        ctx.insloc.pop
+        counter += 1
+        ctx.insloc.push(String.valueOf(counter))
+
+        super.visitValue(v, index)
+      }
+
+      override def visitEnd(index: Int): Boolean = {
+        ctx.insloc.pop
         minItems.forall(counter >= _) &&
-        maxItems.forall(counter <= _)
+          maxItems.forall(counter <= _) &&
+          super.visitEnd(index)
+      }
     }
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[Any, Boolean] = new ObjVisitor[Any, Boolean] {
+  override def visitObject(length: Int, index: Int): ObjVisitor[Boolean, Boolean] = new ObjVisitor[Boolean, Boolean] {
     private val props: mutable.Buffer[String] = mutable.Buffer()
     private var subsch = true
     private var key: String = "?"
@@ -135,7 +142,7 @@ class ObjectSchemaVisitor(val schema: ObjectSchema,
         case Some(sch) => SchemaValidator.from(sch, ctx)
     }
 
-    override def visitValue(v: Any, index: Int): Unit = ctx.insloc.pop
+    override def visitValue(v: Boolean, index: Int): Unit = ctx.insloc.pop
 
     override def visitEnd(index: Int): Boolean = {
       ctx.insloc.pop
