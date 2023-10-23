@@ -21,7 +21,8 @@ class ObjectSchemaValidatorTest {
     "type" -> "array",
     "maxItems" -> 4,
     "minItems" -> 2,
-    "items" -> strSch
+    "items" -> strSch,
+    "$ref" -> "bloop"
   )
   val arrSch: ObjectSchema = ObjectSchema(lhm2, "mem://test")
 
@@ -58,7 +59,18 @@ class ObjectSchemaValidatorTest {
       .transform(ObjectSchemaValidator(arrSch))
     assertFalse(r)
   }
-  
+
+  @Test
+  def invalid_arr_ref(): Unit = {
+    val sch = ObjectSchema(LinkedHashMap("type" -> "string"), "")
+    val r = ujson.Readable
+      .fromString("""["valid", "valid2", "valid3"]""")
+      .transform(ObjectSchemaValidator(arrSch, Context(mutable.Stack.empty[String],
+        mutable.Stack.empty[String],
+        Map("bloop" -> sch))))
+    assertFalse(r)
+  }
+
 //  @Test
 //  def test(): Unit = {
 ////    println(java.lang.Long.toUnsignedString(Long.MinValue))

@@ -209,7 +209,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    * @param s the entry key
    * @return an Option of the value cast or converted to a Schema, or None if the entry has a null value or does not exist
    */
-  def getAsSchemaOpt(s: String): Option[_ >: Schema] = {
+  def getAsSchemaOpt(s: String): Option[Schema] = {
     mMap.getValue(s) match
       case b: Boolean => Option(BooleanSchema(b))
       case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, appendedRefToken(location, s))) // consider specialized StringMap[V]-like

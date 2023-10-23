@@ -15,28 +15,15 @@ class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T
 
   override def visitString(s: CharSequence, index: Int): J = reducer(delegates.map(_.visitString(s, index)))
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], J] = new ArrVisitor[Seq[T], J] {
-    private val delArrVis: Seq[ArrVisitor[T, J]] = delegates.map(_.visitArray(length, index))
-
-    override def subVisitor: Visitor[_, _] = new CompositorVisitor[Any, Any](delArrVis.map(_.subVisitor.asInstanceOf): _*)
-
-    override def visitValue(v: Seq[T], index: Int): Unit = {
-      var i = 0
-      while (i < delArrVis.length) {
-        delArrVis(i).visitValue(v(i), index)
-        i = i + 1
-      }
-    }
-
-    override def visitEnd(index: Int): J = reducer(delArrVis.map(_.visitEnd(index)))
-  }
+  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], J] =
+    new CompositeArrVisitorReducer[T, J](reducer, delegates.map(_.visitArray(length, index)): _*)
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], J] = ???
 }
 
 
-class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: Seq[ArrVisitor[T, J]]) extends ArrVisitor[Seq[T], J] {
-  override def subVisitor: Visitor[_, _] = new CompositorVisitor[Any, Any](delArrVis.map(_.subVisitor.asInstanceOf): _*)
+class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], J] {
+  override def subVisitor: Visitor[_, _] = new CompositeValidator[Any, Any](delArrVis.map(_.subVisitor.asInstanceOf): _*)
 
   override def visitValue(v: Seq[T], index: Int): Unit = {
     var i = 0
