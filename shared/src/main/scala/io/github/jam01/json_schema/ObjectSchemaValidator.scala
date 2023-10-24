@@ -93,6 +93,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       override def visitEnd(index: Int): Boolean = subsch
     }).getOrElse(BooleanSchemaVisitor.True.visitArray(length, index))
 
+    // TODO: if there's no refVis, skip the compositeArrVisitor
+    // TODO: how to init a Seq that ignores None 
     val delegArrVis: Seq[ArrVisitor[_, Boolean]] =
       Seq(itemsArrVis, _refVis.map(_.visitArray(length, index)).getOrElse(BooleanSchemaVisitor.True.visitArray(length, index)))
 

@@ -22,6 +22,14 @@ class CompositeValidator[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[
 }
 
 class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[_], Seq[J]] {
+  // unsure why ArrVisitor[Seq[T], Seq[J]] doesn't work when delArrVis if Arr[_, J]
+  //  .../json_schema/ObjectSchemaValidator.scala:99:78
+
+  //  Found:    (delegArrVis : Seq[upickle.core.ArrVisitor[?, Boolean]])
+  //  Required: Seq[upickle.core.ArrVisitor[Any, Boolean]] |
+  //    Array[? <: upickle.core.ArrVisitor[Any, Boolean]]
+  //  new MapArrContext[Seq[_], Seq[Boolean], Boolean](new CompositeArrVisitor(delegArrVis: _*), _.forall(identity)) {
+
   override def subVisitor: Visitor[_, _] =
     new CompositeValidator(delArrVis.map(_.subVisitor): _*)
 

@@ -2,11 +2,8 @@ package io.github.jam01.json_schema
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertThrows, assertTrue}
-import upickle.core.Visitor
 
 import scala.collection.mutable
-
-//import scala.language.implicitConversions
 
 class ObjectSchemaValidatorTest {
   val lhm: LinkedHashMap[String, Any] = LinkedHashMap(
@@ -21,8 +18,7 @@ class ObjectSchemaValidatorTest {
     "type" -> "array",
     "maxItems" -> 4,
     "minItems" -> 2,
-    "items" -> strSch,
-    "$ref" -> "bloop"
+    "items" -> strSch
   )
   val arrSch: ObjectSchema = ObjectSchema(lhm2, "mem://test")
 
@@ -62,12 +58,14 @@ class ObjectSchemaValidatorTest {
 
   @Test
   def invalid_arr_ref(): Unit = {
-    val sch = ObjectSchema(LinkedHashMap("type" -> "string"), "")
+    val refSch = ObjectSchema(LinkedHashMap("type" -> "string"), "mem://test")
+    val ctx = Context(mutable.Stack.empty, mutable.Stack.empty, Map("str" -> refSch))
+    val lhm3 = LinkedHashMap(lhm2).addOne("$ref" -> "str")
+    val arrSchRef = ObjectSchema(lhm3, "mem://test")
+
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator(arrSch, Context(mutable.Stack.empty[String],
-        mutable.Stack.empty[String],
-        Map("bloop" -> sch))))
+      .transform(ObjectSchemaValidator(arrSchRef, ctx))
     assertFalse(r)
   }
 
