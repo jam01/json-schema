@@ -43,3 +43,10 @@ class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisit
 
   override def visitEnd(index: Int): Seq[J] = delArrVis.map(_.visitEnd(index))
 }
+
+
+class DynDelegateArrVisitor[-T, +J](delegate: ArrVisitor[T, J]) extends ArrVisitor[Any, J] {
+  override def subVisitor: Visitor[_, _] = delegate.subVisitor
+  override def visitValue(v: Any, index: Int): Unit = delegate.visitValue(v.asInstanceOf[T], index)
+  override def visitEnd(index: Int): J = delegate.visitEnd(index)
+}

@@ -23,7 +23,7 @@ class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T
 
 
 class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], J] {
-  override def subVisitor: Visitor[_, _] = new CompositeValidator[Any, Any](delArrVis.map(_.subVisitor.asInstanceOf): _*)
+  override def subVisitor: Visitor[_, _] = new CompositeValidator(delArrVis.map(_.subVisitor): _*)
 
   override def visitValue(v: Seq[T], index: Int): Unit = {
     var i = 0

@@ -1,16 +1,16 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
-import upickle.core.Visitor.MapArrContext
+import upickle.core.Visitor.{Delegate, MapArrContext}
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 import java.net.{URI, URISyntaxException}
 import java.time.format.DateTimeParseException
 import java.time.{Duration, LocalDate, OffsetDateTime}
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 class ObjectSchemaValidator(val schema: ObjectSchema,
-                            val ctx: Context = Context.empty) extends JsonVisitor[Seq[_], Boolean] {
+                            val ctx: Context = Context.empty) extends JsonVisitor[_, Boolean] {
   val tyype: collection.Seq[String] = schema.getAsStringArray("type")
   val pattern: Option[String] = schema.getString("pattern")
   val format: Option[String] = schema.getString("format")
@@ -85,28 +85,30 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       _refVis.forall(_.visitString(s, index))
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[_], Boolean] = {
-    val itemsArrVis: ArrVisitor[Boolean, Boolean] = items.map(sch => new ArrVisitor[Boolean, Boolean] {
+  override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
+    val delBuilder = immutable.Seq.newBuilder[ArrVisitor[_, Boolean]]
+    if (items.nonEmpty) delBuilder.addOne(new ArrVisitor[Boolean, Boolean] {
       private var subsch = true
-      override def subVisitor: Visitor[_, _] = SchemaValidator.from(sch, ctx)
+      override def subVisitor: Visitor[_, _] = SchemaValidator.from(items.get, ctx)
       override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
       override def visitEnd(index: Int): Boolean = subsch
-    }).getOrElse(BooleanSchemaVisitor.True.visitArray(length, index))
+    })
+    if (_refVis.nonEmpty) delBuilder.addOne(_refVis.get.visitArray(length, index))
+    val delegates = delBuilder.result()
 
-    // TODO: if there's no refVis, skip the compositeArrVisitor
-    // TODO: how to init a Seq that ignores None 
-    val delegArrVis: Seq[ArrVisitor[_, Boolean]] =
-      Seq(itemsArrVis, _refVis.map(_.visitArray(length, index)).getOrElse(BooleanSchemaVisitor.True.visitArray(length, index)))
+    val delegate: ArrVisitor[_, Boolean] =
+      if (delegates.isEmpty) BooleanSchemaVisitor.True.visitArray(length, index)
+      else if (delegates.length == 1) delegates(0)
+      else new CompositeArrVisitorReducer(_.forall(identity), delegates: _*)
 
-    new MapArrContext[Seq[_], Seq[Boolean], Boolean](new CompositeArrVisitor(delegArrVis: _*), _.forall(identity)) {
+    new DynDelegateArrVisitor(delegate) {
       ctx.insloc.push("0")
       private var counter = 0
 
-      override def visitValue(v: Seq[_], index: Int): Unit = {
+      override def visitValue(v: Any, index: Int): Unit = {
         ctx.insloc.pop
         counter += 1
         ctx.insloc.push(String.valueOf(counter))
-
         super.visitValue(v, index)
       }
 
