@@ -28,7 +28,7 @@ class ObjectSchemaValidatorTest {
   }
 
   @Test
-  def invalid_str(): Unit = {
+  def invalid_str(): Unit = { // string too long
     assertFalse(ObjectSchemaValidator(strSch).visitString("12345678901234567", -1))
   }
 
@@ -41,15 +41,15 @@ class ObjectSchemaValidatorTest {
   }
 
   @Test
-  def invalid_arr_length(): Unit = {
+  def invalid_arr_length(): Unit = { // arr too long
     val r = ujson.Readable
-      .fromString("""["valid", "valid2", "valid3", "valid4", "valid5"]""")
+      .fromString("""["valid", "valid2", "valid3", "valid4", "invalid5"]""")
       .transform(ObjectSchemaValidator(arrSch))
     assertFalse(r)
   }
 
   @Test
-  def invalid_arr_subsch(): Unit = {
+  def invalid_arr_items(): Unit = { // 2nd string too long
     val r = ujson.Readable
       .fromString("""["valid", "12345678901234567", "valid3"]""")
       .transform(ObjectSchemaValidator(arrSch))
@@ -57,10 +57,35 @@ class ObjectSchemaValidatorTest {
   }
 
   @Test
-  def invalid_arr_ref(): Unit = {
+  def valid_nest_arr_items(): Unit = {
+    val lhm3 = lhm2.clone().addOne("items" -> LinkedHashMap("type" -> collection.IndexedSeq("string", "array")))
+    val arrSchNest = ObjectSchema(lhm3, "mem://test")
+
+    val r = ujson.Readable
+      .fromString("""["valid", ["valid", "valid2", "valid3"], "valid3"]""")
+      .transform(ObjectSchemaValidator(arrSchNest))
+    assertTrue(r)
+  }
+
+  @Test
+  def invalid_nest_arr_items(): Unit = { // nested arr fails items validation, its 2nd string too long
+    val lhm3 = lhm2.clone().addOne("items" -> LinkedHashMap(
+      "type" -> collection.IndexedSeq("string", "array"),
+      "items" -> strSch
+    ))
+    val arrSchNest = ObjectSchema(lhm3, "mem://test")
+
+    val r = ujson.Readable
+      .fromString("""["valid", ["valid", "12345678901234567", "valid3"], "valid3"]""")
+      .transform(ObjectSchemaValidator(arrSchNest))
+    assertFalse(r)
+  }
+
+  @Test
+  def invalid_arr_ref(): Unit = { // base schema dictates arr, but $ref dictates string
     val refSch = ObjectSchema(LinkedHashMap("type" -> "string"), "mem://test")
     val ctx = Context(mutable.Stack.empty, mutable.Stack.empty, Map("str" -> refSch))
-    val lhm3 = LinkedHashMap(lhm2).addOne("$ref" -> "str")
+    val lhm3 = lhm2.clone().addOne("$ref" -> "str")
     val arrSchRef = ObjectSchema(lhm3, "mem://test")
 
     val r = ujson.Readable

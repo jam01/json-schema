@@ -1,11 +1,14 @@
 package io.github.jam01.json_schema
 
+import java.util
 import scala.collection.mutable.GrowableBuilder
-import scala.collection.{MapFactory, mutable}
+import scala.collection.{MapFactory, MapFactoryDefaults, mutable}
 
 // TODO: license from upickle
-class LinkedHashMap[K, V](underlying: java.util.LinkedHashMap[K, V]) extends mutable.Map[K, V] {
-  override def mapFactory: MapFactory[mutable.Map] = LinkedHashMap
+class LinkedHashMap[K, V](underlying: java.util.LinkedHashMap[K, V]) extends mutable.AbstractMap[K, V]
+  with mutable.MapOps[K, V, LinkedHashMap, LinkedHashMap[K, V]]
+  with MapFactoryDefaults[K, V, LinkedHashMap, Iterable] {
+  override def mapFactory: MapFactory[LinkedHashMap] = LinkedHashMap
   override def addOne(elem: (K, V)): this.type = {
     _put(elem._1, elem._2)
     this
@@ -42,19 +45,13 @@ class LinkedHashMap[K, V](underlying: java.util.LinkedHashMap[K, V]) extends mut
 }
 
 object LinkedHashMap extends MapFactory[LinkedHashMap] {
-  def apply[K, V](): LinkedHashMap[K, V] =
-    new LinkedHashMap[K, V](new java.util.LinkedHashMap[K, V])
+  override def empty[K, V]: LinkedHashMap[K, V] = new LinkedHashMap[K, V](new util.LinkedHashMap[K, V]())
 
-  def apply[K, V](items: collection.IterableOnce[(K, V)]): LinkedHashMap[K, V] = {
-    items match {
+  override def from[K, V](it: IterableOnce[(K, V)]): LinkedHashMap[K, V] =
+    it match {
       case lhm: LinkedHashMap[K, V] => lhm // IDE complains but check works
-      case _ => mutable.Growable.from(empty[K, V], items)
+      case _ => mutable.Growable.from(empty[K, V], it)
     }
-  }
-
-  override def empty[K, V]: LinkedHashMap[K, V] = LinkedHashMap()
-
-  override def from[K, V](it: IterableOnce[(K, V)]): LinkedHashMap[K, V] = LinkedHashMap(it)
 
   override def newBuilder[K, V]: mutable.Builder[(K, V), LinkedHashMap[K, V]] =
     new mutable.GrowableBuilder(empty[K, V])

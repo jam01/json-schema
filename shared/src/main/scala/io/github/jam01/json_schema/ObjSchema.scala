@@ -5,6 +5,7 @@ import io.github.jam01.json_schema.ObjSchema.{appendedRefToken, refError}
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Map, Seq, immutable}
 
+// TODO: do we need indexedSeq?
 private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any],
                                      private val base: String,
                                      private val location: String = "") { self: ObjectSchema =>
@@ -65,7 +66,9 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    * @return an Option of the value cast as a int, or None if the entry has a null value or does not exist
    */
   def getInt(s: String): Option[Int] = {
-    Option(mMap.getValue(s).asInstanceOf[Int])
+    mMap.getValue(s) match
+      case null => None
+      case x => Some(x.asInstanceOf[Int])
   }
 
   /**
@@ -76,7 +79,9 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
    */
   def getLong(s: String): Option[Long] = {
-    Option(mMap.getValue(s).asInstanceOf[Long])
+    mMap.getValue(s) match
+      case null => None
+      case x => Some(x.asInstanceOf[Long])
   }
 
   /**
@@ -87,7 +92,9 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
    */
   def getDouble(s: String): Option[Double] = {
-    Option(mMap.getValue(s).asInstanceOf[Double])
+    mMap.getValue(s) match
+      case null => None
+      case x => Some(x.asInstanceOf[Double])
   }
 
   /**
@@ -99,9 +106,9 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    */
   def getLongOrDouble(s: String): Option[Long | Double] = {
     mMap.getValue(s) match
+      case null => None
       case l: Long => Option(l)
       case d: Double => Option(d)
-      case null => None
       case x => throw ClassCastException(s"class ${x.getClass.getName} cannot be cast to class java.lang.Long or java.lang.Double")
   }
 

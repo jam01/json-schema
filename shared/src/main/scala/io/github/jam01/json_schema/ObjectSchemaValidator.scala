@@ -98,7 +98,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
     val delegate: ArrVisitor[_, Boolean] =
       if (delegates.isEmpty) BooleanSchemaVisitor.True.visitArray(length, index)
-      else if (delegates.length == 1) delegates(0)
+      else if (delegates.length == 1) delegates.head
       else new CompositeArrVisitorReducer(_.forall(identity), delegates: _*)
 
     new DynDelegateArrVisitor(delegate) {
