@@ -8,4 +8,7 @@ case class JsonPointer(refTokens: immutable.Seq[String]) {
   def apply(s: String): JsonPointer = {
     JsonPointer(s.split('/'))
   }
+
+  override def toString: String =
+    refTokens.mkString("/") // TODO: escape 
 }

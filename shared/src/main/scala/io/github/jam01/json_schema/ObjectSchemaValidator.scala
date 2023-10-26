@@ -28,7 +28,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   val _refVis: Option[JsonVisitor[_, Boolean]] = schema
     .getString("$ref") // TODO: resolve URI to current schema
     .map(s => ctx.reg.getOrElse(s, throw new IllegalArgumentException(s"unavailable schema $s")))
-    .map(sch => SchemaValidator.from(sch, ctx))
+    .map(sch => SchemaValidator.of(sch, ctx))
 
   override def visitNull(index: Int): Boolean = {
     tyype.exists("null".eq) &&
@@ -86,10 +86,12 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   }
 
   override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
+    ctx.insloc.push("0")
+
     val delBuilder = immutable.Seq.newBuilder[ArrVisitor[_, Boolean]]
     if (items.nonEmpty) delBuilder.addOne(new ArrVisitor[Boolean, Boolean] {
       private var subsch = true
-      override def subVisitor: Visitor[_, _] = SchemaValidator.from(items.get, ctx)
+      override def subVisitor: Visitor[_, _] = SchemaValidator.of(items.get, ctx)
       override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
       override def visitEnd(index: Int): Boolean = subsch
     })
@@ -97,12 +99,11 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     val delegates = delBuilder.result()
 
     val delegate: ArrVisitor[_, Boolean] =
-      if (delegates.isEmpty) BooleanSchemaVisitor.True.visitArray(length, index)
+      if (delegates.isEmpty) BooleanSchemaValidator.True.visitArray(length, index)
       else if (delegates.length == 1) delegates.head
       else new CompositeArrVisitorReducer(_.forall(identity), delegates: _*)
 
     new DynDelegateArrVisitor(delegate) {
-      ctx.insloc.push("0")
       private var counter = 0
 
       override def visitValue(v: Any, index: Int): Unit = {

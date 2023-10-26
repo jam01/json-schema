@@ -1,11 +1,11 @@
 package upickle.jsoniter
 
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReaderException, JsonValueCodec, readFromString}
+import com.github.plokhotnyuk.jsoniter_scala.upickle.JsoniterScalaCodec
 import org.junit.jupiter.api.Test
-import com.github.plokhotnyuk.jsoniter_scala.core.*
 import org.junit.jupiter.api.Assertions.{assertEquals, assertThrows, assertTrue}
 import ujson.StringRenderer
 import upickle.core.{NoOpVisitor, Visitor}
-import com.github.plokhotnyuk.jsoniter_scala.upickle.JsoniterScalaCodec
 
 import java.io.StringWriter
 
