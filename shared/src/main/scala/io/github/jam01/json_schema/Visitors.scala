@@ -1,6 +1,6 @@
 package io.github.jam01.json_schema
 
-import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
+import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 class CompositeValidator[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Seq[_], Seq[J]] {
   override def visitNull(index: Int): Seq[J] = delegates.map(_.visitNull(index))
@@ -125,4 +125,20 @@ class DynDelegateArrVisitor[-T, +J](delegate: ArrVisitor[T, J]) extends ArrVisit
   override def subVisitor: Visitor[_, _] = delegate.subVisitor
   override def visitValue(v: Any, index: Int): Unit = delegate.visitValue(v.asInstanceOf[T], index)
   override def visitEnd(index: Int): J = delegate.visitEnd(index)
+}
+
+class DynDelegateObjVisitor[-T, +J](delegate: ObjVisitor[T, J]) extends ObjVisitor[Any, J] {
+  override def visitKey(index: Int): Visitor[_, _] = delegate.visitKey(index)
+  override def visitKeyValue(v: Any): Unit = delegate.visitKeyValue(v)
+  override def subVisitor: Visitor[_, _] = delegate.subVisitor
+  override def visitValue(v: Any, index: Int): Unit = delegate.visitValue(v.asInstanceOf[T], index)
+  override def visitEnd(index: Int): J = delegate.visitEnd(index)
+}
+
+
+
+class StringVisitor extends SimpleVisitor[Nothing, String] {
+  def expectedMsg = "expected string"
+
+  override def visitString(s: CharSequence, index: Int): String = s.toString
 }

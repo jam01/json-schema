@@ -27,7 +27,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     var i = 0
     var res: Any = this
     while (i < ptr.refTokens.length) {
-      val key = ptr.refTokens(i) // TODO: unescape
+      val key = ptr.refTokens(i) // TODO: unescape?
       res = res match
         case ObjectSchema(omMap, base, parent) => omMap.getOrElse(key, refError(ptr, i))
         case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
@@ -58,6 +58,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     Option(mMap.getValue(s).asInstanceOf[Boolean])
   }
 
+  // see: https://stackoverflow.com/q/11338954
   /**
    * Optionally returns the int associated with the given key.
    *

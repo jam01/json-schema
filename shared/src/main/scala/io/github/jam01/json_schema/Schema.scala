@@ -27,10 +27,10 @@ case object False extends BooleanSchema {
   def value = false
 }
 
-// see: https://contributors.scala-lang.org/t/pre-sip-sealed-enumerating-allowed-sub-types/3768
-// https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
+// see: https://github.com/BalmungSan/scala-multifile-adt
 // https://users.scala-lang.org/t/refactoring-class-hierarchy-into-adt/6997
-// https://github.com/BalmungSan/scala-multifile-adt
+// https://contributors.scala-lang.org/t/pre-sip-sealed-enumerating-allowed-sub-types/3768
+// https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
 final case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
                         private val base: String,
                         private val location: String = "") extends ObjSchema(mMap, base, location) with Schema
