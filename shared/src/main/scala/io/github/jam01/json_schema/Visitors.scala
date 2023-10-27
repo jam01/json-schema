@@ -2,7 +2,7 @@ package io.github.jam01.json_schema
 
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-class CompositeValidator[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Seq[_], Seq[J]] {
+class CompositeVisitor[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Seq[_], Seq[J]] {
   override def visitNull(index: Int): Seq[J] = delegates.map(_.visitNull(index))
   override def visitFalse(index: Int): Seq[J] = delegates.map(_.visitFalse(index))
   override def visitTrue(index: Int): Seq[J] = delegates.map(_.visitTrue(index))
@@ -25,7 +25,7 @@ class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisit
   //  new MapArrContext[Seq[_], Seq[Boolean], Boolean](new CompositeArrVisitor(delegArrVis: _*), _.forall(identity)) {
 
   override def subVisitor: Visitor[_, _] =
-    new CompositeValidator(delArrVis.map(_.subVisitor): _*)
+    new CompositeVisitor(delArrVis.map(_.subVisitor): _*)
 
   override def visitValue(v: Seq[_], index: Int): Unit = {
     var i = 0
@@ -40,7 +40,7 @@ class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisit
 
 class CompositeObjVisitor[-T, +J](delObjVis: ObjVisitor[T, J]*) extends ObjVisitor[Seq[_], Seq[J]] {
   override def visitKey(index: Int): Visitor[_, _] =
-    new CompositeValidator(delObjVis.map(_.visitKey(index)): _*)
+    new CompositeVisitor(delObjVis.map(_.visitKey(index)): _*)
 
   override def visitKeyValue(v: Any): Unit = {
     var i = 0
@@ -51,7 +51,7 @@ class CompositeObjVisitor[-T, +J](delObjVis: ObjVisitor[T, J]*) extends ObjVisit
   }
 
   override def subVisitor: Visitor[_, _] =
-    new CompositeValidator(delObjVis.map(_.subVisitor): _*)
+    new CompositeVisitor(delObjVis.map(_.subVisitor): _*)
 
   override def visitValue(v: Seq[_], index: Int): Unit = {
     var i = 0
@@ -80,7 +80,7 @@ class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T
 }
 
 class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], J] {
-  override def subVisitor: Visitor[_, _] = new CompositeValidator(delArrVis.map(_.subVisitor): _*)
+  override def subVisitor: Visitor[_, _] = new CompositeVisitor(delArrVis.map(_.subVisitor): _*)
 
   override def visitValue(v: Seq[T], index: Int): Unit = {
     var i = 0
@@ -96,7 +96,7 @@ class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVis
 class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVisitor[T, J]*) extends ObjVisitor[Seq[T], J] {
 
   override def visitKey(index: Int): Visitor[_, _] =
-    new CompositeValidator(delObjVis.map(_.visitKey(index)): _*)
+    new CompositeVisitor(delObjVis.map(_.visitKey(index)): _*)
 
   override def visitKeyValue(v: Any): Unit = {
     var i = 0
@@ -106,7 +106,7 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
     }
   }
 
-  override def subVisitor: Visitor[_, _] = new CompositeValidator(delObjVis.map(_.subVisitor): _*)
+  override def subVisitor: Visitor[_, _] = new CompositeVisitor(delObjVis.map(_.subVisitor): _*)
 
   override def visitValue(v: Seq[T], index: Int): Unit = {
     var i = 0

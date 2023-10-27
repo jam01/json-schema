@@ -230,17 +230,28 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    *
    * @throws ClassCastException if the value is not a JSON Array of Schemas or its items cannot be converted to Schemas
    * @param s the entry key
-   * @return an Option of the value cast as a Seq[_ >: Schema], or None if the entry has a null value or does not exist
+   * @return an Option of the value cast as a Seq[Schema], or None if the entry has a null value or does not exist
    */
-  def getAsSchemaArrayOpt(s: String): Option[Seq[_ >: Schema]] = {
+  def getAsSchemaArrayOpt(s: String): Option[Seq[Schema]] = {
     val elems = mMap.getValue(s).asInstanceOf[ArrayBuffer[Any]]
     val schs = elems.mapInPlace {
       case b: Boolean => BooleanSchema(b)
-      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, appendedRefToken(location, s))) // consider specialized StringMap[V]-like
+      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, appendedRefToken(location, s)) // consider specialized StringMap[V]-like
       case _ => asInstanceOf[Schema]
     }
 
-    Option(schs.asInstanceOf[Seq[_ >: Schema]])
+    Option(schs.asInstanceOf[Seq[Schema]])
+  }
+
+  def getAsSchemaObjectOpt(s: String): Option[Map[String, Schema]] = {
+    mMap.getValue(s) match
+      case null => None
+      case lhm: LinkedHashMap[String, Any] => Some(lhm.mapValuesInPlace {
+        case (_, b: Boolean) => BooleanSchema(b)
+        case (_, obj: LinkedHashMap[String, Any]) => ObjectSchema(obj, base, appendedRefToken(location, s)) // consider specialized StringMap[V]-like
+        case (_, x) => x.asInstanceOf[Schema]
+      }.asInstanceOf[Map[String, Schema]])
+      case x => Option(x.asInstanceOf[Map[String, Schema]])
   }
 
   /**
@@ -249,18 +260,18 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    *
    * @throws ClassCastException if the value is not a JSON Array of Schemas or its items cannot be converted to Schemas
    * @param s the entry key
-   * @return the value cast as a Seq[_ >: Schema], or None if the entry has a null value or does not exist
+   * @return the value cast as a Seq[Schema], or None if the entry has a null value or does not exist
    */
-  def getAsSchemaArray(s: String): Seq[_ >: Schema] = {
+  def getAsSchemaArray(s: String): Seq[Schema] = {
     val arr = mMap.getValue(s)
-    val elems = if (arr != null) arr.asInstanceOf[ArrayBuffer[_ >: Schema]] else ArrayBuffer.empty
+    val elems = if (arr != null) arr.asInstanceOf[ArrayBuffer[Any]] else ArrayBuffer.empty
     val schs = elems.mapInPlace {
       case b: Boolean => BooleanSchema(b)
       case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, appendedRefToken(location, s)) // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
     }
 
-    schs.asInstanceOf[Seq[_ >: Schema]]
+    schs.asInstanceOf[Seq[Schema]]
   }
 }
 

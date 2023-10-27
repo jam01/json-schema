@@ -6,6 +6,7 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 import java.net.{URI, URISyntaxException}
 import java.time.format.DateTimeParseException
 import java.time.{Duration, LocalDate, OffsetDateTime}
+import scala.collection.mutable.ArrayBuffer
 import scala.collection.{immutable, mutable}
 
 class ObjectSchemaValidator(val schema: ObjectSchema,
@@ -25,7 +26,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   val minProperties: Option[Int] = schema.getInt("minProperties")
 
   val items: Option[Schema] = schema.getAsSchemaOpt("items")
-  val properties: Option[collection.Map[String, Schema]] = None
+  val properties: Option[collection.Map[String, Schema]] = schema.getAsSchemaObjectOpt("properties")
   val required: collection.Seq[String] = schema.getStringArray("required")
   val _refVis: Option[JsonVisitor[_, Boolean]] = schema
     .getString("$ref") // TODO: resolve URI to current schema
@@ -72,7 +73,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   override def visitString(s: CharSequence, index: Int): Boolean = {
     tyype.exists("string".eq) &&
       pattern.forall(_.r.matches(s)) && // TODO: memoize
-      minLength.forall(s.length() > _) &&
+      minLength.forall(s.length() >= _) &&
       maxLength.forall(s.length() <= _) &&
       format.forall(_ match // TODO: use regexs
         case "date-time" => try { OffsetDateTime.parse(s); true } catch
@@ -89,13 +90,13 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
   override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
     val builder = immutable.Seq.newBuilder[ArrVisitor[_, Boolean]]
-    if (items.nonEmpty) builder.addOne(new ArrVisitor[Boolean, Boolean] {
+    items.foreach(sch => builder.addOne(new ArrVisitor[Boolean, Boolean] { // TODO: move, support prefixItems
       private var subsch = true
-      override def subVisitor: Visitor[_, _] = SchemaValidator.of(items.get, ctx)
+      override def subVisitor: Visitor[_, _] = SchemaValidator.of(sch, ctx)
       override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
       override def visitEnd(index: Int): Boolean = subsch
-    })
-    if (_refVis.nonEmpty) builder.addOne(_refVis.get.visitArray(length, index))
+    }))
+    _refVis.foreach(vis => builder.addOne(vis.visitArray(length, index)))
     // TODO: add other applicators
     val delegates: Seq[ArrVisitor[_, Boolean]] = builder.result()
 
@@ -125,19 +126,31 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[_], Boolean] = {
     val builder = immutable.Seq.newBuilder[ObjVisitor[_, Boolean]]
-    if (_refVis.nonEmpty) builder.addOne(_refVis.get.visitObject(length, index))
+    _refVis.foreach(vis => builder.addOne(vis.visitObject(length, index)))
     // TODO: add other applicators
-    val delegates = builder.result()
+    val insVisitors = builder.result()
 
-    val delegate: ObjVisitor[_, Boolean] =
-      if (delegates.isEmpty) BooleanSchemaValidator.True.visitObject(length, index)
-      else if (delegates.length == 1) delegates.head
-      else new CompositeObjVisitorReducer(_.forall(identity), delegates: _*)
+    val compInsVisitor: ObjVisitor[_, Boolean] =
+      if (insVisitors.isEmpty) BooleanSchemaValidator.True.visitObject(length, index)
+      else if (insVisitors.length == 1) insVisitors.head
+      else new CompositeObjVisitorReducer(_.forall(identity), insVisitors: _*)
+
+    var childInsVisitors: Seq[ObjVisitor[_, Boolean]] = immutable.Seq.empty
+    var childInsVisitor: ObjVisitor[_, Boolean] = null
 
     new ObjVisitor[Any, Boolean] {
       val props: mutable.Buffer[String] = mutable.Buffer()
       var key: String = "?"
       private var counter = 0
+
+      val propsVisitor: Option[ObjVisitor[_, Boolean]] = properties.map(m => new ObjVisitor[Boolean, Boolean] {
+        private var subsch = true
+        override def visitKey(index: Int): Visitor[_, _] = ???
+        override def visitKeyValue(v: Any): Unit = ???
+        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m.get(key).get, ctx)
+        override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
+        override def visitEnd(index: Int): Boolean = subsch
+      })
 
       override def visitKey(index: Int): Visitor[_, _] = new SimpleVisitor[Nothing, Any] {
         def expectedMsg = "expected string"
@@ -146,26 +159,26 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           key = s.toString
           // TODO: propertyNames
           props.addOne(key)
-          delegate.visitKey(index).visitString(s, index1)
+          compInsVisitor.visitKey(index).visitString(s, index1)
         }
       }
 
-      override def visitKeyValue(v: Any): Unit = delegate.visitKeyValue(v)
+      override def visitKeyValue(v: Any): Unit = compInsVisitor.visitKeyValue(v)
 
       override def subVisitor: Visitor[_, _] = {
-        val subbuilder = new mutable.ArrayBuffer[Visitor[_, _]]()
-        val subprop = properties
-          .flatMap(m => m.get(key))
-          .map(sch => SchemaValidator.of(sch, ctx))
-        if (subprop.nonEmpty) subbuilder.addOne(subprop.get)
-        // TODO: add patternProperties, additionalProperties
+        val subbuilder = immutable.Seq.newBuilder[ObjVisitor[_, Boolean]]
+        subbuilder.addOne(compInsVisitor)
+        properties.flatMap(m => m.get(key)).foreach(sch => subbuilder.addOne(propsVisitor.get))
+        // TODO: add other sub-applicators
+        childInsVisitors = subbuilder.result()
 
-        if (subbuilder.isEmpty) delegate.subVisitor
-        else new CompositeVisitorReducer(_.forall(x => identity(x.asInstanceOf[Boolean])), subbuilder.addOne(delegate.subVisitor).toSeq : _*)
+        childInsVisitor = new CompositeObjVisitorReducer(_.forall(identity), childInsVisitors: _*)
+        childInsVisitor.subVisitor
       }
 
       override def visitValue(v: Any, index: Int): Unit = {
-        delegate.narrow.visitValue(v, index)
+        childInsVisitor.narrow.visitValue(v, index)
+
         counter += 1
       }
 
@@ -174,7 +187,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           required.forall(props.contains(_)) &&
           maxProperties.forall(props.size <= _) &&
           minProperties.forall(props.size >= _) &&
-          delegate.visitEnd(index)
+          compInsVisitor.visitEnd(index) &&
+          propsVisitor.forall(_.visitEnd(index))
       }
     }
   }

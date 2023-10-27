@@ -10,7 +10,7 @@ class ObjectSchemaValidatorTest {
     "type" -> "string",
     "pattern" -> ".*",
     "maxLength" -> 16,
-    "minLength" -> 4,
+    "minLength" -> 3,
   )
   val strSch: ObjectSchema = ObjectSchema(lhm, "mem://test")
 
@@ -93,6 +93,71 @@ class ObjectSchemaValidatorTest {
       .transform(ObjectSchemaValidator(arrSchRef, ctx))
     assertFalse(r)
   }
+
+  val lhm4: LinkedHashMap[String, Any] = LinkedHashMap(
+    "type" -> "object",
+    "maxProperties" -> 2,
+    "minProperties" -> 1,
+    "properties" -> LinkedHashMap(
+      "foo" -> strSch,
+      "arr" -> arrSch,
+      "obj" -> ObjectSchema(LinkedHashMap(
+        "type" -> "object",
+        "maxProperties" -> 1), "mem://test")
+    ),
+    "required" -> Seq("foo")
+  )
+  val objSch: ObjectSchema = ObjectSchema(lhm4, "mem://test")
+
+  @Test
+  def valid_obj(): Unit = {
+    val r = ujson.Readable
+      .fromString("""{"foo": "bar"}""")
+      .transform(ObjectSchemaValidator(objSch))
+    assertTrue(r)
+  }
+
+  @Test
+  def invalid_obj_required(): Unit = { // foo prop required
+    val r = ujson.Readable
+      .fromString("""{"nfoo": "bar"}""")
+      .transform(ObjectSchemaValidator(objSch))
+    assertFalse(r)
+  }
+
+  @Test
+  def invalid_obj_props(): Unit = { // foo prop must be string
+    val r = ujson.Readable
+      .fromString("""{"foo": null}""")
+      .transform(ObjectSchemaValidator(objSch))
+    assertFalse(r)
+  }
+
+
+  @Test
+  def invalid_obj_length(): Unit = { // obj too long
+    val r = ujson.Readable
+      .fromString("""{"foo": "null", "arr": [], "null": null}""")
+      .transform(ObjectSchemaValidator(objSch))
+    assertFalse(r)
+  }
+
+  @Test
+  def valid_nest_obj_props(): Unit = {
+    val r = ujson.Readable
+      .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar"}}""")
+      .transform(ObjectSchemaValidator(objSch))
+    assertTrue(r)
+  }
+
+  @Test
+  def invalid_nest_obj_props(): Unit = {
+    val r = ujson.Readable
+      .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar", "null": null}}""")
+      .transform(ObjectSchemaValidator(objSch))
+    assertFalse(r)
+  }
+
 
 //  @Test
 //  def test(): Unit = {
