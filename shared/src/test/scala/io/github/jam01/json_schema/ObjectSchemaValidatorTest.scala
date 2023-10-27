@@ -82,6 +82,19 @@ class ObjectSchemaValidatorTest {
   }
 
   @Test
+  def valid_arr_ref(): Unit = {
+    val refSch = ObjectSchema(LinkedHashMap("type" -> "array", "minItems" -> 1), "mem://test")
+    val ctx = Context(mutable.Stack.empty, mutable.Stack.empty, Map("str" -> refSch))
+    val lhm3 = lhm2.clone().addOne("$ref" -> "str")
+    val arrSchRef = ObjectSchema(lhm3, "mem://test")
+
+    val r = ujson.Readable
+      .fromString("""["valid", "valid2", "valid3"]""")
+      .transform(ObjectSchemaValidator(arrSchRef, ctx))
+    assertTrue(r)
+  }
+
+  @Test
   def invalid_arr_ref(): Unit = { // base schema dictates arr, but $ref dictates string
     val refSch = ObjectSchema(LinkedHashMap("type" -> "string"), "mem://test")
     val ctx = Context(mutable.Stack.empty, mutable.Stack.empty, Map("str" -> refSch))
@@ -158,6 +171,31 @@ class ObjectSchemaValidatorTest {
     assertFalse(r)
   }
 
+  @Test
+  def valid_obj_ref(): Unit = {
+    val refSch = ObjectSchema(LinkedHashMap("required" -> Seq("null")), "mem://test")
+    val ctx = Context(mutable.Stack.empty, mutable.Stack.empty, Map("nullreq" -> refSch))
+    val lhm3 = lhm4.clone().addOne("$ref" -> "nullreq")
+    val objSchRef = ObjectSchema(lhm3, "mem://test")
+
+    val r = ujson.Readable
+      .fromString("""{"foo": "bar", "null": null}""")
+      .transform(ObjectSchemaValidator(objSchRef, ctx))
+    assertTrue(r)
+  }
+
+  @Test
+  def invalid_obj_ref(): Unit = { // base schema dictates obj, but $ref dictates string
+    val refSch = ObjectSchema(LinkedHashMap("type" -> "string"), "mem://test")
+    val ctx = Context(mutable.Stack.empty, mutable.Stack.empty, Map("str" -> refSch))
+    val lhm3 = lhm4.clone().addOne("$ref" -> "str")
+    val objSchRef = ObjectSchema(lhm3, "mem://test")
+
+    val r = ujson.Readable
+      .fromString("""{"foo": "bar"}""")
+      .transform(ObjectSchemaValidator(objSchRef, ctx))
+    assertFalse(r)
+  }
 
 //  @Test
 //  def test(): Unit = {

@@ -191,9 +191,10 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    * @param s the entry key
    * @return the value cast or wrapped as Seq[String], or an empty Seq if the entry has a null value or does not exist
    */
-  def getAsStringArray(s: String): collection.IndexedSeq[String] = {
+  def getAsStringArray(s: String): collection.Seq[String] = {
     mMap.getValue(s) match
-      case seq: collection.IndexedSeq[Any] => seq.asInstanceOf[collection.IndexedSeq[String]]
+      case seq: collection.Seq[Any] => seq.asInstanceOf[collection.Seq[String]]
+      case null => Nil
       case x => immutable.IndexedSeq(x.asInstanceOf[String])
   }
 
