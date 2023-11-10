@@ -1,19 +1,26 @@
 package io.github.jam01.json_schema
 
-import scala.collection.immutable
-
-case class JsonPointer(refTokens: immutable.Seq[String]) {
+case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
   if (refTokens.isEmpty) throw new IllegalArgumentException("invalid JSON Pointer")
-  // TODO: replace w/regex?
+
+  override def toString: String = JsonPointer.toString(refTokens)
+}
+
+object JsonPointer {
   def apply(s: String): JsonPointer = {
-    JsonPointer(
-      s.split('/')
-        .map(_.replace("~0", "~").replace("~1", "/"))
-    )
+    JsonPointer(s.split('/')
+      .map(_.replace("~0", "~").replace("~1", "/"))) // TODO: replace w/regex?
   }
 
-  override def toString: String =
-    refTokens
+  def strValueOf(it: collection.IterableOnce[String]): String = {
+    val itr = it.iterator
+    if (!itr.hasNext) throw new IllegalArgumentException("invalid JSON Pointer")
+    toString(itr)
+  }
+
+  private def toString(it: collection.IterableOnce[String]): String = {
+    it.iterator
       .map(_.replace("~", "~0").replace("/", "~1"))
       .mkString("/")
+  }
 }

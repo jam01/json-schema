@@ -135,9 +135,7 @@ class DynDelegateObjVisitor[-T, +J](delegate: ObjVisitor[T, J]) extends ObjVisit
   override def visitEnd(index: Int): J = delegate.visitEnd(index)
 }
 
-
-
-class StringVisitor extends SimpleVisitor[Nothing, String] {
+object StringVisitor extends SimpleVisitor[Nothing, String] {
   def expectedMsg = "expected string"
 
   override def visitString(s: CharSequence, index: Int): String = s.toString

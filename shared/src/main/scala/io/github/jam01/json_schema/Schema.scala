@@ -1,14 +1,18 @@
 package io.github.jam01.json_schema
 
 sealed trait Schema {
-  def getSchemaByPointer(ptr: JsonPointer): Schema
+  def schBy(ptr: JsonPointer): Schema = {
+    if (ptr.refTokens.length == 1 && ptr.refTokens.head.isEmpty) return this
+    schBy0(ptr)
+  }
+
+  def schBy0(ptr: JsonPointer): Schema
 }
 
 sealed abstract class BooleanSchema extends Schema {
   def value: Boolean
 
-  override def getSchemaByPointer(ptr: JsonPointer): Schema = {
-    if (ptr.refTokens.length == 1 && ptr.refTokens.head.isEmpty) return this
+  override def schBy0(ptr: JsonPointer): Schema = {
     throw new IllegalStateException("cannot evaluate a JSON pointer against a boolean schema")
   }
 }
@@ -31,6 +35,13 @@ case object False extends BooleanSchema {
 // https://users.scala-lang.org/t/refactoring-class-hierarchy-into-adt/6997
 // https://contributors.scala-lang.org/t/pre-sip-sealed-enumerating-allowed-sub-types/3768
 // https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
+
+/**
+ *
+ * @param mMap   underlying Map of keywords -> values
+ * @param base   a base uri assigned by the application
+ * @param parent the parent schema, if any
+ */
 final case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
-                        private val base: String,
-                        private val location: String = "") extends ObjSchema(mMap, base, location) with Schema
+                              private val base: String,
+                              private val parent: Option[ObjectSchema] = None) extends ObjSchema(mMap, base, parent) with Schema

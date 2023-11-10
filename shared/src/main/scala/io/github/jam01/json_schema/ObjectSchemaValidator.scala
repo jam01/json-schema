@@ -12,7 +12,7 @@ import scala.collection.{immutable, mutable}
  * A ObjectSchema validator Visitor
  *
  * @param schema the schema to apply
- * @param ctx the validation context
+ * @param ctx    the validation context
  */
 class ObjectSchemaValidator(val schema: ObjectSchema,
                             val ctx: Context = Context.empty) extends JsonVisitor[_, Boolean] {
@@ -21,8 +21,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val format: Option[String] = schema.getString("format")
   private val maxLength: Option[Int] = schema.getInt("maxLength")
   private val minLength: Option[Int] = schema.getInt("minLength")
-  private val maximum: Option[Long | Double] = schema.getLongOrDouble("maximum")
-  private val minimum: Option[Long | Double] = schema.getLongOrDouble("minimum")
+  private val maximum: Option[Long | Double] = schema.getNumber("maximum")
+  private val minimum: Option[Long | Double] = schema.getNumber("minimum")
 
   // TODO: these can be fail-fast
   private val maxItems: Option[Int] = schema.getInt("maxItems")
@@ -87,7 +87,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           case ex: DateTimeParseException => false
         case "duration" => try { Duration.parse(s); true } catch
           case ex: DateTimeParseException => false
-        case "hostname" => try { URI(_); true } catch
+        case "hostname" => try { new URI(_); true } catch
           case ex: URISyntaxException => false
         case _ => true) &&
       _refVis.forall(_.visitString(s, index))
@@ -195,7 +195,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         val childVisitors = subbuilder.result()
 
         childVisitor =
-          if (insVisitors.length == 1) childVisitors.head
+          if (childVisitors.length == 1) childVisitors.head
           else new CompositeObjVisitor(childVisitors: _*)
         childVisitor.subVisitor
       }

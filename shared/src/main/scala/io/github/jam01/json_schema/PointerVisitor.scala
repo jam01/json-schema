@@ -10,15 +10,9 @@ class PointerVisitor(insloc: mutable.Stack[String] = mutable.Stack("")) extends 
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Unit, Unit] = new ObjVisitor[Unit, Unit] {
-    override def visitKey(index: Int): Visitor[_, _] = new SimpleVisitor[Unit, Unit] {
-      override def expectedMsg: String = "expected string,"
+    override def visitKey(index: Int): Visitor[_, _] = StringVisitor
 
-      override def visitString(s: CharSequence, index: Int): Unit = {
-        insloc.push(s.toString)
-      }
-    }
-
-    override def visitKeyValue(v: Any): Unit = ()
+    override def visitKeyValue(v: Any): Unit = insloc.push(v.asInstanceOf[String])
 
     override def subVisitor: Visitor[_, _] = new PointerVisitor(insloc)
 

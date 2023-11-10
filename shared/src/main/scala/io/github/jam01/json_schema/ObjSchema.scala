@@ -1,6 +1,6 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.json_schema.ObjSchema.{appendedRefToken, refError}
+import io.github.jam01.json_schema.ObjSchema.refError
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Map, Seq, immutable}
@@ -8,28 +8,21 @@ import scala.collection.{Map, Seq, immutable}
 // TODO: do we need indexedSeq?
 private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any],
                                      private val base: String,
-                                     private val location: String = "") { self: ObjectSchema =>
+                                     private val parent: Option[ObjectSchema] = None) { self: ObjectSchema =>
   def getId: Option[String] = {
     getString("$id")
   }
 
   def getBase: String = {
-    getId.getOrElse(base)
+    getId.getOrElse(parent.map(_.getBase).getOrElse(base))
   }
 
-  def getLocation: String = {
-    getId.getOrElse(location)
-  }
-
-  def getSchemaByPointer(ptr: JsonPointer): Schema = {
-    if (ptr.refTokens.head.isEmpty) return self
-
+  override def schBy0(ptr: JsonPointer): Schema = {
     var i = 0
     var res: Any = this
-    while (i < ptr.refTokens.length) {
-      val key = ptr.refTokens(i) // TODO: unescape?
+    for (key <- ptr.refTokens.iterator) { // TODO: unescape?
       res = res match
-        case ObjectSchema(omMap, base, parent) => omMap.getOrElse(key, refError(ptr, i))
+        case ObjectSchema(omMap, _, _) => omMap.getOrElse(key, refError(ptr, i))
         case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
         case arr: collection.IndexedSeq[Any] =>
           val i = key.toInt;
@@ -42,7 +35,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
 
     res match
       case b: Boolean => BooleanSchema(b)
-      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, location + "/s") // TODO: loc + ptr.mkstring escaped
+      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // TODO: loc + ptr.mkstring escaped
       // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
   }
@@ -105,7 +98,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    * @param s the entry key
    * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
    */
-  def getLongOrDouble(s: String): Option[Long | Double] = {
+  def getNumber(s: String): Option[Long | Double] = {
     mMap.getValue(s) match
       case null => None
       case l: Long => Option(l)
@@ -221,7 +214,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
   def getAsSchemaOpt(s: String): Option[Schema] = {
     mMap.getValue(s) match
       case b: Boolean => Option(BooleanSchema(b))
-      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, appendedRefToken(location, s))) // consider specialized StringMap[V]-like
+      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, Some(this))) // consider specialized StringMap[V]-like
       case x => Option(x.asInstanceOf[Schema])
   }
 
@@ -237,7 +230,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     val elems = mMap.getValue(s).asInstanceOf[ArrayBuffer[Any]]
     val schs = elems.mapInPlace {
       case b: Boolean => BooleanSchema(b)
-      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, appendedRefToken(location, s)) // consider specialized StringMap[V]-like
+      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
       case _ => asInstanceOf[Schema]
     }
 
@@ -249,7 +242,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
       case null => None
       case lhm: LinkedHashMap[String, Any] => Some(lhm.mapValuesInPlace {
         case (_, b: Boolean) => BooleanSchema(b)
-        case (_, obj: LinkedHashMap[String, Any]) => ObjectSchema(obj, base, appendedRefToken(location, s)) // consider specialized StringMap[V]-like
+        case (_, obj: LinkedHashMap[String, Any]) => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
         case (_, x) => x.asInstanceOf[Schema]
       }.asInstanceOf[Map[String, Schema]])
       case x => Option(x.asInstanceOf[Map[String, Schema]])
@@ -268,7 +261,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     val elems = if (arr != null) arr.asInstanceOf[ArrayBuffer[Any]] else ArrayBuffer.empty
     val schs = elems.mapInPlace {
       case b: Boolean => BooleanSchema(b)
-      case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, appendedRefToken(location, s)) // consider specialized StringMap[V]-like
+      case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, Some(this)) // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
     }
 
@@ -281,5 +274,5 @@ object ObjSchema {
     loc + "/" + refTok // TODO: escape and check if needs to add #
     // check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Unit =
-    throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.view.slice(0, idx).mkString("/")}")
+    throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.slice(0, idx).mkString("/")}")
 }
