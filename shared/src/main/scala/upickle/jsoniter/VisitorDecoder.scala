@@ -14,7 +14,9 @@ import java.nio.charset.StandardCharsets
 object VisitorDecoder {
   private val NIDX = -1
 
-  def defaultNumberParser[J]: (JsonReader, Visitor[_, J]) => J = (in, v) => {
+//  def defaultNumberParser[N](v: Visitor[_, N]): JsonReader => N = in => {
+//  def defaultNumberParser0[N]: (JsonReader, Visitor[_, N]) => N = (in, v) => {
+  val defaultNumberParser: (JsonReader, Visitor[_, _]) => Any = (in, v) => {
     in.setMark()
     var isNeg = false
     var digits = 0
@@ -43,7 +45,7 @@ object VisitorDecoder {
       in.setMark()
       val y = in.readDouble() // readDouble() returns Double.Infinity if too large
       if (y.isFinite) { // https://github.com/openjdk/jdk/pull/9238
-        v.visitFloat64(y, NIDX) 
+        v.visitFloat64(y, NIDX)
         // in.setMark(); in.rollbackToMark() // clear mark needed ???
       }
       // alt: readBigDecimal and check BigDecimal.isDecimalDouble
@@ -58,7 +60,7 @@ object VisitorDecoder {
 
 final class VisitorDecoder[J](
                                    maxDepth: Int,
-                                   numberParser: (JsonReader, Visitor[_, J]) => J,
+                                   numberParser: (JsonReader, Visitor[_, _]) => Any,
                                    v: Visitor[_, J]) extends JsonValueCodec[J] {
   override def nullValue: J = null.asInstanceOf[J]
 
@@ -68,7 +70,7 @@ final class VisitorDecoder[J](
   override def decodeValue(in: JsonReader, default: J): J =
     decode(in, maxDepth, v)
 
-  private[this] def decode(in: JsonReader, depth: Int, v: Visitor[_, J]): J = {
+  private[this] def decode[Z](in: JsonReader, depth: Int, v: Visitor[_, Z]): Z = {
     val b = in.nextToken()
     if (b == '"') {
       in.rollbackToken()
@@ -79,7 +81,7 @@ final class VisitorDecoder[J](
       else v.visitFalse(NIDX)
     } else if (b >= '0' && b <= '9' || b == '-') {
       in.rollbackToken()
-      numberParser(in, v)
+      numberParser(in, v).asInstanceOf[Z] // TODO: performance cost?
     } else if (b == '[') {
       val depthM1 = depth - 1
       if (depthM1 < 0) in.decodeError("depth limit exceeded")
@@ -88,7 +90,7 @@ final class VisitorDecoder[J](
       if (!isEmpty) {
         in.rollbackToken()
         while ( {
-          arrV.visitValue(decode(in, depthM1, arrV.subVisitor.asInstanceOf), NIDX)
+          arrV.visitValue(decode(in, depthM1, arrV.subVisitor), NIDX)
           in.isNextToken(',')
         }) ()
         if (!in.isCurrentToken(']')) in.arrayEndOrCommaError()
@@ -105,7 +107,7 @@ final class VisitorDecoder[J](
         while ( {
           key = in.readKeyAsString()
           objV.visitKeyValue(objV.visitKey(NIDX).visitString(key, NIDX))
-          objV.visitValue(decode(in, depthM1, objV.subVisitor.asInstanceOf), NIDX)
+          objV.visitValue(decode(in, depthM1, objV.subVisitor), NIDX)
           in.isNextToken(',')
         }) ()
         if (!in.isCurrentToken('}')) in.objectEndOrCommaError()
