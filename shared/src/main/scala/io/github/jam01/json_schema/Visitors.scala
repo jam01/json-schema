@@ -66,19 +66,6 @@ class CompositeObjVisitor[-T, +J](delObjVis: ObjVisitor[T, J]*) extends ObjVisit
 
 
 
-class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T, J]*) extends JsonVisitor[Seq[T], J] {
-  override def visitNull(index: Int): J = reducer(delegates.map(_.visitNull(index)))
-  override def visitFalse(index: Int): J = reducer(delegates.map(_.visitFalse(index)))
-  override def visitTrue(index: Int): J = reducer(delegates.map(_.visitTrue(index)))
-  override def visitFloat64(d: Double, index: Int): J = reducer(delegates.map(_.visitFloat64(d, index)))
-  override def visitInt64(i: Long, index: Int): J = reducer(delegates.map(_.visitInt64(i, index)))
-  override def visitString(s: CharSequence, index: Int): J = reducer(delegates.map(_.visitString(s, index)))
-  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], J] =
-    new CompositeArrVisitorReducer[T, J](reducer, delegates.map(_.visitArray(length, index)): _*)
-  override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], J] =
-    new CompositeObjVisitorReducer[T, J](reducer, delegates.map(_.visitObject(length, true, index)): _*)
-}
-
 class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], J] {
   override def subVisitor: Visitor[_, _] = new CompositeVisitor(delArrVis.map(_.subVisitor): _*)
 
@@ -120,20 +107,6 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
 }
 
 
-
-class DynDelegateArrVisitor[-T, +J](delegate: ArrVisitor[T, J]) extends ArrVisitor[Any, J] {
-  override def subVisitor: Visitor[_, _] = delegate.subVisitor
-  override def visitValue(v: Any, index: Int): Unit = delegate.visitValue(v.asInstanceOf[T], index)
-  override def visitEnd(index: Int): J = delegate.visitEnd(index)
-}
-
-class DynDelegateObjVisitor[-T, +J](delegate: ObjVisitor[T, J]) extends ObjVisitor[Any, J] {
-  override def visitKey(index: Int): Visitor[_, _] = delegate.visitKey(index)
-  override def visitKeyValue(v: Any): Unit = delegate.visitKeyValue(v)
-  override def subVisitor: Visitor[_, _] = delegate.subVisitor
-  override def visitValue(v: Any, index: Int): Unit = delegate.visitValue(v.asInstanceOf[T], index)
-  override def visitEnd(index: Int): J = delegate.visitEnd(index)
-}
 
 object StringVisitor extends SimpleVisitor[Nothing, String] {
   def expectedMsg = "expected string"
