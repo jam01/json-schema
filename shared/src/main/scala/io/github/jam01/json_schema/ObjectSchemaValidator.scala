@@ -30,14 +30,20 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val minItems: Option[Int] = schema.getInt("minItems")
   private val maxProperties: Option[Int] = schema.getInt("maxProperties")
   private val minProperties: Option[Int] = schema.getInt("minProperties")
-
-  private val items: Option[Schema] = schema.getAsSchemaOpt("items")
-  private val properties: Option[collection.Map[String, Schema]] = schema.getAsSchemaObjectOpt("properties")
   private val required: collection.Seq[String] = schema.getStringArray("required")
+  private val properties: Option[collection.Map[String, Schema]] = schema.getAsSchemaObjectOpt("properties")
   private val _refVis: Option[JsonVisitor[_, Boolean]] = schema
     .getString("$ref") // TODO: resolve URI to current schema
     .map(s => ctx.reg.getOrElse(s, throw new IllegalArgumentException(s"unavailable schema $s")))
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("$ref"), ctx))
+  private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("items")
+    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx))
+    .map(schValidator => new ArrVisitor[Boolean, Boolean] {
+      private var subsch = true
+      override def subVisitor: Visitor[_, _] = schValidator
+      override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
+      override def visitEnd(index: Int): Boolean = subsch
+    })
 
   override def visitNull(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("null")) &&
@@ -113,15 +119,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
    */
 
   override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
-    val itemsVisitor: Option[ArrVisitor[_, Boolean]] = items.map(sch => new ArrVisitor[Boolean, Boolean] {
-      private var subsch = true
-      override def subVisitor: Visitor[_, _] = SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx)
-      override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
-      override def visitEnd(index: Int): Boolean = subsch
-    })
-
     val builder = immutable.Seq.newBuilder[ArrVisitor[_, Boolean]]
-    itemsVisitor.foreach(builder.addOne) // TODO: only if no prefixItems
+    itemsVis.foreach(builder.addOne) // TODO: only if no prefixItems
     _refVis.foreach(vis => builder.addOne(vis.visitArray(length, index)))
     // TODO: add other applicators
     val insVisitors: Seq[ArrVisitor[_, Boolean]] = builder.result()
@@ -170,7 +169,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         private var subsch = true
         override def visitKey(index: Int): Visitor[_, _] = ???
         override def visitKeyValue(v: Any): Unit = ???
-        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m(key), schloc.appendRefToken("properties"), ctx)
+        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m(key), schloc.appendRefTokens("properties", key), ctx)
         override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
         override def visitEnd(index: Int): Boolean = subsch
       })

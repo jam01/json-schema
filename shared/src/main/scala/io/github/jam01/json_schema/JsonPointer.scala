@@ -5,6 +5,8 @@ case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
 
   def appendRefToken(refTok: String): JsonPointer = JsonPointer(refTokens.appended(refTok))
 
+  def appendRefTokens(refToks: String*): JsonPointer = JsonPointer(refTokens.appendedAll(refToks))
+
   override def toString: String = JsonPointer.toString(refTokens)
 }
 
