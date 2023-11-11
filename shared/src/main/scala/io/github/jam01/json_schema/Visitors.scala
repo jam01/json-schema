@@ -115,13 +115,9 @@ class CollectObjVisitor[J](v: Visitor[_, _]) extends ObjVisitor[J, collection.Ma
   var k: String = "?"
 
   override def visitKey(index: Int): Visitor[_, _] = StringVisitor
-
   override def visitKeyValue(v: Any): Unit = k = v.asInstanceOf[String]
-
   override def subVisitor: Visitor[_, _] = v
-
   override def visitValue(v: J, index: Int): Unit = lhm.addOne(k, v)
-
   override def visitEnd(index: Int): collection.Map[String, J] = lhm
 }
 
@@ -129,9 +125,7 @@ class CollectArrVisitor[J](v: Visitor[_, _]) extends ArrVisitor[J, collection.Se
   val arr: mutable.Buffer[J] = mutable.Buffer.empty[J]
 
   override def subVisitor: Visitor[_, _] = v
-
   override def visitValue(v: J, index: Int): Unit = arr.append(v)
-
   override def visitEnd(index: Int): collection.Seq[J] = arr
 }
 

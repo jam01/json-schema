@@ -3,7 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.{Abort, ObjVisitor, Visitor}
 
 trait JsonVisitor[-T, +J] extends Visitor[T, J] {
-  def expectedMsg = "expected string, integer, number, object, array, or null;"
+  def expectedMsg = "expected string, integer, number, object, array, or null"
 
   override def visitUInt64(i: Long, index: Int): J = {
     if (i < 0) visitString(java.lang.Long.toUnsignedString(i), index)

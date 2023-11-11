@@ -6,19 +6,12 @@ import scala.collection.mutable
 
 object LiteralVisitor extends JsonVisitor[_, Any] {
   override def visitNull(index: Int): Any = null
-
   override def visitFalse(index: Int): Any = false
-
   override def visitTrue(index: Int): Any = true
-
   override def visitFloat64(d: Double, index: Int): Any = d
-
   override def visitInt64(i: Long, index: Int): Any = i
-
   override def visitString(s: CharSequence, index: Int): Any = s.toString
-
   override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Map[String, Any]] = new CollectObjVisitor(LiteralVisitor)
-
   override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[Any]] = new CollectArrVisitor(LiteralVisitor)
 }
 

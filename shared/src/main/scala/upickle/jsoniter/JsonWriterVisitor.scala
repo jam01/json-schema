@@ -28,6 +28,7 @@ class JsonWriterVisitor(writer: JsonWriter) extends JsonVisitor[Any, JsonWriter]
   override def visitArray(length: Int, index: Int): ArrVisitor[Any, JsonWriter] = {
     writer.writeArrayStart()
 
+    // TODO: consider noOp if length == 0
     new ArrVisitor[Any, JsonWriter] {
       override def subVisitor: Visitor[_, _] = JsonWriterVisitor.this
 

@@ -52,6 +52,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
   }
 
   // see: https://stackoverflow.com/q/11338954
+
   /**
    * Optionally returns the int associated with the given key.
    *
@@ -272,7 +273,8 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
 object ObjSchema {
   private def appendedRefToken(loc: String, refTok: String): String =
     loc + "/" + refTok // TODO: escape and check if needs to add #
-    // check it fragment exists if not add it
+
+  // check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Unit =
     throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.slice(0, idx).mkString("/")}")
 }
