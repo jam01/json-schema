@@ -2,6 +2,8 @@ package io.github.jam01.json_schema
 
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
+import scala.collection.mutable
+
 class CompositeVisitor[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Seq[_], Seq[J]] {
   override def visitNull(index: Int): Seq[J] = delegates.map(_.visitNull(index))
   override def visitFalse(index: Int): Seq[J] = delegates.map(_.visitFalse(index))
@@ -104,6 +106,33 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
   }
 
   override def visitEnd(index: Int): J = reducer(delObjVis.map(_.visitEnd(index)))
+}
+
+
+
+class CollectObjVisitor[J](v: Visitor[_, _]) extends ObjVisitor[J, collection.Map[String, J]] {
+  val lhm: LinkedHashMap[String, J] = LinkedHashMap.empty
+  var k: String = "?"
+
+  override def visitKey(index: Int): Visitor[_, _] = StringVisitor
+
+  override def visitKeyValue(v: Any): Unit = k = v.asInstanceOf[String]
+
+  override def subVisitor: Visitor[_, _] = v
+
+  override def visitValue(v: J, index: Int): Unit = lhm.addOne(k, v)
+
+  override def visitEnd(index: Int): collection.Map[String, J] = lhm
+}
+
+class CollectArrVisitor[J](v: Visitor[_, _]) extends ArrVisitor[J, collection.Seq[J]] {
+  val arr: mutable.Buffer[J] = mutable.Buffer.empty[J]
+
+  override def subVisitor: Visitor[_, _] = v
+
+  override def visitValue(v: J, index: Int): Unit = arr.append(v)
+
+  override def visitEnd(index: Int): collection.Seq[J] = arr
 }
 
 

@@ -3,7 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.Visitor
 
 object Transformer {
-  def transform[T](o: Any, v: Visitor[_, T]): T = {
+  def transform[T](o: Any, v: Visitor[_, T]): T = { // see ujson.Value#transform
     o match
       case null => v.visitNull(-1)
       case s: String => v.visitString(s, -1)

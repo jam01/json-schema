@@ -59,9 +59,9 @@ object VisitorDecoder {
 }
 
 final class VisitorDecoder[J](
-                                   maxDepth: Int,
-                                   numberParser: (JsonReader, Visitor[_, _]) => Any,
-                                   v: Visitor[_, J]) extends JsonValueCodec[J] {
+                               maxDepth: Int,
+                               numberParser: (JsonReader, Visitor[_, _]) => Any,
+                               v: Visitor[_, J]) extends JsonValueCodec[J] {
   override def nullValue: J = null.asInstanceOf[J]
 
   override def encodeValue(x: J, out: JsonWriter): Unit =

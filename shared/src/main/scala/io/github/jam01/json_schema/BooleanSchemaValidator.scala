@@ -37,29 +37,20 @@ object BooleanSchemaValidator {
 
 private abstract class BooleanSchemaValidator(bool: Boolean) extends JsonVisitor[Boolean, Boolean] {
   override def visitNull(index: Int): Boolean = bool
-
   override def visitFalse(index: Int): Boolean = bool
-
   override def visitTrue(index: Int): Boolean = bool
-
   override def visitFloat64(d: Double, index: Int): Boolean = bool
-
   override def visitInt64(i: Long, index: Int): Boolean = bool
-
   override def visitString(s: CharSequence, index: Int): Boolean = bool
 }
 
 private abstract class BooleanObjValidator(bool: Boolean) extends ObjVisitor[Boolean, Boolean] {
-
   override def visitKeyValue(v: Any): Unit = ()
-
   override def visitValue(v: Boolean, index: Int): Unit = ()
-
   override def visitEnd(index: Int): Boolean = bool
 }
 
 private abstract class BooleanArrValidator(bool: Boolean) extends ArrVisitor[Boolean, Boolean] {
   override def visitValue(v: Boolean, index: Int): Unit = ()
-
   override def visitEnd(index: Int): Boolean = bool
 }

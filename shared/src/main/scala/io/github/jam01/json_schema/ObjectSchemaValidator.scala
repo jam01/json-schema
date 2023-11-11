@@ -15,6 +15,7 @@ import scala.collection.{immutable, mutable}
  * @param ctx    the validation context
  */
 class ObjectSchemaValidator(val schema: ObjectSchema,
+                            val schloc: JsonPointer = JsonPointer(),
                             val ctx: Context = Context.empty) extends JsonVisitor[_, Boolean] {
   private val tyype: collection.Seq[String] = schema.getAsStringArray("type")
   private val pattern: Option[String] = schema.getString("pattern")
@@ -36,7 +37,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val _refVis: Option[JsonVisitor[_, Boolean]] = schema
     .getString("$ref") // TODO: resolve URI to current schema
     .map(s => ctx.reg.getOrElse(s, throw new IllegalArgumentException(s"unavailable schema $s")))
-    .map(sch => SchemaValidator.of(sch, ctx))
+    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("$ref"), ctx))
 
   override def visitNull(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("null")) &&
@@ -114,7 +115,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
     val itemsVisitor: Option[ArrVisitor[_, Boolean]] = items.map(sch => new ArrVisitor[Boolean, Boolean] {
       private var subsch = true
-      override def subVisitor: Visitor[_, _] = SchemaValidator.of(sch, ctx)
+      override def subVisitor: Visitor[_, _] = SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx)
       override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
       override def visitEnd(index: Int): Boolean = subsch
     })
@@ -169,7 +170,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         private var subsch = true
         override def visitKey(index: Int): Visitor[_, _] = ???
         override def visitKeyValue(v: Any): Unit = ???
-        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m(key), ctx)
+        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m(key), schloc.appendRefToken("properties"), ctx)
         override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
         override def visitEnd(index: Int): Boolean = subsch
       })

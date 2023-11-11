@@ -4,7 +4,7 @@ import java.util
 import scala.collection.mutable.GrowableBuilder
 import scala.collection.{MapFactory, MapFactoryDefaults, mutable}
 
-// TODO: license from upickle
+// TODO: ref to upickle
 class LinkedHashMap[K, V](underlying: java.util.LinkedHashMap[K, V]) extends mutable.AbstractMap[K, V]
   with mutable.MapOps[K, V, LinkedHashMap, LinkedHashMap[K, V]]
   with MapFactoryDefaults[K, V, LinkedHashMap, Iterable] {
