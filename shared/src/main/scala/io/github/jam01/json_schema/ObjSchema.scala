@@ -6,10 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Map, Seq, immutable}
 
 // TODO: do we need indexedSeq?
-private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any],
-                                     private val initbase: String,
-                                     private val prel: Option[String] = None,
-                                     private val parent: Option[ObjectSchema] = None) { self: ObjectSchema =>
+private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.scala-lang.org/tour/self-types.html
   def getId: Option[String] = {
     getString("$id")
   }
