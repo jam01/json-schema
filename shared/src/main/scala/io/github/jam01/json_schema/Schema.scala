@@ -2,6 +2,9 @@ package io.github.jam01.json_schema
 
 sealed trait Schema {
   def schBy(ptr: JsonPointer): Schema = {
+//    val it = ptr.refTokens.iterator
+//    if (it.hasNext && it.next.isEmpty && !it.hasNext)
+//    if (ptr.refTokens.iterator.has)
     if (ptr.refTokens.length == 1 && ptr.refTokens.head.isEmpty) return this
     schBy0(ptr)
   }
@@ -39,9 +42,10 @@ case object False extends BooleanSchema {
 /**
  *
  * @param mMap   underlying Map of keywords -> values
- * @param base   a base uri assigned by the application
+ * @param initbase   a base uri assigned by the application
  * @param parent the parent schema, if any
  */
 final case class ObjectSchema(private val mMap: LinkedHashMap[String, Any],
-                              private val base: String,
-                              private val parent: Option[ObjectSchema] = None) extends ObjSchema(mMap, base, parent) with Schema
+                              initbase: String,
+                              prel: Option[String] = None,
+                              parent: Option[ObjectSchema] = None) extends ObjSchema(mMap, initbase, prel, parent) with Schema

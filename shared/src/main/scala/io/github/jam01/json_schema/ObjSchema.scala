@@ -7,14 +7,15 @@ import scala.collection.{Map, Seq, immutable}
 
 // TODO: do we need indexedSeq?
 private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any],
-                                     private val base: String,
+                                     private val initbase: String,
+                                     private val prel: Option[String] = None,
                                      private val parent: Option[ObjectSchema] = None) { self: ObjectSchema =>
   def getId: Option[String] = {
     getString("$id")
   }
 
-  def getBase: String = {
-    getId.getOrElse(parent.map(_.getBase).getOrElse(base))
+  def getLocation: String = {
+    getId.getOrElse(parent.map(_.getLocation + prel.get).getOrElse(initbase))
   }
 
   override def schBy0(ptr: JsonPointer): Schema = {
@@ -22,7 +23,7 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     var res: Any = this
     for (key <- ptr.refTokens.iterator) { // TODO: unescape?
       res = res match
-        case ObjectSchema(omMap, _, _) => omMap.getOrElse(key, refError(ptr, i))
+        case ObjectSchema(omMap, _, _, _) => omMap.getOrElse(key, refError(ptr, i))
         case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
         case arr: collection.IndexedSeq[Any] =>
           val i = key.toInt;
@@ -34,8 +35,8 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     }
 
     res match
-      case b: Boolean => BooleanSchema(b)
-      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // TODO: loc + ptr.mkstring escaped
+//      case b: Boolean => BooleanSchema(b)
+//      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // TODO: loc + ptr.mkstring escaped
       // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
   }
@@ -214,8 +215,8 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
    */
   def getAsSchemaOpt(s: String): Option[Schema] = {
     mMap.getValue(s) match
-      case b: Boolean => Option(BooleanSchema(b))
-      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, Some(this))) // consider specialized StringMap[V]-like
+//      case b: Boolean => Option(BooleanSchema(b))
+//      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, Some(this))) // consider specialized StringMap[V]-like
       case x => Option(x.asInstanceOf[Schema])
   }
 
@@ -230,8 +231,8 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
   def getAsSchemaArrayOpt(s: String): Option[Seq[Schema]] = {
     val elems = mMap.getValue(s).asInstanceOf[ArrayBuffer[Any]]
     val schs = elems.mapInPlace {
-      case b: Boolean => BooleanSchema(b)
-      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
+//      case b: Boolean => BooleanSchema(b)
+//      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
       case _ => asInstanceOf[Schema]
     }
 
@@ -242,8 +243,8 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     mMap.getValue(s) match
       case null => None
       case lhm: LinkedHashMap[String, Any] => Some(lhm.mapValuesInPlace {
-        case (_, b: Boolean) => BooleanSchema(b)
-        case (_, obj: LinkedHashMap[String, Any]) => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
+//        case (_, b: Boolean) => BooleanSchema(b)
+//        case (_, obj: LinkedHashMap[String, Any]) => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
         case (_, x) => x.asInstanceOf[Schema]
       }.asInstanceOf[Map[String, Schema]])
       case x => Option(x.asInstanceOf[Map[String, Schema]])
@@ -261,8 +262,8 @@ private[json_schema] trait ObjSchema(private val mMap: LinkedHashMap[String, Any
     val arr = mMap.getValue(s)
     val elems = if (arr != null) arr.asInstanceOf[ArrayBuffer[Any]] else ArrayBuffer.empty
     val schs = elems.mapInPlace {
-      case b: Boolean => BooleanSchema(b)
-      case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, Some(this)) // consider specialized StringMap[V]-like
+//      case b: Boolean => BooleanSchema(b)
+//      case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, Some(this)) // consider specialized StringMap[V]-like
       case x => x.asInstanceOf[Schema]
     }
 

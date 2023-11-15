@@ -110,21 +110,21 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
 
 
 
-class CollectObjVisitor[J](v: Visitor[_, _]) extends ObjVisitor[J, collection.Map[String, J]] {
+class CollectObjVisitor[J](protected val vis: Visitor[_, _]) extends ObjVisitor[J, collection.Map[String, J]] {
   val lhm: LinkedHashMap[String, J] = LinkedHashMap.empty
   var k: String = "?"
 
   override def visitKey(index: Int): Visitor[_, _] = StringVisitor
   override def visitKeyValue(v: Any): Unit = k = v.asInstanceOf[String]
-  override def subVisitor: Visitor[_, _] = v
+  override def subVisitor: Visitor[_, _] = vis
   override def visitValue(v: J, index: Int): Unit = lhm.addOne(k, v)
   override def visitEnd(index: Int): collection.Map[String, J] = lhm
 }
 
-class CollectArrVisitor[J](v: Visitor[_, _]) extends ArrVisitor[J, collection.Seq[J]] {
+class CollectArrVisitor[J](protected val vis: Visitor[_, _]) extends ArrVisitor[J, collection.Seq[J]] {
   val arr: mutable.Buffer[J] = mutable.Buffer.empty[J]
 
-  override def subVisitor: Visitor[_, _] = v
+  override def subVisitor: Visitor[_, _] = vis
   override def visitValue(v: J, index: Int): Unit = arr.append(v)
   override def visitEnd(index: Int): collection.Seq[J] = arr
 }
@@ -135,4 +135,16 @@ object StringVisitor extends SimpleVisitor[Nothing, String] {
   def expectedMsg = "expected string"
 
   override def visitString(s: CharSequence, index: Int): String = s.toString
+}
+
+
+object LiteralVisitor extends JsonVisitor[_, Any] {
+  override def visitNull(index: Int): Any = null
+  override def visitFalse(index: Int): Any = false
+  override def visitTrue(index: Int): Any = true
+  override def visitFloat64(d: Double, index: Int): Any = d
+  override def visitInt64(i: Long, index: Int): Any = i
+  override def visitString(s: CharSequence, index: Int): Any = s.toString
+  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Map[String, Any]] = new CollectObjVisitor(LiteralVisitor)
+  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[Any]] = new CollectArrVisitor(LiteralVisitor)
 }

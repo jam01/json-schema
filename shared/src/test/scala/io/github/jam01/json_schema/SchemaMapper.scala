@@ -39,7 +39,7 @@ class SchemaMapper {
 
   @Test
   @Disabled
-  def main(): Unit = {
+  def dis(): Unit = {
 //    val m = upickle.core.LinkedHashMap[String, String]()
 //    m.put("", "")
 //    println(
@@ -59,6 +59,32 @@ class SchemaMapper {
     val jsonStr = "false"
     val sch = StringParser.transform(jsonStr, new SchemaR("(test)"))
     Assertions.assertEquals(False, sch)
+  }
+
+  @Test
+  def main(): Unit = {
+    val jsonStr = """{
+                    |  "allOf": [
+                    |    {
+                    |      "classRelation": "is-a",
+                    |      "$ref": "classes/base.json"
+                    |    },
+                    |    {
+                    |      "$ref": "fields/common.json"
+                    |    }
+                    |  ],
+                    |  "properties": {
+                    |    "foo": {
+                    |      "classRelation": "has-a",
+                    |      "$ref": "classes/foo.json"
+                    |    },
+                    |    "date": {
+                    |      "$ref": "types/dateStruct.json"
+                    |    }
+                    |  }
+                    |}""".stripMargin
+    val sch = StringParser.transform(jsonStr, new SchemaR("(test)"))
+    println()
   }
 }
 

@@ -59,7 +59,7 @@ class ObjectSchemaValidatorTest {
 
   @Test
   def valid_nest_arr_items(): Unit = {
-    val lhm3 = lhm2.clone().addOne("items" -> LinkedHashMap("type" -> collection.IndexedSeq("string", "array")))
+    val lhm3 = lhm2.clone().addOne("items" -> ObjectSchema(LinkedHashMap("type" -> collection.IndexedSeq("string", "array")), ""))
     val arrSchNest = ObjectSchema(lhm3, "mem://test")
 
     val r = ujson.Readable
@@ -70,10 +70,10 @@ class ObjectSchemaValidatorTest {
 
   @Test
   def invalid_nest_arr_items(): Unit = { // nested arr fails items validation, its 2nd string too long
-    val lhm3 = lhm2.clone().addOne("items" -> LinkedHashMap(
+    val lhm3 = lhm2.clone().addOne("items" -> ObjectSchema(LinkedHashMap(
       "type" -> collection.IndexedSeq("string", "array"),
       "items" -> strSch
-    ))
+    ), ""))
     val arrSchNest = ObjectSchema(lhm3, "mem://test")
 
     val r = ujson.Readable
