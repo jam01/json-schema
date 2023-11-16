@@ -5,7 +5,6 @@ import io.github.jam01.json_schema.ObjSchema.refError
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Map, Seq, immutable}
 
-// TODO: do we need indexedSeq?
 private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.scala-lang.org/tour/self-types.html
   def getId: Option[String] = {
     getString("$id")
@@ -22,7 +21,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
       res = res match
         case ObjectSchema(omMap, _, _, _) => omMap.getOrElse(key, refError(ptr, i))
         case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
-        case arr: collection.IndexedSeq[Any] =>
+        case arr: collection.Seq[Any] =>
           val i = key.toInt;
           if (arr.length <= i) ObjSchema.refError(ptr, i)
           arr(i)
