@@ -1,5 +1,6 @@
 package io.github.jam01.json_schema
 
+// TODO: consider making a record
 case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
   if (refTokens.isEmpty) throw new IllegalArgumentException("invalid JSON Pointer")
 

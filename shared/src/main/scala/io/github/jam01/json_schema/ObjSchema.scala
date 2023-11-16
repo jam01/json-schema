@@ -31,11 +31,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
       i = i + 1
     }
 
-    res match
-//      case b: Boolean => BooleanSchema(b)
-//      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // TODO: loc + ptr.mkstring escaped
-      // consider specialized StringMap[V]-like
-      case x => x.asInstanceOf[Schema]
+    res.asInstanceOf[Schema]
   }
 
   /**
@@ -187,7 +183,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     mMap.getValue(s) match
       case seq: collection.Seq[Any] => seq.asInstanceOf[collection.Seq[String]]
       case null => Nil
-      case x => immutable.IndexedSeq(x.asInstanceOf[String])
+      case x => immutable.Seq(x.asInstanceOf[String])
   }
 
   /**
@@ -197,10 +193,10 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return the value cast as Seq[Map[String, Any]], or an empty Seq if the entry has a null value or does not exist
    */
-  def getObjectArray(s: String): collection.IndexedSeq[Map[String, Any]] = {
+  def getObjectArray(s: String): collection.Seq[Map[String, Any]] = {
     mMap.getValue(s) match
-      case seq: collection.IndexedSeq[Any] => seq.asInstanceOf[collection.IndexedSeq[Map[String, Any]]]
-      case x => immutable.IndexedSeq(x.asInstanceOf[Map[String, Any]])
+      case seq: collection.Seq[Any] => seq.asInstanceOf[collection.Seq[Map[String, Any]]]
+      case x => immutable.Seq(x.asInstanceOf[Map[String, Any]])
   }
 
   /**
@@ -211,10 +207,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @return an Option of the value cast or converted to a Schema, or None if the entry has a null value or does not exist
    */
   def getAsSchemaOpt(s: String): Option[Schema] = {
-    mMap.getValue(s) match
-//      case b: Boolean => Option(BooleanSchema(b))
-//      case obj: LinkedHashMap[String, Any] => Option(ObjectSchema(obj, base, Some(this))) // consider specialized StringMap[V]-like
-      case x => Option(x.asInstanceOf[Schema])
+    Option(mMap.getValue(s).asInstanceOf[Schema])
   }
 
   /**
@@ -226,24 +219,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @return an Option of the value cast as a Seq[Schema], or None if the entry has a null value or does not exist
    */
   def getAsSchemaArrayOpt(s: String): Option[Seq[Schema]] = {
-    val elems = mMap.getValue(s).asInstanceOf[ArrayBuffer[Any]]
-    val schs = elems.mapInPlace {
-//      case b: Boolean => BooleanSchema(b)
-//      case obj: LinkedHashMap[String, Any] => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
-      case _ => asInstanceOf[Schema]
-    }
-
-    Option(schs.asInstanceOf[Seq[Schema]])
+    Option(mMap.getValue(s).asInstanceOf[collection.Seq[Schema]])
   }
 
   def getAsSchemaObjectOpt(s: String): Option[Map[String, Schema]] = {
     mMap.getValue(s) match
       case null => None
-      case lhm: LinkedHashMap[String, Any] => Some(lhm.mapValuesInPlace {
-//        case (_, b: Boolean) => BooleanSchema(b)
-//        case (_, obj: LinkedHashMap[String, Any]) => ObjectSchema(obj, base, Some(this)) // consider specialized StringMap[V]-like
-        case (_, x) => x.asInstanceOf[Schema]
-      }.asInstanceOf[Map[String, Schema]])
+      case m: collection.Map[String, Any] => Some(m.asInstanceOf[Map[String, Schema]])
       case x => Option(x.asInstanceOf[Map[String, Schema]])
   }
 
@@ -256,15 +238,9 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @return the value cast as a Seq[Schema], or None if the entry has a null value or does not exist
    */
   def getAsSchemaArray(s: String): Seq[Schema] = {
-    val arr = mMap.getValue(s)
-    val elems = if (arr != null) arr.asInstanceOf[ArrayBuffer[Any]] else ArrayBuffer.empty
-    val schs = elems.mapInPlace {
-//      case b: Boolean => BooleanSchema(b)
-//      case omMap: LinkedHashMap[String, Any] => ObjectSchema(omMap, base, Some(this)) // consider specialized StringMap[V]-like
-      case x => x.asInstanceOf[Schema]
-    }
-
-    schs.asInstanceOf[Seq[Schema]]
+    mMap.getValue(s) match
+      case null => Seq.empty
+      case x => x.asInstanceOf[collection.Seq[Schema]]
   }
 }
 

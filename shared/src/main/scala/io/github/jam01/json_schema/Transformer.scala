@@ -2,6 +2,7 @@ package io.github.jam01.json_schema
 
 import upickle.core.Visitor
 
+// TODO: consider a custom JSON Schema AST
 object Transformer {
   def transform[T](o: Any, v: Visitor[_, T]): T = { // see ujson.Value#transform
     o match

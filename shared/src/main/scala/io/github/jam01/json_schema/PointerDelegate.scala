@@ -3,6 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.Visitor.Delegate
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
+// TODO: can pass the Stack directly 
 class PointerDelegate[T, V](delegate: Visitor[T, V], ctx: Context) extends Delegate[T, V](delegate) {
   override def visitArray(length: Int, index: Int): ArrVisitor[T, V] = new ArrVisitor[T, V] {
     val arrVis: ArrVisitor[T, V] = delegate.visitArray(length, index)

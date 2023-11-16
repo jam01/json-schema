@@ -2,6 +2,7 @@ package io.github.jam01.json_schema
 
 import upickle.core.{Abort, ObjVisitor, Visitor}
 
+// TODO: consider adding all methods throwing, to use instead of SimpleVisitor 
 trait JsonVisitor[-T, +J] extends Visitor[T, J] {
   def expectedMsg = "expected string, integer, number, object, array, or null"
 

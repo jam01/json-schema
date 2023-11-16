@@ -4,6 +4,17 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 import scala.collection.mutable
 
+/**
+ * A Schema reader.
+ *
+ * Note this is not a thread-safe implementation as <code>prel</code> is re-used to avoid instantiating
+ * multiple readers for each child schema.
+ *
+ * @param base   the initial base for the schema
+ * @param parent the parent schema, if any
+ * @param prel   the relative path to the schema from the parent, if any
+ * @param reg    the schema registry to populate when traversing schemas
+ */
 class SchemaR(base: String,
               parent: Option[ObjectSchema] = None,
               private var prel: Option[String] = None,
@@ -32,8 +43,10 @@ class SchemaR(base: String,
         override def expectedMsg: String = "expected object"
 
         override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Schema, collection.Map[String, Schema]] =
-          new CollectObjVisitor[Schema](new SchemaR(base, Some(sch), None, reg)) {
-            override def subVisitor: Visitor[_, _] = { vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$k"); super.subVisitor }
+          new CollectObjVisitor[Schema](new SchemaR(base, Some(sch), None, reg)) { // TODO: consider anon implementation
+            override def subVisitor: Visitor[_, _] = {
+              vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$k"); super.subVisitor
+            }
           }
       }
       // kws with seq(schema)
@@ -41,7 +54,7 @@ class SchemaR(base: String,
         override def expectedMsg: String = "expected array"
 
         override def visitArray(length: Int, index: Int): ArrVisitor[Schema, collection.Seq[Schema]] =
-          new CollectArrVisitor[Schema](new SchemaR(base, Some(sch), None, reg)) {
+          new CollectArrVisitor[Schema](new SchemaR(base, Some(sch), None, reg)) { // TODO: consider anon implementation
             private var nextIdx = 0
 
             override def subVisitor: Visitor[_, _] = { vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$nextIdx"); super.subVisitor }

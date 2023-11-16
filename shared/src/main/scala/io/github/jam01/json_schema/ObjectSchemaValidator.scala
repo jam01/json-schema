@@ -9,9 +9,10 @@ import java.time.{Duration, LocalDate, OffsetDateTime}
 import scala.collection.{immutable, mutable}
 
 /**
- * A ObjectSchema validator Visitor
+ * An ObjectSchema validator
  *
  * @param schema the schema to apply
+ * @param schloc the schema location path followed
  * @param ctx    the validation context
  */
 class ObjectSchemaValidator(val schema: ObjectSchema,

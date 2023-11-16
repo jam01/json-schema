@@ -2,9 +2,6 @@ package io.github.jam01.json_schema
 
 sealed trait Schema {
   def schBy(ptr: JsonPointer): Schema = {
-//    val it = ptr.refTokens.iterator
-//    if (it.hasNext && it.next.isEmpty && !it.hasNext)
-//    if (ptr.refTokens.iterator.has)
     if (ptr.refTokens.length == 1 && ptr.refTokens.head.isEmpty) return this
     schBy0(ptr)
   }
