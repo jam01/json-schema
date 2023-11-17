@@ -73,6 +73,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
+    // TODO: if d fits in int, check for integer type 
     (tyype.isEmpty || tyype.contains("number")) &&
       maximum.forall(_ match
         case mxi: Long => d <= mxi
@@ -97,7 +98,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           case ex: DateTimeParseException => false
         case "hostname" => try { new URI(_); true } catch
           case ex: URISyntaxException => false
-        case _ => true) &&
+        case _ => true) && // TODO: throw unsupported exc 
       _refVis.forall(_.visitString(s, index))
   }
 

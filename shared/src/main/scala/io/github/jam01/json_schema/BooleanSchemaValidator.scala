@@ -17,7 +17,7 @@ object BooleanSchemaValidator {
     override def visitObject(length: Int, index: Int): ObjVisitor[Boolean, Boolean] = TrueObjValidator
   }
 
-  val False: BooleanSchemaValidator = new BooleanSchemaValidator(true) {
+  val False: BooleanSchemaValidator = new BooleanSchemaValidator(false) {
     private val FalseArrVisitor = new BooleanArrValidator(false) {
       override def subVisitor: Visitor[_, _] = BooleanSchemaValidator.False
     }

@@ -56,6 +56,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   def getInt(s: String): Option[Int] = {
     mMap.getValue(s) match
       case null => None
+      case n: Number => Some(n.intValue()) // TODO: should throw?
       case x => Some(x.asInstanceOf[Int])
   }
 

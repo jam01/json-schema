@@ -4,7 +4,7 @@ import org.junit.jupiter.api.{Assertions, Disabled, Test}
 import ujson.StringParser
 //import upickle.default.*
 
-class SchemaMapper {
+class SchemaMapperTest {
   val lhm: LinkedHashMap[String, Any] = LinkedHashMap(
     "type" -> "string",
     "pattern" -> ".*",
