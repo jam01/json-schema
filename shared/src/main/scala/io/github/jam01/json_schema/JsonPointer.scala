@@ -1,5 +1,7 @@
 package io.github.jam01.json_schema
 
+import java.net.URLDecoder
+
 // TODO: consider making a record
 case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
   if (refTokens.isEmpty) throw new IllegalArgumentException("invalid JSON Pointer")
@@ -13,7 +15,7 @@ case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
 
 object JsonPointer {
   def apply(s: String): JsonPointer = {
-    JsonPointer(s.split('/')
+    JsonPointer(URLDecoder.decode(s).split('/')
       .map(_.replace("~0", "~")
         .replace("~1", "/") // TODO: replace w/regex?
       ))

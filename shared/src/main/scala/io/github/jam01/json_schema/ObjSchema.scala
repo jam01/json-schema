@@ -1,8 +1,8 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjSchema.refError
+import io.github.jam01.json_schema.SchemaMapper.conformUri
 
-import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Map, Seq, immutable}
 
 private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.scala-lang.org/tour/self-types.html
@@ -11,26 +11,27 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   def getLocation: String = {
-    getId.getOrElse(parent.map(_.getLocation + prel.get).getOrElse(initbase))
+    getId.getOrElse(parent.map(_.getLocation + prel.get).getOrElse(docbase))
   }
 
-  override def schBy0(ptr: JsonPointer): Schema = {
-    var i = 0
-    var res: Any = this
-    for (key <- ptr.refTokens.iterator) { // TODO: unescape?
-      res = res match
-        case ObjectSchema(omMap, _, _, _) => omMap.getOrElse(key, refError(ptr, i))
-        case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
-        case arr: collection.Seq[Any] =>
-          val i = key.toInt;
-          if (arr.length <= i) ObjSchema.refError(ptr, i)
-          arr(i)
-        case x: Any => throw new IllegalArgumentException(s"unsupported type ${x.getClass.getName}")
+  def getBase: String = {
+    getId.getOrElse(parent.map(_.getBase).getOrElse(docbase))
+  }
 
-      i = i + 1
-    }
+  def getRef: Option[String] = {
+    getString("$ref").map(s=>conformUri(resolve(s)))
+  }
 
-    res.asInstanceOf[Schema]
+  def getDynRef: Option[String] = {
+    getString("$dynamicRef").map(s=>conformUri(resolve(s)))
+  }
+
+  private def resolve(r: String): String = {
+    val uri = java.net.URI(r)
+    val base = getBase
+    if (uri.isAbsolute) uri.toString // TODO: special urn handling
+    else if (base.startsWith("urn:")) base + uri
+    else java.net.URI(base).resolve(uri).toString
   }
 
   /**
@@ -242,6 +243,26 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
       case null => Seq.empty
       case x => x.asInstanceOf[collection.Seq[Schema]]
   }
+
+  override def schBy0(ptr: JsonPointer): Schema = {
+    var i = 0
+    var res: Any = this
+    val it = ptr.refTokens.iterator; it.next() // skip first empty string token // TODO: consider a ROOT Ptr
+    for (key <- it) { // TODO: unescape?
+      res = res match
+        case ObjectSchema(omMap, _, _, _) => omMap.getOrElse(key, refError(ptr, i))
+        case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
+        case arr: collection.Seq[Any] =>
+          val i = key.toInt;
+          if (arr.length <= i) ObjSchema.refError(ptr, i)
+          arr(i)
+        case x: Any => throw new IllegalArgumentException(s"unsupported type ${x.getClass.getName}")
+
+      i = i + 1
+    }
+
+    res.asInstanceOf[Schema]
+  }
 }
 
 object ObjSchema {
@@ -250,5 +271,5 @@ object ObjSchema {
 
   // check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Unit =
-    throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.slice(0, idx).mkString("/")}")
+    throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
 }

@@ -34,8 +34,10 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val required: collection.Seq[String] = schema.getStringArray("required")
   private val properties: Option[collection.Map[String, Schema]] = schema.getAsSchemaObjectOpt("properties")
   private val _refVis: Option[JsonVisitor[_, Boolean]] = schema
-    .getString("$ref") // TODO: resolve URI to current schema
-    .map(s => ctx.reg.getOrElse(s, throw new IllegalArgumentException(s"unavailable schema $s")))
+    .getRef
+    .map(s => ctx.getSch(s) match
+      case Some(sch) => sch
+      case None => throw new IllegalArgumentException(s"unavailable schema $s"))
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("$ref"), ctx))
   private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("items")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx))
@@ -73,8 +75,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
-    // TODO: if d fits in int, check for integer type 
-    (tyype.isEmpty || tyype.contains("number")) &&
+    (tyype.isEmpty || tyype.contains("number") || (tyype.contains("integer") && d.isWhole)) &&
       maximum.forall(_ match
         case mxi: Long => d <= mxi
         case mxd: Double => d <= mxd) &&

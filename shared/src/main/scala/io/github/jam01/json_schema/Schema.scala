@@ -39,11 +39,11 @@ case object False extends BooleanSchema {
 /**
  *
  * @param mMap     underlying Map of keywords -> values
- * @param initbase a base uri assigned by the application
+ * @param docbase  a base uri assigned by the application
  * @param prel     the relative JSON pointer from the parent schema
  * @param parent   the parent schema, if any
  */
 final case class ObjectSchema(protected val mMap: LinkedHashMap[String, Any],
-                              initbase: String,
+                              docbase: String,
                               prel: Option[String] = None,
                               parent: Option[ObjectSchema] = None) extends ObjSchema with Schema

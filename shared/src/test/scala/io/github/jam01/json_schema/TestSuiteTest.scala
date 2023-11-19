@@ -6,13 +6,14 @@ import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 
 import java.nio.file.Paths
 import java.util
+import scala.collection.mutable
 
 class TestSuiteTest {
 
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
-  def test(path: String, desc: String, sch: Schema, tdesc: String, data: ujson.Value, valid: Boolean): Unit = {
-    val res = data.transform(SchemaValidator.of(sch))
+  def test(path: String, desc: String, sch: Schema, ctx: Context, tdesc: String, data: ujson.Value, valid: Boolean): Unit = {
+    val res = data.transform(SchemaValidator.of(sch, ctx = ctx))
     Assertions.assertEquals(valid, res, path + ": " + desc + ": " + tdesc)
   }
 }
@@ -44,12 +45,14 @@ object TestSuiteTest {
     val suite = ujson.read(ujson.Readable.fromPath(Paths.get(getClass.getClassLoader.getResource(path).toURI))).arr
     val args = new util.ArrayList[Arguments]()
 
-    suite.foreach { scenario =>
-      scenario.obj.get("tests").get.arr.foreach { test =>
+    suite.foreach { testcase =>
+      testcase.obj.get("tests").get.arr.foreach { test =>
+        val reg = mutable.Map[String, Schema]()
         args.add(Arguments.of(
           path,
-          scenario.obj.get("description").get.str,
-          scenario.obj.get("schema").get.transform(SchemaR("test")),
+          testcase.obj.get("description").get.str,
+          testcase.obj.get("schema").get.transform(SchemaR("test", reg = reg)),
+          Context(mutable.Stack(""), reg),
           test.obj.get("description").get.str,
           test.obj.get("data").get,
           test.obj.get("valid").get.bool))
