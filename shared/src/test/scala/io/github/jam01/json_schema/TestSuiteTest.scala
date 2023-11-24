@@ -12,7 +12,7 @@ class TestSuiteTest {
 
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
-  def test(path: String, desc: String, sch: Schema, ctx: Context, tdesc: String, data: ujson.Value, valid: Boolean): Unit = {
+  def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema, ctx: Context): Unit = {
     val res = data.transform(SchemaValidator.of(sch, ctx = ctx))
     Assertions.assertEquals(valid, res, path + ": " + desc + ": " + tdesc)
   }
@@ -21,6 +21,7 @@ class TestSuiteTest {
 object TestSuiteTest {
   def args_provider: java.util.List[Arguments] = {
     val args = new util.ArrayList[Arguments]()
+    args.addAll(args_provider("test-suite/tests/draft2020-12/anchor.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/boolean_schema.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/format.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/items.json"))
@@ -51,11 +52,11 @@ object TestSuiteTest {
         args.add(Arguments.of(
           path,
           testcase.obj.get("description").get.str,
-          testcase.obj.get("schema").get.transform(SchemaR("test", reg = reg)),
-          Context(mutable.Stack(""), reg),
           test.obj.get("description").get.str,
           test.obj.get("data").get,
-          test.obj.get("valid").get.bool))
+          test.obj.get("valid").get.bool,
+          testcase.obj.get("schema").get.transform(SchemaR("test", reg = reg)),
+          Context(mutable.Stack(""), reg)))
       }
     }
 

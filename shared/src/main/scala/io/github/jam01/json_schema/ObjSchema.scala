@@ -1,6 +1,6 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.json_schema.ObjSchema.refError
+import io.github.jam01.json_schema.ObjSchema.{refError, resolve}
 import io.github.jam01.json_schema.SchemaMapper.conformUri
 
 import scala.collection.{Map, Seq, immutable}
@@ -15,23 +15,16 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   def getBase: String = {
-    getId.getOrElse(parent.map(_.getBase).getOrElse(docbase))
+    val base = parent.map(_.getBase).getOrElse(docbase)
+    getId.map(id => resolve(base, id)).getOrElse(base)
   }
 
   def getRef: Option[String] = {
-    getString("$ref").map(s=>conformUri(resolve(s)))
+    getString("$ref").map(ref => conformUri(resolve(getBase, ref)))
   }
 
   def getDynRef: Option[String] = {
-    getString("$dynamicRef").map(s=>conformUri(resolve(s)))
-  }
-
-  private def resolve(r: String): String = {
-    val uri = java.net.URI(r)
-    val base = getBase
-    if (uri.isAbsolute) uri.toString // TODO: special urn handling
-    else if (base.startsWith("urn:")) base + uri
-    else java.net.URI(base).resolve(uri).toString
+    getString("$dynamicRef").map(dynref => conformUri(resolve(getBase, dynref)))
   }
 
   /**
@@ -272,4 +265,11 @@ object ObjSchema {
   // check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Unit =
     throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
+
+  private def resolve(base: String, ref: String): String = {
+    val uri = java.net.URI(ref)
+    if (uri.isAbsolute) uri.toString
+    else if (base.startsWith("urn:")) base + uri
+    else java.net.URI(base).resolve(uri).toString
+  }
 }

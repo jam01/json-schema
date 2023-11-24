@@ -17,9 +17,10 @@ import scala.collection.mutable
  * @param reg     the schema registry to populate when traversing schemas
  */
 class SchemaR(docbase: String,
+              reg: mutable.Map[String, Schema] = mutable.Map.empty,
+              anchors: mutable.Buffer[(String, ObjectSchema)] = mutable.ArrayBuffer.empty,
               parent: Option[ObjectSchema] = None,
-              private var prel: Option[String] = None,
-              reg: mutable.Map[String, Schema] = mutable.Map.empty) extends SimpleVisitor[Any, Schema] {
+              private var prel: Option[String] = None) extends SimpleVisitor[Any, Schema] {
   override def expectedMsg: String = "expected boolean or object"
 
   override def visitTrue(index: Int): Schema = {
@@ -43,13 +44,13 @@ class SchemaR(docbase: String,
     override def subVisitor: Visitor[_, _] = key match
       // kws with schema
       case "items" | "contains" | "additionalProperties" | "propertyNames" | "if" | "then" | "else" | "not" =>
-        new SchemaR(docbase, Some(sch), Some(s"/$key"), reg)
+        new SchemaR(docbase, reg, anchors, Some(sch), Some(s"/$key"))
       // kws with map(key -> schema)
       case "$defs" | "properties" | "patternProperties" | "dependentSchemas" => new SimpleVisitor[Schema, collection.Map[String, Schema]] {
         override def expectedMsg: String = "expected object"
 
         override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Schema, collection.Map[String, Schema]] =
-          new CollectObjVisitor[Schema](new SchemaR(docbase, Some(sch), None, reg)) { // TODO: consider anon implementation
+          new CollectObjVisitor[Schema](new SchemaR(docbase, reg, anchors, Some(sch), None)) { // TODO: consider anon implementation
             override def subVisitor: Visitor[_, _] = {
               vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$k");
               super.subVisitor
@@ -61,7 +62,7 @@ class SchemaR(docbase: String,
         override def expectedMsg: String = "expected array"
 
         override def visitArray(length: Int, index: Int): ArrVisitor[Schema, collection.Seq[Schema]] =
-          new CollectArrVisitor[Schema](new SchemaR(docbase, Some(sch), None, reg)) { // TODO: consider anon implementation
+          new CollectArrVisitor[Schema](new SchemaR(docbase, reg, anchors, Some(sch), None)) { // TODO: consider anon implementation
             private var nextIdx = 0
 
             override def subVisitor: Visitor[_, _] = {
@@ -80,10 +81,14 @@ class SchemaR(docbase: String,
 
     override def visitValue(v: Any, index: Int): Unit = {
       lhm.addOne(key, v)
-      if ("$id".equals(key)) reg.addOne(conformUri(v.asInstanceOf[String]), sch) // TODO: probably should conform the uri?
+      if ("$id".equals(key)) reg.addOne(conformUri(v.asInstanceOf[String]), sch)
+      else if ("$anchor".equals(key)) anchors.addOne((v.asInstanceOf[String], sch))
     }
 
-    override def visitEnd(index: Int): ObjectSchema = sch
+    override def visitEnd(index: Int): ObjectSchema = {
+      if (parent.isEmpty) anchors.foreach { case (anchor, os) => reg.addOne(os.getBase + "#" + anchor, os) }
+      sch
+    }
   }
 }
 
@@ -91,7 +96,8 @@ object SchemaMapper {
   def conformUri(s: String): String = {
     val res = if (s.endsWith("#")) s.substring(0, s.length - 1)
     else s
-    if (s.startsWith("file:///")) "file:/" + res.substring(8) // see: https://superuser.com/a/479262
+
+    if (res.startsWith("file:///")) "file:/" + res.substring(8) // see: https://superuser.com/a/479262
     else res
   }
 }
