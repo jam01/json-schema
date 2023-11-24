@@ -25,12 +25,16 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val minLength: Option[Int] = schema.getInt("minLength")
   private val maximum: Option[Long | Double] = schema.getNumber("maximum")
   private val minimum: Option[Long | Double] = schema.getNumber("minimum")
+  private val exclusiveMax: Option[Long | Double] = schema.getNumber("exclusiveMaximum")
+  private val exclusiveMin: Option[Long | Double] = schema.getNumber("exclusiveMinimum")
+  private val multipleOf: Option[Long | Double] = schema.getNumber("multipleOf")
 
   // TODO: these can be fail-fast
   private val maxItems: Option[Int] = schema.getInt("maxItems")
   private val minItems: Option[Int] = schema.getInt("minItems")
   private val maxProperties: Option[Int] = schema.getInt("maxProperties")
   private val minProperties: Option[Int] = schema.getInt("minProperties")
+
   private val required: collection.Seq[String] = schema.getStringArray("required")
   private val properties: Option[collection.Map[String, Schema]] = schema.getAsSchemaObjectOpt("properties")
   private val _refVis: Option[JsonVisitor[_, Boolean]] = schema
@@ -63,27 +67,51 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       _refVis.forall(_.visitTrue(index))
   }
 
-  override def visitInt64(i: Long, index: Int): Boolean = {
+  override def visitInt64(l: Long, index: Int): Boolean = {
     (tyype.isEmpty || tyype.exists(t => "integer".eq(t) || "number".eq(t) )) &&
       maximum.forall(_ match
-        case mxi: Long => i <= mxi
-        case mxd: Double => i <= mxd) &&
+        case mxl: Long => l <= mxl
+        case mxd: Double => l <= mxd) &&
       minimum.forall(_ match
-        case mxi: Long => i >= mxi
-        case mxd: Double => i >= mxd) &&
-      _refVis.forall(_.visitInt64(i, index))
+        case mnl: Long => l >= mnl
+        case mnd: Double => l >= mnd) &&
+      exclusiveMax.forall(_ match
+        case mxl: Long => l < mxl
+        case mxd: Double => l < mxd) &&
+      exclusiveMin.forall(_ match
+        case mnl: Long => l > mnl
+        case mnd: Double => l > mnd) &&
+      multipleOf.forall(_ match
+        case ml: Long => l % ml == 0
+        case md: Double => if (md.isWhole) l % md.longValue == 0 else false) &&
+      _refVis.forall(_.visitInt64(l, index))
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("number") || (tyype.contains("integer") && d.isWhole)) &&
       maximum.forall(_ match
-        case mxi: Long => d <= mxi
+        case mxl: Long => d <= mxl
         case mxd: Double => d <= mxd) &&
       minimum.forall(_ match
-        case mxi: Long => d >= mxi
-        case mxd: Double => d >= mxd) &&
+        case mnl: Long => d >= mnl
+        case mnd: Double => d >= mnd) &&
+      exclusiveMax.forall(_ match
+        case mxl: Long => d < mxl
+        case mxd: Double => d < mxd) &&
+      exclusiveMin.forall(_ match
+        case mnl: Long => d > mnl
+        case mnd: Double => d > mnd) &&
+      multipleOf.forall(num => try {
+        BigDecimal.valueOf(d)
+          .remainder(asBigDec(num))
+          .compareTo(java.math.BigDecimal.ZERO) == 0
+      } catch case ex: ArithmeticException => false) && // TODO: not sure if we have to do this
       _refVis.forall(_.visitFloat64(d, index))
   }
+
+  private def asBigDec(num: Long | Double) = num match
+    case l: Long => BigDecimal.valueOf(l)
+    case d: Double => BigDecimal.valueOf(d)
 
   override def visitString(s: CharSequence, index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("string")) &&
