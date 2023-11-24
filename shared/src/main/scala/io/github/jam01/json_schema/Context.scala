@@ -3,7 +3,7 @@ package io.github.jam01.json_schema
 import scala.collection.{immutable, mutable}
 
 // TODO: consider making a record 
-case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq
+final case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq
                    reg: collection.Map[String, Schema]) {
   def insPtr: String = JsonPointer.strValueOf(insloc.reverseIterator)
 

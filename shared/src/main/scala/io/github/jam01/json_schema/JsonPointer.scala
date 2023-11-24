@@ -3,7 +3,7 @@ package io.github.jam01.json_schema
 import java.net.URLDecoder
 
 // TODO: consider making a record
-case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
+final case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
   if (refTokens.isEmpty) throw new IllegalArgumentException("invalid JSON Pointer")
 
   def appendRefToken(refTok: String): JsonPointer = JsonPointer(refTokens.appended(refTok))
