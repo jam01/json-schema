@@ -6,6 +6,7 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 import java.net.{URI, URISyntaxException}
 import java.time.format.DateTimeParseException
 import java.time.{Duration, LocalDate, OffsetDateTime}
+import java.util.UUID
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
 
@@ -150,8 +151,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           case ex: DateTimeParseException => false
         case "duration" => try { Duration.parse(s); true } catch
           case ex: DateTimeParseException => false
-        case "hostname" => try { new URI(_); true } catch
-          case ex: URISyntaxException => false
+        case "uuid" => try { UUID.fromString(_); true } catch
+          case ex: IllegalArgumentException => false
         case _ => true) && // TODO: throw unsupported exc
       _refVis.forall(_.visitString(s, index))
   }
