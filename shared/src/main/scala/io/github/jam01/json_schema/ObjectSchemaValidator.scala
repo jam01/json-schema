@@ -7,6 +7,7 @@ import java.net.{URI, URISyntaxException}
 import java.time.format.DateTimeParseException
 import java.time.{Duration, LocalDate, OffsetDateTime}
 import scala.collection.{immutable, mutable}
+import scala.util.matching.Regex
 
 /**
  * An ObjectSchema validator
@@ -19,7 +20,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
                             val schloc: JsonPointer = JsonPointer(),
                             val ctx: Context = Context.empty) extends JsonVisitor[_, Boolean] {
   private val tyype: collection.Seq[String] = schema.getAsStringArray("type")
-  private val pattern: Option[String] = schema.getString("pattern")
+  private val pattern: Option[Regex] = schema.getString("pattern").map(s => new Regex(s).unanchored)
   private val format: Option[String] = schema.getString("format")
   private val maxLength: Option[Int] = schema.getInt("maxLength")
   private val minLength: Option[Int] = schema.getInt("minLength")
@@ -115,9 +116,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
   override def visitString(s: CharSequence, index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("string")) &&
-      pattern.forall(_.r.matches(s)) && // TODO: memoize
-      minLength.forall(s.length() >= _) &&
-      maxLength.forall(s.length() <= _) &&
+      pattern.forall(_.matches(s)) && // TODO: memoize
+      minLength.forall(s.toString.codePointCount(0, s.length()) >= _) &&
+      maxLength.forall(s.toString.codePointCount(0, s.length()) <= _) &&
       format.forall(_ match // TODO: use regexs
         case "date-time" => try { OffsetDateTime.parse(s); true } catch
           case ex: DateTimeParseException => false
