@@ -22,7 +22,9 @@ object TestSuiteTest {
   def args_provider: java.util.List[Arguments] = {
     val args = new util.ArrayList[Arguments]()
     args.addAll(args_provider("test-suite/tests/draft2020-12/additionalProperties.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/allOf.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/anchor.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/anyOf.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/boolean_schema.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/defs.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/exclusiveMaximum.json"))
@@ -39,6 +41,7 @@ object TestSuiteTest {
     args.addAll(args_provider("test-suite/tests/draft2020-12/minProperties.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/multipleOf.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/not.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/oneOf.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/pattern.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/properties.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/ref.json"))

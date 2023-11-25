@@ -31,6 +31,15 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("$ref"), ctx))
+  private val allOfVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaArrayOpt("allOf")
+    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("allOf", schidx._2.toString), ctx)))
+    .map(schViss => new CompositeVisitorReducer(_.forall(identity), schViss.toSeq: _*))
+  private val oneOfVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaArrayOpt("oneOf")
+    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("anyOf", schidx._2.toString), ctx)))
+    .map(schViss => new CompositeVisitorReducer(_.count(identity) == 1, schViss.toSeq: _*))
+  private val anyOfVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaArrayOpt("anyOf")
+    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("oneOf", schidx._2.toString), ctx)))
+    .map(schViss => new CompositeVisitorReducer(_.exists(identity), schViss.toSeq: _*))
 
   // strings
   private val pattern: Option[Regex] = schema.getString("pattern").map(s => new Regex(s).unanchored)
@@ -82,19 +91,26 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   override def visitNull(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("null")) &&
       _refVis.forall(_.visitNull(index)) &&
-      notVis.forall(!_.visitNull(index))
+      notVis.forall(!_.visitNull(index)) &&
+      allOfVis.forall(_.visitNull(index)) &&
+      anyOfVis.forall(_.visitNull(index)) &&
+      oneOfVis.forall(_.visitNull(index))
   }
 
   override def visitFalse(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("boolean")) &&
       _refVis.forall(_.visitFalse(index)) &&
-      notVis.forall(!_.visitFalse(index))
+      notVis.forall(!_.visitFalse(index)) &&
+      allOfVis.forall(_.visitFalse(index)) &&
+      anyOfVis.forall(_.visitFalse(index)) &&
+      oneOfVis.forall(_.visitFalse(index))
   }
 
   override def visitTrue(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("boolean")) &&
       _refVis.forall(_.visitTrue(index)) &&
-      notVis.forall(!_.visitTrue(index))
+      notVis.forall(!_.visitTrue(index)) &&
+      allOfVis.forall(_.visitTrue(index))
   }
 
   override def visitInt64(l: Long, index: Int): Boolean = {
@@ -115,7 +131,10 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         case ml: Long => l % ml == 0
         case md: Double => if (md.isWhole) l % md.longValue == 0 else false) &&
       _refVis.forall(_.visitInt64(l, index)) &&
-      notVis.forall(!_.visitInt64(l, index))
+      notVis.forall(!_.visitInt64(l, index)) &&
+      allOfVis.forall(_.visitInt64(l, index)) &&
+      anyOfVis.forall(_.visitInt64(l, index)) &&
+      oneOfVis.forall(_.visitInt64(l, index))
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
@@ -138,7 +157,10 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           .compareTo(java.math.BigDecimal.ZERO) == 0
       } catch case ex: ArithmeticException => false) && // TODO: not sure if we have to do this
       _refVis.forall(_.visitFloat64(d, index)) &&
-      notVis.forall(!_.visitFloat64(d, index))
+      notVis.forall(!_.visitFloat64(d, index)) &&
+      allOfVis.forall(_.visitFloat64(d, index)) &&
+      anyOfVis.forall(_.visitFloat64(d, index)) &&
+      oneOfVis.forall(_.visitFloat64(d, index))
   }
 
   private def asBigDec(num: Long | Double) = num match
@@ -161,7 +183,10 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           case ex: IllegalArgumentException => false
         case _ => true) && // TODO: throw unsupported exc
       _refVis.forall(_.visitString(s, index)) &&
-      notVis.forall(!_.visitString(s, index))
+      notVis.forall(!_.visitString(s, index)) &&
+      allOfVis.forall(_.visitString(s, index)) &&
+      anyOfVis.forall(_.visitString(s, index)) &&
+      oneOfVis.forall(_.visitString(s, index))
   }
 
   /*
@@ -186,6 +211,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     val insVisitors = mutable.ArrayBuffer.empty[ArrVisitor[_, Boolean]]
     _refVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     notVis.foreach(vis => insVisitors.addOne(new MapArrContext(vis.visitArray(length, index), b => !b)))
+    allOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
+    anyOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
+    oneOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     // TODO: add other instance applicators
 
     val insVisitor: ArrVisitor[_, Boolean] =
@@ -240,6 +268,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     val insVisitors = mutable.ArrayBuffer.empty[ObjVisitor[_, Boolean]]
     _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
     notVis.foreach(vis => insVisitors.addOne(new MapObjContext(vis.visitObject(length, index), b => !b)))
+    allOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
+    anyOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
+    oneOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
     // TODO: add other instance applicators
 
     val insVisitor: ObjVisitor[_, Boolean] =

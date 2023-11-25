@@ -1,6 +1,7 @@
 package io.github.jam01.json_schema
 
 import java.net.URLDecoder
+import java.nio.charset.Charset
 
 // TODO: consider making a record
 final case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("")) {
@@ -15,7 +16,7 @@ final case class JsonPointer(refTokens: collection.immutable.Seq[String] = Seq("
 
 object JsonPointer {
   def apply(s: String): JsonPointer = {
-    JsonPointer(URLDecoder.decode(s).split('/')
+    JsonPointer(URLDecoder.decode(s, Charset.defaultCharset()).split("/", -1)
       .map(_.replace("~0", "~")
         .replace("~1", "/") // TODO: replace w/regex?
       ))

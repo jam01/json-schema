@@ -17,6 +17,19 @@ class CompositeVisitor[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Se
     new CompositeObjVisitor[T, J](delegates.map(_.visitObject(length, true, index)): _*)
 }
 
+class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T, J]*) extends JsonVisitor[Seq[T], J] {
+  override def visitNull(index: Int): J = reducer(delegates.map(_.visitNull(index)))
+  override def visitFalse(index: Int): J = reducer(delegates.map(_.visitFalse(index)))
+  override def visitTrue(index: Int): J = reducer(delegates.map(_.visitTrue(index)))
+  override def visitFloat64(d: Double, index: Int): J = reducer(delegates.map(_.visitFloat64(d, index)))
+  override def visitInt64(i: Long, index: Int): J = reducer(delegates.map(_.visitInt64(i, index)))
+  override def visitString(s: CharSequence, index: Int): J = reducer(delegates.map(_.visitString(s, index)))
+  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], J] =
+    new CompositeArrVisitorReducer[T, J](reducer, delegates.map(_.visitArray(length, index)): _*)
+  override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], J] =
+    new CompositeObjVisitorReducer[T, J](reducer, delegates.map(_.visitObject(length, true, index)): _*)
+}
+
 class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[_], Seq[J]] {
   // unsure why ArrVisitor[Seq[T], Seq[J]] doesn't work when delArrVis if Arr[_, J]
   //  .../json_schema/ObjectSchemaValidator.scala:99:78
