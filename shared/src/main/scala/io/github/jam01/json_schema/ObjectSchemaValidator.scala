@@ -40,6 +40,15 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val anyOfVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaArrayOpt("anyOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("oneOf", schidx._2.toString), ctx)))
     .map(schViss => new CompositeVisitorReducer(_.exists(identity), schViss.toSeq: _*))
+  private val const: Option[Int] = schema.get("const")
+    .map(o => Transformer.transform(o, IdentityVisitor))
+  private val enuum: Option[collection.Seq[Int]] = schema.getArrayOpt("enum")
+    .map(o => Transformer.transform(o, new SimpleVisitor[Int, collection.Seq[Int]] {
+      override def expectedMsg: String = "expected array"
+
+      override def visitArray(length: Int, index: Int): ArrVisitor[Int, collection.Seq[Int]] =
+        new CollectArrVisitor[Int](IdentityVisitor)
+    }))
 
   // strings
   private val pattern: Option[Regex] = schema.getString("pattern").map(s => new Regex(s).unanchored)
@@ -94,7 +103,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       notVis.forall(!_.visitNull(index)) &&
       allOfVis.forall(_.visitNull(index)) &&
       anyOfVis.forall(_.visitNull(index)) &&
-      oneOfVis.forall(_.visitNull(index))
+      oneOfVis.forall(_.visitNull(index)) &&
+      const.forall(h => h.equals(0)) &&
+      (enuum.isEmpty || enuum.contains(0))
   }
 
   override def visitFalse(index: Int): Boolean = {
@@ -103,14 +114,18 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       notVis.forall(!_.visitFalse(index)) &&
       allOfVis.forall(_.visitFalse(index)) &&
       anyOfVis.forall(_.visitFalse(index)) &&
-      oneOfVis.forall(_.visitFalse(index))
+      oneOfVis.forall(_.visitFalse(index)) &&
+      const.forall(h => h.equals(false.hashCode())) &&
+      (enuum.isEmpty || enuum.contains(false.hashCode()))
   }
 
   override def visitTrue(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("boolean")) &&
       _refVis.forall(_.visitTrue(index)) &&
       notVis.forall(!_.visitTrue(index)) &&
-      allOfVis.forall(_.visitTrue(index))
+      allOfVis.forall(_.visitTrue(index)) &&
+      const.forall(h => h.equals(true.hashCode())) &&
+      (enuum.isEmpty || enuum.contains(true.hashCode()))
   }
 
   override def visitInt64(l: Long, index: Int): Boolean = {
@@ -134,7 +149,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       notVis.forall(!_.visitInt64(l, index)) &&
       allOfVis.forall(_.visitInt64(l, index)) &&
       anyOfVis.forall(_.visitInt64(l, index)) &&
-      oneOfVis.forall(_.visitInt64(l, index))
+      oneOfVis.forall(_.visitInt64(l, index)) &&
+      const.forall(h => h.equals(l.hashCode())) &&
+      (enuum.isEmpty || enuum.contains(l.hashCode()))
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
@@ -160,7 +177,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       notVis.forall(!_.visitFloat64(d, index)) &&
       allOfVis.forall(_.visitFloat64(d, index)) &&
       anyOfVis.forall(_.visitFloat64(d, index)) &&
-      oneOfVis.forall(_.visitFloat64(d, index))
+      oneOfVis.forall(_.visitFloat64(d, index)) &&
+      const.forall(h => h.equals(d.hashCode())) &&
+      (enuum.isEmpty || enuum.contains(d.hashCode()))
   }
 
   private def asBigDec(num: Long | Double) = num match
@@ -186,7 +205,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       notVis.forall(!_.visitString(s, index)) &&
       allOfVis.forall(_.visitString(s, index)) &&
       anyOfVis.forall(_.visitString(s, index)) &&
-      oneOfVis.forall(_.visitString(s, index))
+      oneOfVis.forall(_.visitString(s, index)) &&
+      const.forall(h => h.equals(s.hashCode())) &&
+      (enuum.isEmpty || enuum.contains(s.hashCode()))
   }
 
   /*
@@ -215,6 +236,11 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     // TODO: add other instance applicators
+
+    val idVis: Option[ArrVisitor[_, Int]] =
+      if (const.nonEmpty || enuum.nonEmpty)
+        Some(IdentityVisitor.visitArray(length, index))
+      else None
 
     val insVisitor: ArrVisitor[_, Boolean] =
       if (insVisitors.length == 1) insVisitors.head

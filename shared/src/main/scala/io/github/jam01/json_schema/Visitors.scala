@@ -135,7 +135,7 @@ class CollectObjVisitor[J](protected val vis: Visitor[_, _]) extends ObjVisitor[
 }
 
 class CollectArrVisitor[J](protected val vis: Visitor[_, _]) extends ArrVisitor[J, collection.Seq[J]] {
-  val arr: mutable.Buffer[J] = mutable.Buffer.empty[J]
+  val arr: mutable.Buffer[J] = mutable.ArrayBuffer.empty[J]
 
   override def subVisitor: Visitor[_, _] = vis
   override def visitValue(v: J, index: Int): Unit = arr.append(v)
@@ -160,4 +160,34 @@ object LiteralVisitor extends JsonVisitor[_, Any] {
   override def visitString(s: CharSequence, index: Int): Any = s.toString
   override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Map[String, Any]] = new CollectObjVisitor(LiteralVisitor)
   override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[Any]] = new CollectArrVisitor(LiteralVisitor)
+}
+
+
+object IdentityVisitor extends JsonVisitor[_, Int] {
+  override def visitNull(index: Int) = 0
+  override def visitFalse(index: Int): Int = false.hashCode()
+  override def visitTrue(index: Int): Int = true.hashCode()
+  override def visitFloat64(d: Double, index: Int): Int = d.hashCode()
+  override def visitInt64(i: Long, index: Int): Int = i.hashCode()
+  override def visitString(s: CharSequence, index: Int): Int = s.hashCode()
+
+  override def visitArray(length: Int, index: Int): ArrVisitor[_, Int] = new ArrVisitor[Int, Int] { // based on ArrayList
+    var hash: Int = 1
+
+    override def subVisitor: Visitor[_, _] = IdentityVisitor
+    override def visitValue(v: Int, index: Int): Unit =
+      hash = 31 * hash + v.hashCode
+    override def visitEnd(index: Int): Int = hash
+  }
+
+  override def visitObject(length: Int, index: Int): ObjVisitor[Int, Int] = new ObjVisitor[Int, Int] { // based on HashMap
+    var hash: Int = 2
+    var keyHash: Int = 0
+
+    override def visitKey(index: Int): Visitor[_, _] = IdentityVisitor
+    override def visitKeyValue(v: Any): Unit = keyHash = v.asInstanceOf[Int]
+    override def subVisitor: Visitor[_, _] = IdentityVisitor
+    override def visitValue(v: Int, index: Int): Unit = hash = hash + keyHash.^(v)
+    override def visitEnd(index: Int): Int = hash
+  }
 }
