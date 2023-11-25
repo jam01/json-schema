@@ -1,6 +1,7 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
+import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 import java.net.{URI, URISyntaxException}
@@ -80,17 +81,20 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
   override def visitNull(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("null")) &&
-      _refVis.forall(_.visitNull(index))
+      _refVis.forall(_.visitNull(index)) &&
+      notVis.forall(!_.visitNull(index))
   }
 
   override def visitFalse(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("boolean")) &&
-      _refVis.forall(_.visitFalse(index))
+      _refVis.forall(_.visitFalse(index)) &&
+      notVis.forall(!_.visitFalse(index))
   }
 
   override def visitTrue(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("boolean")) &&
-      _refVis.forall(_.visitTrue(index))
+      _refVis.forall(_.visitTrue(index)) &&
+      notVis.forall(!_.visitTrue(index))
   }
 
   override def visitInt64(l: Long, index: Int): Boolean = {
@@ -110,7 +114,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       multipleOf.forall(_ match
         case ml: Long => l % ml == 0
         case md: Double => if (md.isWhole) l % md.longValue == 0 else false) &&
-      _refVis.forall(_.visitInt64(l, index))
+      _refVis.forall(_.visitInt64(l, index)) &&
+      notVis.forall(!_.visitInt64(l, index))
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
@@ -132,7 +137,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           .remainder(asBigDec(num))
           .compareTo(java.math.BigDecimal.ZERO) == 0
       } catch case ex: ArithmeticException => false) && // TODO: not sure if we have to do this
-      _refVis.forall(_.visitFloat64(d, index))
+      _refVis.forall(_.visitFloat64(d, index)) &&
+      notVis.forall(!_.visitFloat64(d, index))
   }
 
   private def asBigDec(num: Long | Double) = num match
@@ -154,7 +160,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         case "uuid" => try { UUID.fromString(_); true } catch
           case ex: IllegalArgumentException => false
         case _ => true) && // TODO: throw unsupported exc
-      _refVis.forall(_.visitString(s, index))
+      _refVis.forall(_.visitString(s, index)) &&
+      notVis.forall(!_.visitString(s, index))
   }
 
   /*
@@ -178,6 +185,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
     val insVisitors = mutable.ArrayBuffer.empty[ArrVisitor[_, Boolean]]
     _refVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
+    notVis.foreach(vis => insVisitors.addOne(new MapArrContext(vis.visitArray(length, index), b => !b)))
     // TODO: add other instance applicators
 
     val insVisitor: ArrVisitor[_, Boolean] =
@@ -231,6 +239,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   override def visitObject(length: Int, index: Int): ObjVisitor[_, Boolean] = {
     val insVisitors = mutable.ArrayBuffer.empty[ObjVisitor[_, Boolean]]
     _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
+    notVis.foreach(vis => insVisitors.addOne(new MapObjContext(vis.visitObject(length, index), b => !b)))
     // TODO: add other instance applicators
 
     val insVisitor: ObjVisitor[_, Boolean] =
