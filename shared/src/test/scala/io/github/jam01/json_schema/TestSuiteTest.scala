@@ -21,6 +21,7 @@ class TestSuiteTest {
 object TestSuiteTest {
   def args_provider: java.util.List[Arguments] = {
     val args = new util.ArrayList[Arguments]()
+    args.addAll(args_provider("test-suite/tests/draft2020-12/additionalProperties.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/anchor.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/boolean_schema.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/defs.json"))
