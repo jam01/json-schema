@@ -47,6 +47,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   // arrays
   private val maxItems: Option[Int] = schema.getInt("maxItems")
   private val minItems: Option[Int] = schema.getInt("minItems")
+  private val prefixItems: Option[collection.Seq[Schema]] = schema.getAsSchemaArrayOpt("prefixItems")
   private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("items")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx))
     .map(schValidator => new ArrVisitor[Boolean, Boolean] {
@@ -175,7 +176,6 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
   override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
     val insVisitors = mutable.ArrayBuffer.empty[ArrVisitor[_, Boolean]]
-    itemsVis.foreach(insVisitors.addOne) // TODO: only if no prefixItems
     _refVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     // TODO: add other instance applicators
 
@@ -183,20 +183,45 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       if (insVisitors.length == 1) insVisitors.head
       else new CompositeArrVisitorReducer(_.forall(identity), insVisitors.toSeq: _*)
 
-    new ArrVisitor[Any, Boolean] {
-      private var counter = 0
+    var childVisitor: ArrVisitor[_, _] = null // to be assigned based on child
 
-      override def subVisitor: Visitor[_, _] = insVisitor.subVisitor
+    new ArrVisitor[Any, Boolean] {
+      private var nextIdx = 0
+
+      // returns subVisitor based on child index
+      val prefixItemsVisitor: Option[ArrVisitor[_, Boolean]] = prefixItems.map(arr => new ArrVisitor[Boolean, Boolean] {
+        private var subsch = true
+
+        override def subVisitor: Visitor[_, _] = SchemaValidator.of(arr(nextIdx), schloc.appendRefTokens("prefixItems", nextIdx.toString), ctx)
+        override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
+        override def visitEnd(index: Int): Boolean = subsch
+      })
+
+      override def subVisitor: Visitor[_, _] = {
+        val childVisitors = mutable.ArrayBuffer.empty[ArrVisitor[_, Boolean]]
+        childVisitors.addOne(insVisitor)
+
+        if (prefixItems.nonEmpty && prefixItems.get.length >= nextIdx + 1) { childVisitors.addOne(prefixItemsVisitor.get) }
+        else if (itemsVis.nonEmpty) childVisitors.addOne(itemsVis.get)
+        // TODO: add other child-applicators
+
+        childVisitor =
+          if (childVisitors.length == 1) childVisitors.head
+          else new CompositeArrVisitor(childVisitors.toSeq: _*)
+        childVisitor.subVisitor
+      }
 
       override def visitValue(v: Any, index: Int): Unit = {
-        insVisitor.narrow.visitValue(v, index)
-        counter += 1
+        childVisitor.narrow.visitValue(v, index)
+        nextIdx += 1
       }
 
       override def visitEnd(index: Int): Boolean = {
         (tyype.isEmpty || tyype.contains("array")) && // TODO: up front to fail-fast
-          minItems.forall(counter >= _) &&
-          maxItems.forall(counter <= _) &&
+          minItems.forall(nextIdx >= _) &&
+          maxItems.forall(nextIdx <= _) &&
+          prefixItemsVisitor.forall(_.visitEnd(index)) &&
+          itemsVis.forall(_.visitEnd(index)) &&
           insVisitor.visitEnd(index)
       }
     }
@@ -229,7 +254,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
       private var matchedPatternSchs: Seq[Schema] = Nil // to be assigned based on key visited
       // returns subVisitor based on assigned matchedPatternSchs
-      val patternPropsVis: Option[ObjVisitor[_, Boolean]] = patternProperties.map(m => new ObjVisitor[Seq[Boolean], Boolean] {
+      val patternPropsVisitor: Option[ObjVisitor[_, Boolean]] = patternProperties.map(m => new ObjVisitor[Seq[Boolean], Boolean] {
         private var subsch = true
 
         override def visitKey(index: Int): Visitor[_, _] = ???
@@ -263,7 +288,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
         var isAddl = true // if not in properties or matched patterns
         if (properties.nonEmpty && properties.get.contains(currentKey)) { isAddl = false; childVisitors.addOne(propsVisitor.get) }
-        if (matchedPatternSchs.nonEmpty && matchedPatternSchs.nonEmpty) { isAddl = false; childVisitors.addOne(patternPropsVis.get) }
+        if (matchedPatternSchs.nonEmpty && matchedPatternSchs.nonEmpty) { isAddl = false; childVisitors.addOne(patternPropsVisitor.get) }
         if (isAddl) addlPropsVis.foreach(vis => childVisitors.addOne(vis))
 
         // TODO: add other child-applicators
@@ -282,7 +307,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           maxProperties.forall(propsVisited.size <= _) &&
           minProperties.forall(propsVisited.size >= _) &&
           propsVisitor.forall(_.visitEnd(index)) &&
-          patternPropsVis.forall(_.visitEnd(index)) &&
+          patternPropsVisitor.forall(_.visitEnd(index)) &&
           addlPropsVis.forall(_.visitEnd(index)) &&
           insVisitor.visitEnd(index)
       }
