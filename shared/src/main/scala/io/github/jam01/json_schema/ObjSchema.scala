@@ -27,7 +27,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     getString("$dynamicRef").map(dynref => conformUri(resolve(getBase, dynref)))
   }
 
-  def get(s: String): Option[Any] = mMap.get(s)
+  def get(s: String): Option[Any] = {
+    val o = mMap.getValue(s)
+    if (mMap.containsKey(s) && o == null) Some(null)
+    else Option(o)
+  }
 
   /**
    * Optionally returns the boolean associated with the given key.

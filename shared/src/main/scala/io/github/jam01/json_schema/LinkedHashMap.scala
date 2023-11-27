@@ -24,6 +24,8 @@ class LinkedHashMap[K, V](underlying: java.util.LinkedHashMap[K, V]) extends mut
 
   def getValue(key: K): V = underlying.get(key)
 
+  def containsKey(key: K): Boolean = underlying.containsKey(key)
+
   override def put(key: K, value: V): Option[V] = Option(_put(key, value))
 
   private def _put(key: K, value: V): V = {
