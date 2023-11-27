@@ -61,6 +61,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val maxItems: Option[Int] = schema.getInt("maxItems")
   private val minItems: Option[Int] = schema.getInt("minItems")
   private val prefixItems: Option[collection.Seq[Schema]] = schema.getAsSchemaArrayOpt("prefixItems")
+  private val uniqueItems: Option[Boolean] = schema.getBoolean("uniqueItems")
   private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("items")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx))
     .map(schValidator => new ArrVisitor[Boolean, Boolean] {
@@ -229,11 +230,17 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
 
-    if (const.nonEmpty || enuum.nonEmpty)
+    if (const.nonEmpty || enuum.nonEmpty || (uniqueItems.nonEmpty && uniqueItems.get))
       insVisitors.addOne(new MapArrContext(LiteralVisitor.visitArray(length, index), arr => {
-        if (const.isEmpty) enuum.get.exists(el => Objects.equals(el, arr))
-        else if (enuum.isEmpty) Objects.equals(const.get, arr)
-        else enuum.get.exists(el => Objects.equals(el, arr) && Objects.equals(const.get, arr))
+        var res = true
+        const.foreach(c => res = res && Objects.equals(const.get, arr))
+        enuum.foreach(en => res = res && en.exists(el => Objects.equals(el, arr)))
+        uniqueItems.foreach(b => res = {
+          val set = scala.collection.mutable.Set[Any]()
+          res && arr.forall(set.add)
+        })
+
+        res
       }))
     // TODO: add other instance applicators
 
@@ -295,9 +302,10 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
     if (const.nonEmpty || enuum.nonEmpty)
       insVisitors.addOne(new MapObjContext(LiteralVisitor.visitObject(length, index), obj => {
-        if (const.isEmpty) enuum.get.exists(el => Objects.equals(el, obj))
-        else if (enuum.isEmpty) Objects.equals(const.get, obj)
-        else enuum.get.exists(el => Objects.equals(el, obj) && Objects.equals(const.get, obj))
+        var res = true
+        const.foreach(c => res = res && Objects.equals(const.get, obj))
+        enuum.foreach(en => res = res && en.exists(el => Objects.equals(el, obj)))
+        res
       }))
     // TODO: add other instance applicators
 

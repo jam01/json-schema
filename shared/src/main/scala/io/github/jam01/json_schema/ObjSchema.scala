@@ -41,11 +41,12 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @return an Option of the value cast as a boolean, or None if the entry has a null value or does not exist
    */
   def getBoolean(s: String): Option[Boolean] = {
-    Option(mMap.getValue(s).asInstanceOf[Boolean])
+    mMap.getValue(s) match
+      case null => None
+      case x => Some(x.asInstanceOf[Boolean])
   }
 
   // see: https://stackoverflow.com/q/11338954
-
   /**
    * Optionally returns the int associated with the given key.
    *
