@@ -33,6 +33,7 @@ object TestSuiteTest {
     args.addAll(args_provider("test-suite/tests/draft2020-12/exclusiveMaximum.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/exclusiveMinimum.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/format.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/if-then-else.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/items.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/maxContains.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/maximum.json"))
