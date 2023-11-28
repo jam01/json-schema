@@ -50,6 +50,7 @@ object TestSuiteTest {
     args.addAll(args_provider("test-suite/tests/draft2020-12/required.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/type.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/uniqueItems.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/unknownKeyword.json"))
 
     args
   }
