@@ -62,6 +62,25 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val minItems: Option[Int] = schema.getInt("minItems")
   private val prefixItems: Option[collection.Seq[Schema]] = schema.getAsSchemaArrayOpt("prefixItems")
   private val uniqueItems: Option[Boolean] = schema.getBoolean("uniqueItems")
+  private val maxContains: Option[Int] = schema.getInt("maxContains")
+  private val minContains: Option[Int] = schema.getInt("minContains")
+  private val contains: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("contains")
+    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("contains"), ctx))
+    .map(schValidator => new ArrVisitor[Boolean, Boolean] {
+      private var matched = 0
+
+      override def subVisitor: Visitor[_, _] = schValidator
+      override def visitValue(v: Boolean, index: Int): Unit = if (v) matched = matched + 1
+      override def visitEnd(index: Int): Boolean = {
+        var res = matched > 0
+        if (minContains.nonEmpty) {
+          if (minContains.get == 0) res = true
+          res = res && (matched >= minContains.get)
+        }
+        if (maxContains.nonEmpty) res = res && (matched <= maxContains.get)
+        res
+      }
+    })
   private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("items")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx))
     .map(schValidator => new ArrVisitor[Boolean, Boolean] {
@@ -329,14 +348,14 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         override def visitEnd(index: Int): Boolean = subsch
       })
 
-      private var matchedPatternSchs: Seq[Schema] = Nil // to be assigned based on key visited
+      private var matchedPatternSchs: Seq[(String, Schema)] = Nil // to be assigned based on key visited
       // returns subVisitor based on assigned matchedPatternSchs
       val patternPropsVisitor: Option[ObjVisitor[_, Boolean]] = patternProperties.map(m => new ObjVisitor[Seq[Boolean], Boolean] {
         private var subsch = true
 
         override def visitKey(index: Int): Visitor[_, _] = ???
         override def visitKeyValue(v: Any): Unit = ???
-        override def subVisitor: Visitor[_, _] = new CompositeVisitor(matchedPatternSchs.map(sch => SchemaValidator.of(sch, schloc.appendRefTokens("patternProperties", currentKey), ctx)): _*)
+        override def subVisitor: Visitor[_, _] = new CompositeVisitor(matchedPatternSchs.map(pattSch => SchemaValidator.of(pattSch._2, schloc.appendRefTokens("patternProperties", pattSch._1), ctx)): _*)
         override def visitValue(v: Seq[Boolean], index: Int): Unit = subsch = v.forall(identity)
         override def visitEnd(index: Int): Boolean = subsch
       })
@@ -350,7 +369,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           propsVisited.addOne(currentKey)
           matchedPatternSchs = patternProperties.map(m => m
             .withFilter(entry => entry._1.matches(currentKey))
-            .map(entry => entry._2)
+            .map(entry => (entry._1.toString(), entry._2))
             .toSeq).getOrElse(Nil)
 
           insVisitor.visitKey(index).visitString(s, index1)

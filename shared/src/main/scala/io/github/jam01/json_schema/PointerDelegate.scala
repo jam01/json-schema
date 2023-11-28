@@ -3,7 +3,16 @@ package io.github.jam01.json_schema
 import upickle.core.Visitor.Delegate
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-// TODO: can pass the Stack directly 
+// TODO: can pass the Stack directly
+/**
+ * A delegating visitor that keeps track of the current node visited as a JSON Pointer.
+ *
+ * For Arrays, the child location will be set before fwding the subVisitor invocation. For Objects, the entry location
+ * will be set before fwding visitKey invocation.
+ *
+ * @param delegate the visitor to fwd nodes
+ * @param ctx the validation context, in order to mutate the <code>insloc</code>
+ */
 class PointerDelegate[T, V](delegate: Visitor[T, V], ctx: Context) extends Delegate[T, V](delegate) {
   override def visitArray(length: Int, index: Int): ArrVisitor[T, V] = new ArrVisitor[T, V] {
     val arrVis: ArrVisitor[T, V] = delegate.visitArray(length, index)
