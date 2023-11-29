@@ -1,10 +1,10 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
+import io.github.jam01.json_schema.ObjectSchemaValidator.{asBigDec, if_then_else}
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-import java.net.{URI, URISyntaxException}
 import java.time.format.DateTimeParseException
 import java.time.{Duration, LocalDate, OffsetDateTime}
 import java.util.{Objects, UUID}
@@ -125,15 +125,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       oneOfVis.forall(_.visitNull(index)) &&
       const.forall(c => c == null) &&
       (enuum.isEmpty || enuum.get.contains(null)) &&
-      ifVis.forall(vis => {
-        if (elseVis.isEmpty && thenVis.isEmpty) true
-        else {
-          val iff = vis.visitNull(index)
-          if (iff && thenVis.nonEmpty) thenVis.get.visitNull(index)
-          else if (!iff && elseVis.nonEmpty) elseVis.get.visitNull(index)
-          else true
-        }
-      })
+      ifVis.forall(vis => if_then_else(vis.visitNull(index),
+        thenVis.map(_.visitNull(index)), elseVis.map(_.visitNull(index))))
   }
 
   override def visitFalse(index: Int): Boolean = {
@@ -145,15 +138,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       oneOfVis.forall(_.visitFalse(index)) &&
       const.forall(c => Objects.equals(c, false)) &&
       (enuum.isEmpty || enuum.get.contains(false)) &&
-      ifVis.forall(vis => {
-        if (elseVis.isEmpty && thenVis.isEmpty) true
-        else {
-          val iff = vis.visitFalse(index)
-          if (iff && thenVis.nonEmpty) thenVis.get.visitFalse(index)
-          else if (!iff && elseVis.nonEmpty) elseVis.get.visitFalse(index)
-          else true
-        }
-      })
+      ifVis.forall(vis => if_then_else(vis.visitFalse(index),
+        thenVis.map(_.visitFalse(index)), elseVis.map(_.visitFalse(index))))
   }
 
   override def visitTrue(index: Int): Boolean = {
@@ -163,15 +149,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       allOfVis.forall(_.visitTrue(index)) &&
       const.forall(c => Objects.equals(c, true)) &&
       (enuum.isEmpty || enuum.get.contains(true)) &&
-      ifVis.forall(vis => {
-        if (elseVis.isEmpty && thenVis.isEmpty) true
-        else {
-          val iff = vis.visitTrue(index)
-          if (iff && thenVis.nonEmpty) thenVis.get.visitTrue(index)
-          else if (!iff && elseVis.nonEmpty) elseVis.get.visitTrue(index)
-          else true
-        }
-      })
+      ifVis.forall(vis => if_then_else(vis.visitTrue(index),
+        thenVis.map(_.visitTrue(index)), elseVis.map(_.visitTrue(index))))
   }
 
   override def visitInt64(l: Long, index: Int): Boolean = {
@@ -198,15 +177,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       oneOfVis.forall(_.visitInt64(l, index)) &&
       const.forall(c => Objects.equals(c, l)) &&
       (enuum.isEmpty || enuum.get.contains(l)) &&
-      ifVis.forall(vis => {
-        if (elseVis.isEmpty && thenVis.isEmpty) true
-        else {
-          val iff = vis.visitInt64(l, index)
-          if (iff && thenVis.nonEmpty) thenVis.get.visitInt64(l, index)
-          else if (!iff && elseVis.nonEmpty) elseVis.get.visitInt64(l, index)
-          else true
-        }
-      })
+      ifVis.forall(vis => if_then_else(vis.visitInt64(l, index),
+        thenVis.map(_.visitInt64(l, index)), elseVis.map(_.visitInt64(l, index))))
   }
 
   override def visitFloat64(d: Double, index: Int): Boolean = {
@@ -235,20 +207,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       oneOfVis.forall(_.visitFloat64(d, index)) &&
       const.forall(c => Objects.equals(c, d)) &&
       (enuum.isEmpty || enuum.get.contains(d)) &&
-      ifVis.forall(vis => {
-        if (elseVis.isEmpty && thenVis.isEmpty) true
-        else {
-          val iff = vis.visitFloat64(d, index)
-          if (iff && thenVis.nonEmpty) thenVis.get.visitFloat64(d, index)
-          else if (!iff && elseVis.nonEmpty) elseVis.get.visitFloat64(d, index)
-          else true
-        }
-      })
+      ifVis.forall(vis => if_then_else(vis.visitFloat64(d, index),
+        thenVis.map(_.visitFloat64(d, index)), elseVis.map(_.visitFloat64(d, index))))
   }
-
-  private def asBigDec(num: Long | Double) = num match
-    case l: Long => BigDecimal.valueOf(l)
-    case d: Double => BigDecimal.valueOf(d)
 
   override def visitString(s: CharSequence, index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("string")) &&
@@ -272,15 +233,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       oneOfVis.forall(_.visitString(s, index)) &&
       const.forall(c => Objects.equals(c, s)) &&
       (enuum.isEmpty || enuum.get.exists(el => Objects.equals(el, s))) &&
-      ifVis.forall(vis => {
-        if (elseVis.isEmpty && thenVis.isEmpty) true
-        else {
-          val iff = vis.visitString(s, index)
-          if (iff && thenVis.nonEmpty) thenVis.get.visitString(s, index)
-          else if (!iff && elseVis.nonEmpty) elseVis.get.visitString(s, index)
-          else true
-        }
-      })
+      ifVis.forall(vis => if_then_else(vis.visitString(s, index),
+        thenVis.map(_.visitString(s, index)), elseVis.map(_.visitString(s, index))))
   }
 
   /*
@@ -310,16 +264,15 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     contains.foreach(vis => insVisitors.addOne(vis))
     ifVis.foreach(vis =>
-      if (elseVis.isEmpty && thenVis.isEmpty) ()
+      if (thenVis.isEmpty && elseVis.isEmpty) ()
       else {
         val viss: mutable.Buffer[ArrVisitor[_, Boolean]] = mutable.ArrayBuffer(vis.visitArray(length, index))
         if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitArray(length, index))
         if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitArray(length, index))
-        insVisitors.addOne(new CompositeArrVisitorReducer(bls => {
-          val iff = bls.head
-          if (iff && thenVis.nonEmpty) bls(1)
-          else if (!iff && elseVis.nonEmpty) bls(2)
-          else true
+        insVisitors.addOne(new CompositeArrVisitorReducer(iffBools => {
+          if_then_else(iffBools.head,
+            thenVis.map(_ => iffBools(1)),
+            elseVis.map(_ => if (thenVis.isEmpty) iffBools(1) else iffBools(2)))
         }, viss.toSeq: _*))})
 
     if (const.nonEmpty || enuum.nonEmpty || (uniqueItems.nonEmpty && uniqueItems.get))
@@ -328,7 +281,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         const.foreach(c => res = res && Objects.equals(const.get, arr))
         enuum.foreach(en => res = res && en.exists(el => Objects.equals(el, arr)))
         uniqueItems.foreach(b => res = {
-          val set = scala.collection.mutable.Set[Any]()
+          val set = collection.mutable.Set[Any]()
           res && arr.forall(set.add)
         })
 
@@ -392,16 +345,15 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
     ifVis.foreach(vis =>
-      if (elseVis.isEmpty && thenVis.isEmpty) ()
+      if (thenVis.isEmpty && elseVis.isEmpty) ()
       else {
         val viss: mutable.Buffer[ObjVisitor[_, Boolean]] = mutable.ArrayBuffer(vis.visitObject(length, index))
         if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitObject(length, index))
         if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitObject(length, index))
-        insVisitors.addOne(new CompositeObjVisitorReducer(bls => {
-          val iff = bls.head
-          if (iff && thenVis.nonEmpty) bls(1)
-          else if (!iff && elseVis.nonEmpty) bls(2)
-          else true
+        insVisitors.addOne(new CompositeObjVisitorReducer(iffBools => {
+          if_then_else(iffBools.head,
+            thenVis.map(_ => iffBools(1)),
+            elseVis.map(_ => if (thenVis.isEmpty) iffBools(1) else iffBools(2)))
         }, viss.toSeq: _*))
       })
 
@@ -495,4 +447,16 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       }
     }
   }
+}
+
+object ObjectSchemaValidator {
+  private def if_then_else(iff: Boolean, thenn: Option[Boolean], els: Option[Boolean]): Boolean = {
+    if (iff && thenn.nonEmpty) thenn.get
+    else if (!iff && els.nonEmpty) els.get
+    else true
+  }
+
+  private def asBigDec(num: Long | Double) = num match
+    case l: Long => BigDecimal.valueOf(l)
+    case d: Double => BigDecimal.valueOf(d)
 }
