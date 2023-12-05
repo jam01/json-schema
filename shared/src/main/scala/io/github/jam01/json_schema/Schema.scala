@@ -44,6 +44,6 @@ case object False extends BooleanSchema {
  * @param parent   the parent schema, if any
  */
 final case class ObjectSchema(protected val mMap: LinkedHashMap[String, Any],
-                              docbase: String,
+                              docbase: Uri,
                               prel: Option[String] = None,
                               parent: Option[ObjectSchema] = None) extends ObjSchema with Schema

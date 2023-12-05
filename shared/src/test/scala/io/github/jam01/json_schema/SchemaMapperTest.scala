@@ -11,7 +11,7 @@ class SchemaMapperTest {
     "maxLength" -> 16,
     "minLength" -> 3,
   )
-  val strSch: ObjectSchema = ObjectSchema(lhm, "mem://test")
+  val strSch: ObjectSchema = ObjectSchema(lhm, Uri.of("mem://test"))
 
   val lhm2: LinkedHashMap[String, Any] = LinkedHashMap(
     "type" -> "array",
@@ -19,7 +19,7 @@ class SchemaMapperTest {
     "minItems" -> 2,
     "items" -> strSch
   )
-  val arrSch: ObjectSchema = ObjectSchema(lhm2, "mem://test")
+  val arrSch: ObjectSchema = ObjectSchema(lhm2, Uri.of("mem://test"))
 
 
   val lhm4: LinkedHashMap[String, Any] = LinkedHashMap(
@@ -31,11 +31,11 @@ class SchemaMapperTest {
       "arr" -> arrSch,
       "obj" -> ObjectSchema(LinkedHashMap(
         "type" -> "object",
-        "maxProperties" -> 1), "mem://test")
+        "maxProperties" -> 1), Uri.of("mem://test"))
     ),
     "required" -> Seq("foo")
   )
-  val objSch: ObjectSchema = ObjectSchema(lhm4, "mem://test")
+  val objSch: ObjectSchema = ObjectSchema(lhm4, Uri.of("mem://test"))
 
   @Test
   @Disabled

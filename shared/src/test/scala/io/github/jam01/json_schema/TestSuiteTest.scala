@@ -29,6 +29,7 @@ object TestSuiteTest {
     args.addAll(args_provider("test-suite/tests/draft2020-12/const.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/contains.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/defs.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/dynamicRef.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/enum.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/exclusiveMaximum.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/exclusiveMinimum.json"))
@@ -65,7 +66,7 @@ object TestSuiteTest {
 
     suite.foreach { testcase =>
       testcase.obj.get("tests").get.arr.foreach { test =>
-        val reg = mutable.Map[String, Schema]()
+        val reg = mutable.Map[Uri, Schema]()
         args.add(Arguments.of(
           path,
           testcase.obj.get("description").get.str,

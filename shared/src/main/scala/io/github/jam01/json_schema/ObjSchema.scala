@@ -1,8 +1,8 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.json_schema.ObjSchema.{refError, resolve}
-import io.github.jam01.json_schema.SchemaMapper.conformUri
+import io.github.jam01.json_schema.ObjSchema.{refError}
 
+import java.net.URI
 import scala.collection.{Map, Seq, immutable}
 
 private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.scala-lang.org/tour/self-types.html
@@ -14,17 +14,17 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     getId.getOrElse(parent.map(_.getLocation + prel.get).getOrElse(docbase))
   }
 
-  def getBase: String = {
+  def getBase: Uri = {
     val base = parent.map(_.getBase).getOrElse(docbase)
-    getId.map(id => resolve(base, id)).getOrElse(base)
+    getId.map(id => base.resolve(id)).getOrElse(base)
   }
 
-  def getRef: Option[String] = {
-    getString("$ref").map(ref => conformUri(resolve(getBase, ref)))
+  def getRef: Option[Uri] = {
+    getString("$ref").map(ref => getBase.resolve(ref))
   }
 
-  def getDynRef: Option[String] = {
-    getString("$dynamicRef").map(dynref => conformUri(resolve(getBase, dynref)))
+  def getDynRef: Option[Uri] = {
+    getString("$dynamicRef").map(dynref => getBase.resolve(dynref, true))
   }
 
   def get(s: String): Option[Any] = {
@@ -266,17 +266,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
 }
 
 object ObjSchema {
-  private def appendedRefToken(loc: String, refTok: String): String =
-    loc + "/" + refTok // TODO: escape and check if needs to add #
-
   // check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Unit =
     throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
-
-  private def resolve(base: String, ref: String): String = {
-    val uri = java.net.URI(ref)
-    if (uri.isAbsolute) uri.toString
-    else if (base.startsWith("urn:")) base + uri
-    else java.net.URI(base).resolve(uri).toString
-  }
 }
