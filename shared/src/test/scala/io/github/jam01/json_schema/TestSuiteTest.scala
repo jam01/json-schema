@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 
-import java.nio.file.Paths
-import java.util
+import java.nio.file.{Files, Paths}
+import java.util.*
 import scala.collection.mutable
 
 class TestSuiteTest {
@@ -19,8 +19,22 @@ class TestSuiteTest {
 }
 
 object TestSuiteTest {
-  def args_provider: java.util.List[Arguments] = {
-    val args = new util.ArrayList[Arguments]()
+  val registry: mutable.Map[Uri, Schema] = {
+    val res = mutable.Map[Uri, Schema]()
+    val stream = Files.walk(Paths.get(getClass.getClassLoader.getResource("test-suite/remotes/draft2020-12/").toURI))
+    try {
+      stream.filter(Files.isRegularFile(_))
+        .forEach(p => {
+          //println(p.toString)
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR("file:" + p.toString, reg = res))
+        })
+    } finally if (stream != null) stream.close()
+
+    res
+  }
+
+  def args_provider: List[Arguments] = {
+    val args = new ArrayList[Arguments]()
     args.addAll(args_provider("test-suite/tests/draft2020-12/additionalProperties.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/allOf.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/anchor.json"))
@@ -60,20 +74,20 @@ object TestSuiteTest {
     args
   }
 
-  def args_provider(path: String): java.util.List[Arguments] = {
+  def args_provider(path: String): List[Arguments] = {
     val suite = ujson.read(ujson.Readable.fromPath(Paths.get(getClass.getClassLoader.getResource(path).toURI))).arr
-    val args = new util.ArrayList[Arguments]()
+    val args = new ArrayList[Arguments]()
 
     suite.foreach { testcase =>
       testcase.obj.get("tests").get.arr.foreach { test =>
-        val reg = mutable.Map[Uri, Schema]()
+        val reg = registry
         args.add(Arguments.of(
           path,
           testcase.obj.get("description").get.str,
           test.obj.get("description").get.str,
           test.obj.get("data").get,
           test.obj.get("valid").get.bool,
-          testcase.obj.get("schema").get.transform(SchemaR("test", reg = reg)),
+          testcase.obj.get("schema").get.transform(SchemaR("urn:uuid:" + UUID.randomUUID().toString, reg = reg)),
           Context(mutable.Stack(""), reg)))
       }
     }
