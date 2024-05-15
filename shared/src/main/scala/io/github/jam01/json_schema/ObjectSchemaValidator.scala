@@ -88,9 +88,11 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         var res = matched > 0
         if (minContains.nonEmpty) {
           if (minContains.get == 0) res = true
-          res = res && (matched >= minContains.get)
+          else res = res && (matched >= minContains.get)
         }
-        if (maxContains.nonEmpty) res = res && (matched <= maxContains.get)
+        if (maxContains.nonEmpty) {
+          res = res && (matched <= maxContains.get)
+        }
         res
       }
     })
@@ -438,7 +440,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
         var isAddl = true // if not in properties or matched patterns
         if (properties.nonEmpty && properties.get.contains(currentKey)) { isAddl = false; childVisitors.addOne(propsVisitor.get) }
-        if (matchedPatternSchs.nonEmpty && matchedPatternSchs.nonEmpty) { isAddl = false; childVisitors.addOne(patternPropsVisitor.get) }
+        if (matchedPatternSchs.nonEmpty) { isAddl = false; childVisitors.addOne(patternPropsVisitor.get) }
         if (isAddl) addlPropsVis.foreach(vis => childVisitors.addOne(vis))
 
         // TODO: add other child-applicators
