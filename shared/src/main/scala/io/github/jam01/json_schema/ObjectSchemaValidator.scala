@@ -110,6 +110,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val maxProperties: Option[Int] = schema.getInt("maxProperties")
   private val minProperties: Option[Int] = schema.getInt("minProperties")
   private val required: collection.Seq[String] = schema.getStringArray("required")
+  private val propNymVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaOpt("propertyNames")
+    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("propertyNames"), ctx, Some(this)))
   private val properties: Option[collection.Map[String, Schema]] = schema.getAsSchemaObjectOpt("properties")
   private val patternProperties: Option[collection.Map[Regex, Schema]] = schema.getAsSchemaObjectOpt("patternProperties")
     .map(obj => obj.map(entry => (new Regex(entry._1).unanchored, entry._2)))
@@ -391,6 +393,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
     new ObjVisitor[Any, Boolean] {
       private val propsVisited = mutable.ArrayBuffer.empty[String] // properties visited
+      private var propNamesValid = true
       private var currentKey: String = "?"
 
       // returns subVisitor based on currentKey
@@ -421,7 +424,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
 
         override def visitString(s: CharSequence, index1: Int): Any = {
           currentKey = s.toString
-          // TODO: propertyNames
+          if (propNymVis.nonEmpty) propNamesValid = propNamesValid && propNymVis.get.visitString(s, index1)
           propsVisited.addOne(currentKey)
           matchedPatternSchs = patternProperties.map(m => m
             .withFilter(entry => entry._1.matches(currentKey))
@@ -461,7 +464,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           propsVisitor.forall(_.visitEnd(index)) &&
           patternPropsVisitor.forall(_.visitEnd(index)) &&
           addlPropsVis.forall(_.visitEnd(index)) &&
-          insVisitor.visitEnd(index)
+          insVisitor.visitEnd(index) &&
+          propNamesValid
       }
     }
   }

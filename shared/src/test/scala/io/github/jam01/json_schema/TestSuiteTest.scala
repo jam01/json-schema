@@ -78,6 +78,7 @@ object TestSuiteTest {
     args.addAll(args_provider("test-suite/tests/draft2020-12/pattern.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/prefixItems.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/properties.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/propertyNames.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/ref.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/required.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/type.json"))
