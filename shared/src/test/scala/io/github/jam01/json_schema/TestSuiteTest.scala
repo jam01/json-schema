@@ -21,14 +21,26 @@ class TestSuiteTest {
 object TestSuiteTest {
   val registry: mutable.Map[Uri, Schema] = {
     val res = mutable.Map[Uri, Schema]()
-    val stream = Files.walk(Paths.get(getClass.getClassLoader.getResource("test-suite/remotes/draft2020-12/").toURI))
+
+    // load remotes
+    val remotes = Files.walk(Paths.get(getClass.getClassLoader.getResource("test-suite/remotes/draft2020-12/").toURI))
     try {
-      stream.filter(Files.isRegularFile(_))
+      remotes.filter(Files.isRegularFile(_))
         .forEach(p => {
           //println(p.toString)
           ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR("file:" + p.toString, reg = res))
         })
-    } finally if (stream != null) stream.close()
+    } finally if (remotes != null) remotes.close()
+
+    // load meta-schema
+    val meta = Files.walk(Paths.get(getClass.getClassLoader.getResource("meta/").toURI))
+    try {
+      meta.filter(Files.isRegularFile(_))
+        .forEach(p => {
+          //println(p.toString)
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR("file:" + p.toString, reg = res))
+        })
+    } finally if (meta != null) meta.close()
 
     res
   }
