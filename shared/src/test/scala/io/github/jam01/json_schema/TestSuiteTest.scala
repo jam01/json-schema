@@ -55,6 +55,8 @@ object TestSuiteTest {
     args.addAll(args_provider("test-suite/tests/draft2020-12/const.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/contains.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/defs.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/dependentRequired.json"))
+    args.addAll(args_provider("test-suite/tests/draft2020-12/dependentSchemas.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/dynamicRef.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/enum.json"))
     args.addAll(args_provider("test-suite/tests/draft2020-12/exclusiveMaximum.json"))

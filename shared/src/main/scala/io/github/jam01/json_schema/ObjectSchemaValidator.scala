@@ -128,7 +128,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     })
   private val depSchsViss: Option[collection.Map[String, JsonVisitor[_, Boolean]]] = schema.getAsSchemaObjectOpt("dependentSchemas")
     .map(obj => obj.map(entry => (entry._1, SchemaValidator.of(entry._2, schloc.appendRefTokens("dependentSchemas", entry._1), ctx, Some(this)))))
-  schema.getAsSchemaObjectOpt("dependentRequired")
+  private val depReq: Option[collection.Map[String, Any]] = schema.getObjectOpt("dependentRequired")
 
   override def visitNull(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("null")) &&
@@ -478,7 +478,10 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           patternPropsVisitor.forall(_.visitEnd(index)) &&
           addlPropsVis.forall(_.visitEnd(index)) &&
           insVisitor.visitEnd(index) &&
-          propNamesValid
+          propNamesValid &&
+          depReq.forall(map => map.filter((k, reqs) => propsVisited.contains(k))
+          .map((k, reqs) => reqs.asInstanceOf[Iterable[String]].forall(rreq => propsVisited.contains(rreq)))
+          .forall(identity))
       }
     }
   }
