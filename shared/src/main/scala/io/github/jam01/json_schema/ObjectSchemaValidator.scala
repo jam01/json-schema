@@ -126,6 +126,9 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
       override def visitEnd(index: Int): Boolean = subsch
     })
+  private val depSchsViss: Option[collection.Map[String, JsonVisitor[_, Boolean]]] = schema.getAsSchemaObjectOpt("dependentSchemas")
+    .map(obj => obj.map(entry => (entry._1, SchemaValidator.of(entry._2, schloc.appendRefTokens("dependentSchemas", entry._1), ctx, Some(this)))))
+  schema.getAsSchemaObjectOpt("dependentRequired")
 
   override def visitNull(index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("null")) &&
@@ -356,6 +359,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[_, Boolean] = {
+    val propsVisited = mutable.ArrayBuffer.empty[String] // properties visited
+
     val insVisitors = mutable.ArrayBuffer.empty[ObjVisitor[_, Boolean]]
     _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
@@ -383,6 +388,15 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         enuum.foreach(en => res = res && en.exists(el => Objects.equals(el, obj)))
         res
       }))
+
+    val depSchsObjViss: Option[collection.Map[String, ObjVisitor[_, (String, Boolean)]]] =
+      depSchsViss.map(viss => viss.map(entry => (entry._1, MapObjContext(entry._2.visitObject(length, index), b => (entry._1, b)))))
+    depSchsObjViss.foreach(viss =>
+      insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq: _*), tups => {
+        tups.filter((k, b) => propsVisited.contains(k))
+          .forall((k, b) => b)
+      }))
+    )
     // TODO: add other instance applicators
 
     val insVisitor: ObjVisitor[_, Boolean] =
@@ -392,7 +406,6 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
     var childVisitor: ObjVisitor[_, _] = null // to be assigned based on child
 
     new ObjVisitor[Any, Boolean] {
-      private val propsVisited = mutable.ArrayBuffer.empty[String] // properties visited
       private var propNamesValid = true
       private var currentKey: String = "?"
 
