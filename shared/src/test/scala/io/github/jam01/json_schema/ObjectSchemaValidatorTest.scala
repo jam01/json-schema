@@ -85,7 +85,7 @@ class ObjectSchemaValidatorTest {
   @Test
   def valid_arr_ref(): Unit = {
     val refSch = ObjectSchema(LinkedHashMap("type" -> "array", "minItems" -> 1), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack.empty, Map(Uri.of("str") -> refSch))
+    val ctx = Context(mutable.Stack.empty, Map(Uri.of("mem://test/str") -> refSch))
     val lhm3 = lhm2.clone().addOne("$ref" -> "str")
     val arrSchRef = ObjectSchema(lhm3, Uri.of("mem://test"))
 
@@ -98,7 +98,7 @@ class ObjectSchemaValidatorTest {
   @Test
   def invalid_arr_ref(): Unit = { // base schema dictates arr, but $ref dictates string
     val refSch = ObjectSchema(LinkedHashMap("type" -> "string"), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack.empty, Map(Uri.of("str") -> refSch))
+    val ctx = Context(mutable.Stack.empty, Map(Uri.of("mem://test/str") -> refSch))
     val lhm3 = lhm2.clone().addOne("$ref" -> "str")
     val arrSchRef = ObjectSchema(lhm3, Uri.of("mem://test"))
 
@@ -176,7 +176,7 @@ class ObjectSchemaValidatorTest {
   @Test
   def valid_obj_ref(): Unit = {
     val refSch = ObjectSchema(LinkedHashMap("required" -> Seq("null")), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack.empty, Map(Uri.of("nullreq") -> refSch))
+    val ctx = Context(mutable.Stack.empty, Map(Uri.of("mem://test/nullreq") -> refSch))
     val lhm3 = lhm4.clone().addOne("$ref" -> "nullreq")
     val objSchRef = ObjectSchema(lhm3, Uri.of("mem://test"))
 
@@ -189,7 +189,7 @@ class ObjectSchemaValidatorTest {
   @Test
   def invalid_obj_ref(): Unit = { // base schema dictates obj, but $ref dictates string
     val refSch = ObjectSchema(LinkedHashMap("type" -> "string"), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack.empty, Map(Uri.of("str") -> refSch))
+    val ctx = Context(mutable.Stack.empty, Map(Uri.of("mem://test/str") -> refSch))
     val lhm3 = lhm4.clone().addOne("$ref" -> "str")
     val objSchRef = ObjectSchema(lhm3, Uri.of("mem://test"))
 
