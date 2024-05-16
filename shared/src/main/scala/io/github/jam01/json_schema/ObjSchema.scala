@@ -59,38 +59,6 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the long associated with the given key.
-   *
-   * @throws ClassCastException if the value is not a long
-   * @param s the entry key
-   * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
-   */
-  def getLong(k: String): Option[Long] = {
-    value.get(k).map {
-      case Num(num) => num match
-        case l: Long => l
-        case _ => throw IllegalStateException("Expected Long")
-      case _ => throw IllegalStateException("Expected Long")
-    }
-  }
-
-  /**
-   * Optionally returns the double associated with the given key.
-   *
-   * @throws ClassCastException if the value is not a double
-   * @param s the entry key
-   * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
-   */
-  def getDouble(k: String): Option[Double] = {
-    value.get(k).map {
-      case Num(num) => num match
-        case d: Double => d
-        case _ => throw IllegalStateException("Expected Double")
-      case _ => throw IllegalStateException("Expected Double")
-    }
-  }
-
-  /**
    * Optionally returns the long or double associated with the given key.
    *
    * @throws ClassCastException if the value is not a double
