@@ -1,14 +1,14 @@
 package upickle.jsoniter
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec, JsonWriter}
-import io.github.jam01.json_schema.Transformer
+import io.github.jam01.json_schema.{Null, Transformer, Value}
 
-object VisitorEncoder extends JsonValueCodec[Any] {
-  override def nullValue: Any = null
+object VisitorEncoder extends JsonValueCodec[Value] {
+  override def nullValue: Value = Null
 
-  override def decodeValue(in: JsonReader, default: Any): Any =
+  override def decodeValue(in: JsonReader, default: Value): Value =
     throw new UnsupportedOperationException("only supports encoding")
 
-  override def encodeValue(x: Any, out: JsonWriter): Unit =
+  override def encodeValue(x: Value, out: JsonWriter): Unit =
     Transformer.transform(x, new JsonWriterVisitor(out))
 }

@@ -68,6 +68,7 @@ object Value {
   given iterable2Obj[T](using f: T => Value): Conversion[IterableOnce[(String, T)], Obj] with
     override def apply(it: IterableOnce[(String, T)]): Obj = Obj(LinkedHashMap(it.iterator.map(x => (x._1, f(x._2)))))
   given Conversion[Boolean, Bool] = (i: Boolean) => if (i) True else False
+  given Conversion[Int, Num] = (i: Int) => Num(i: Long)
   given Conversion[Long, Num] = (i: Long) => Num(i)
   given Conversion[Float, Num] = (i: Float) => Num(i)
   given Conversion[Double, Num] = (i: Double) => Num(i)
