@@ -5,6 +5,7 @@ import upickle.core.{LinkedHashMap, Visitor}
 object Transformer extends upickle.core.Transformer[Value] {
   override def transform[T](o: Value, v: Visitor[_, T]): T = { // see ujson.Value#transform
     o match
+      case null => v.visitNull(-1)
       case Null => v.visitNull(-1)
       case Bool(bool) => if (bool) v.visitTrue(-1) else v.visitFalse(-1)
       case Num(num) => num match

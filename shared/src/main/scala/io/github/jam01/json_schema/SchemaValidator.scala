@@ -7,6 +7,6 @@ object SchemaValidator {
          dynParent: Option[ObjectSchemaValidator] = None): JsonVisitor[_, Boolean] = {
     sch match
       case bs: BooleanSchema => BooleanSchemaValidator.of(bs)
-      case os: ObjectSchema => ObjectSchemaValidator(os, schLoc, ctx, dynParent)
+      case os: ObjectSchema => ObjectSchemaValidator.validate(os, schLoc, ctx, dynParent)
   }
 }
