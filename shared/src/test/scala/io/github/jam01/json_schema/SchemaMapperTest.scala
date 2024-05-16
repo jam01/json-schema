@@ -2,39 +2,40 @@ package io.github.jam01.json_schema
 
 import org.junit.jupiter.api.{Assertions, Disabled, Test}
 import ujson.StringParser
+import upickle.core.LinkedHashMap
 //import upickle.default.*
 
 class SchemaMapperTest {
-  val lhm: LinkedHashMap[String, Any] = LinkedHashMap(
-    "type" -> "string",
-    "pattern" -> ".*",
-    "maxLength" -> 16,
-    "minLength" -> 3,
-  )
+  val lhm: LinkedHashMap[String, Value] = LinkedHashMap(Seq(
+    "type" -> Str("string"),
+    "pattern" -> Str(".*"),
+    "maxLength" -> Num(16L),
+    "minLength" -> Num(3L),
+  ))
   val strSch: ObjectSchema = ObjectSchema(lhm, Uri.of("mem://test"))
 
-  val lhm2: LinkedHashMap[String, Any] = LinkedHashMap(
-    "type" -> "array",
-    "maxItems" -> 4,
-    "minItems" -> 2,
+  val lhm2: LinkedHashMap[String, Value] = LinkedHashMap(Seq(
+    "type" -> Str("array"),
+    "maxItems" -> Num(4L),
+    "minItems" -> Num(2L),
     "items" -> strSch
-  )
+  ))
   val arrSch: ObjectSchema = ObjectSchema(lhm2, Uri.of("mem://test"))
 
 
-  val lhm4: LinkedHashMap[String, Any] = LinkedHashMap(
-    "type" -> "object",
-    "maxProperties" -> 2,
-    "minProperties" -> 1,
-    "properties" -> LinkedHashMap(
+  val lhm4: LinkedHashMap[String, Value] = LinkedHashMap(Seq(
+    "type" -> Str("object"),
+    "maxProperties" -> Num(2L),
+    "minProperties" -> Num(1L),
+    "properties" -> Obj(LinkedHashMap(Seq(
       "foo" -> strSch,
       "arr" -> arrSch,
-      "obj" -> ObjectSchema(LinkedHashMap(
-        "type" -> "object",
-        "maxProperties" -> 1), Uri.of("mem://test"))
-    ),
-    "required" -> Seq("foo")
-  )
+      "obj" -> ObjectSchema(LinkedHashMap(Seq(
+        "type" -> Str("object"),
+        "maxProperties" -> Num(1L))), Uri.of("mem://test"))
+    ))),
+    "required" -> Arr(Str("foo"))
+  ))
   val objSch: ObjectSchema = ObjectSchema(lhm4, Uri.of("mem://test"))
 
   @Test
@@ -51,14 +52,14 @@ class SchemaMapperTest {
   def _true(): Unit = {
     val jsonStr = "true"
     val sch = StringParser.transform(jsonStr, new SchemaR("(test)"))
-    Assertions.assertEquals(True, sch)
+    Assertions.assertEquals(TrueSchema, sch)
   }
 
   @Test
   def _false(): Unit = {
     val jsonStr = "false"
     val sch = StringParser.transform(jsonStr, new SchemaR("(test)"))
-    Assertions.assertEquals(False, sch)
+    Assertions.assertEquals(FalseSchema, sch)
   }
 
   @Test

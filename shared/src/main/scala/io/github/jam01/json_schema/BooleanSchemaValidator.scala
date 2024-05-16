@@ -32,7 +32,9 @@ object BooleanSchemaValidator {
   }
   
   def of(bsch: BooleanSchema): BooleanSchemaValidator =
-    if (bsch.value) True else False
+    bsch match
+      case TrueSchema => True
+      case FalseSchema => False
 }
 
 private abstract class BooleanSchemaValidator(bool: Boolean) extends JsonVisitor[Boolean, Boolean] {

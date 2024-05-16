@@ -1,6 +1,120 @@
 package io.github.jam01.json_schema
 
-sealed trait Schema {
+import upickle.core.LinkedHashMap
+
+import scala.collection.mutable
+
+sealed trait Value {
+  def value: Any
+
+  /**
+   * Returns the `String` value of this [[Value]], fails if it is not
+   * a [[Str]]
+   */
+  def str: String = this match {
+    case Str(value) => value
+    case _ => throw IllegalStateException("Expected Str")
+  }
+
+  /**
+   * Returns the key/value map of this [[Value]], fails if it is not
+   * a [[Obj]]
+   */
+  def obj: collection.Map[String, Value] = this match {
+    case Obj(value) => value
+    case _ => throw IllegalStateException("Expected Object")
+  }
+
+  /**
+   * Returns the elements of this [[Value]], fails if it is not
+   * a [[Arr]]
+   */
+  def arr: collection.Seq[Value] = this match {
+    case Arr(value) => value
+    case _ => throw IllegalStateException("Expected Array")
+  }
+
+  /**
+   * Returns the `Double` value of this [[Value]], fails if it is not
+   * a [[Num]]
+   */
+  def num: Long | Double = this match {
+    case Num(value) => value
+    case _ => throw IllegalStateException("Expected Number")
+  }
+
+  /**
+   * Returns the `Boolean` value of this [[Value]], fails if it is not
+   * a [[Bool]]
+   */
+  def bool: Boolean = this match {
+    case Bool(value) => value
+    case _ => throw IllegalStateException("Expected Boolean")
+  }
+
+  /**
+   * Returns the `Schema` value of this [[Value]], fails if it is not
+   * a [[Schema]]
+   */
+  def sch: Schema = this match {
+    case value: Schema => value
+    case _ => throw IllegalStateException("Expected Schema")
+  }
+}
+
+case class Str(value: String) extends Value
+
+case class Obj(value: LinkedHashMap[String, Value]) extends Value
+
+object Obj {
+  def apply[V](item: (String, V),
+               items: (String, Value)*)(implicit conv: V => Value): Obj = {
+    val map = LinkedHashMap[String, Value]()
+    map.put(item._1, conv(item._2))
+    for (i <- items) map.put(i._1, i._2)
+    Obj(map)
+  }
+
+  def apply(): Obj = Obj(LinkedHashMap[String, Value]())
+}
+
+case class Arr(value: mutable.ArrayBuffer[Value]) extends Value
+
+object Arr {
+  def apply(items: Value*): Arr = {
+    val buf = new mutable.ArrayBuffer[Value](items.length)
+    items.foreach { item =>
+      buf += item
+    }
+    Arr(buf)
+  }
+}
+
+case class Num(value: Long | Double) extends Value
+
+sealed abstract class Bool extends Value {
+  def value: Boolean
+}
+
+object Bool {
+  def apply(value: Boolean): Bool = if (value) True else False
+
+  def unapply(bool: Bool): Some[Boolean] = Some(bool.value)
+}
+
+case object False extends Bool {
+  def value = false
+}
+
+case object True extends Bool {
+  def value = true
+}
+
+case object Null extends Value {
+  def value = null
+}
+
+sealed trait Schema extends Value {
   def schBy(ptr: JsonPointer): Schema = {
     if (ptr.refTokens.length == 1 && ptr.refTokens.head.isEmpty) return this
     schBy0(ptr)
@@ -17,17 +131,11 @@ sealed abstract class BooleanSchema extends Schema {
   }
 }
 
-object BooleanSchema {
-  def apply(value: Boolean): BooleanSchema = if (value) True else False
-
-  def unapply(bs: BooleanSchema): Some[Boolean] = Some(bs.value)
-}
-
-case object True extends BooleanSchema {
+case object TrueSchema extends BooleanSchema {
   def value = true
 }
 
-case object False extends BooleanSchema {
+case object FalseSchema extends BooleanSchema {
   def value = false
 }
 
@@ -38,12 +146,12 @@ case object False extends BooleanSchema {
 
 /**
  *
- * @param mMap     underlying Map of keywords -> values
- * @param docbase  a base uri assigned by the application
- * @param prel     the relative JSON pointer from the parent schema
- * @param parent   the parent schema, if any
+ * @param obj     underlying Map of keywords -> values
+ * @param docbase a base uri assigned by the application
+ * @param prel    the relative JSON pointer from the parent schema
+ * @param parent  the parent schema, if any
  */
-final case class ObjectSchema(protected val mMap: LinkedHashMap[String, Any],
+final case class ObjectSchema(value: LinkedHashMap[String, Value],
                               docbase: Uri,
                               prel: Option[String] = None,
                               parent: Option[ObjectSchema] = None) extends ObjSchema with Schema

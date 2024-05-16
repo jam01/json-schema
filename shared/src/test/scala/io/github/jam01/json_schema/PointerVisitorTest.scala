@@ -36,7 +36,7 @@ class CtxPointerVisitor(ctx: Context) extends JsonVisitor[_, Any] {
   override def visitFloat64(d: Double, index: Int): Any = ctx.insPtr
   override def visitInt64(i: Long, index: Int): Any = ctx.insPtr
   override def visitString(s: CharSequence, index: Int): Any = ctx.insPtr
-  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Map[String, Any]] = new CollectObjVisitor(this)
-  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[Any]] = new CollectArrVisitor(this)
+  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Map[String, Any]] = ???//new CollectObjVisitor(this)
+  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[Any]] = ???//new CollectArrVisitor(this)
 }
 

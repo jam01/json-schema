@@ -24,7 +24,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
                             val dynParent: Option[ObjectSchemaValidator] = None) extends JsonVisitor[_, Boolean] {
   // all
   private val tyype: collection.Seq[String] = schema.getAsStringArray("type")
-  private val notVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaOpt("not")
+  private val notVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("not")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("not"), ctx, Some(this)))
   private val _refVis: Option[JsonVisitor[_, Boolean]] = schema
     .getRef
@@ -38,22 +38,22 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("$dynamicRef"), ctx, Some(this)))
-  private val allOfVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaArrayOpt("allOf")
+  private val allOfVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaArrayOpt("allOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("allOf", schidx._2.toString), ctx, Some(this))))
     .map(schViss => new CompositeVisitorReducer(_.forall(identity), schViss.toSeq: _*))
-  private val oneOfVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaArrayOpt("oneOf")
+  private val oneOfVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaArrayOpt("oneOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("oneOf", schidx._2.toString), ctx, Some(this))))
     .map(schViss => new CompositeVisitorReducer(_.count(identity) == 1, schViss.toSeq: _*))
-  private val anyOfVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaArrayOpt("anyOf")
+  private val anyOfVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaArrayOpt("anyOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("anyOf", schidx._2.toString), ctx, Some(this))))
     .map(schViss => new CompositeVisitorReducer(_.exists(identity), schViss.toSeq: _*))
-  private val const: Option[Any] = schema.get("const")
-  private val enuum: Option[collection.Seq[Any]] = schema.getArrayOpt("enum")
-  private val ifVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaOpt("if")
+  private val const = schema.value.get("const")
+  private val enuum: Option[collection.Seq[Value]] = schema.getArrayOpt("enum")
+  private val ifVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("if")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("if"), ctx, Some(this)))
-  private val thenVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaOpt("then")
+  private val thenVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("then")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("then"), ctx, Some(this)))
-  private val elseVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaOpt("else")
+  private val elseVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("else")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("else"), ctx, Some(this)))
 
   // strings
@@ -73,11 +73,11 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   // arrays
   private val maxItems: Option[Int] = schema.getInt("maxItems")
   private val minItems: Option[Int] = schema.getInt("minItems")
-  private val prefixItems: Option[collection.Seq[Schema]] = schema.getAsSchemaArrayOpt("prefixItems")
+  private val prefixItems: Option[collection.Seq[Schema]] = schema.getSchemaArrayOpt("prefixItems")
   private val uniqueItems: Option[Boolean] = schema.getBoolean("uniqueItems")
   private val maxContains: Option[Int] = schema.getInt("maxContains")
   private val minContains: Option[Int] = schema.getInt("minContains")
-  private val contains: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("contains")
+  private val contains: Option[ArrVisitor[_, Boolean]] = schema.getSchemaOpt("contains")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("contains"), ctx, Some(this)))
     .map(schValidator => new ArrVisitor[Boolean, Boolean] {
       private var matched = 0
@@ -96,7 +96,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         res
       }
     })
-  private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getAsSchemaOpt("items")
+  private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getSchemaOpt("items")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx, Some(this)))
     .map(schValidator => new ArrVisitor[Boolean, Boolean] {
       private var subsch = true
@@ -110,12 +110,12 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
   private val maxProperties: Option[Int] = schema.getInt("maxProperties")
   private val minProperties: Option[Int] = schema.getInt("minProperties")
   private val required: collection.Seq[String] = schema.getStringArray("required")
-  private val propNymVis: Option[JsonVisitor[_, Boolean]] = schema.getAsSchemaOpt("propertyNames")
+  private val propNymVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("propertyNames")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("propertyNames"), ctx, Some(this)))
-  private val properties: Option[collection.Map[String, Schema]] = schema.getAsSchemaObjectOpt("properties")
-  private val patternProperties: Option[collection.Map[Regex, Schema]] = schema.getAsSchemaObjectOpt("patternProperties")
+  private val properties: Option[collection.Map[String, Schema]] = schema.getSchemaObjectOpt("properties")
+  private val patternProperties: Option[collection.Map[Regex, Schema]] = schema.getSchemaObjectOpt("patternProperties")
     .map(obj => obj.map(entry => (new Regex(entry._1).unanchored, entry._2)))
-  private val addlPropsVis: Option[ObjVisitor[_, Boolean]] = schema.getAsSchemaOpt("additionalProperties")
+  private val addlPropsVis: Option[ObjVisitor[_, Boolean]] = schema.getSchemaOpt("additionalProperties")
     .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("additionalProperties"), ctx, Some(this)))
     .map(schValidator => new ObjVisitor[Boolean, Boolean] {
       private var subsch = true
@@ -126,7 +126,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
       override def visitEnd(index: Int): Boolean = subsch
     })
-  private val depSchsViss: Option[collection.Map[String, JsonVisitor[_, Boolean]]] = schema.getAsSchemaObjectOpt("dependentSchemas")
+  private val depSchsViss: Option[collection.Map[String, JsonVisitor[_, Boolean]]] = schema.getSchemaObjectOpt("dependentSchemas")
     .map(obj => obj.map(entry => (entry._1, SchemaValidator.of(entry._2, schloc.appendRefTokens("dependentSchemas", entry._1), ctx, Some(this)))))
   private val depReq: Option[collection.Map[String, Any]] = schema.getObjectOpt("dependentRequired")
 
@@ -138,8 +138,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       allOfVis.forall(_.visitNull(index)) &&
       anyOfVis.forall(_.visitNull(index)) &&
       oneOfVis.forall(_.visitNull(index)) &&
-      const.forall(c => c == null) &&
-      (enuum.isEmpty || enuum.get.contains(null)) &&
+      const.forall(c => c == Null) &&
+      (enuum.isEmpty || enuum.get.contains(Null)) &&
       ifVis.forall(vis => if_then_else(vis.visitNull(index),
         thenVis.map(_.visitNull(index)), elseVis.map(_.visitNull(index))))
   }
@@ -152,8 +152,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       allOfVis.forall(_.visitFalse(index)) &&
       anyOfVis.forall(_.visitFalse(index)) &&
       oneOfVis.forall(_.visitFalse(index)) &&
-      const.forall(c => Objects.equals(c, false)) &&
-      (enuum.isEmpty || enuum.get.contains(false)) &&
+      const.forall(c => Objects.equals(c, False)) &&
+      (enuum.isEmpty || enuum.get.contains(False)) &&
       ifVis.forall(vis => if_then_else(vis.visitFalse(index),
         thenVis.map(_.visitFalse(index)), elseVis.map(_.visitFalse(index))))
   }
@@ -164,8 +164,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       _dynRefVis.forall(_.visitTrue(index)) &&
       notVis.forall(!_.visitTrue(index)) &&
       allOfVis.forall(_.visitTrue(index)) &&
-      const.forall(c => Objects.equals(c, true)) &&
-      (enuum.isEmpty || enuum.get.contains(true)) &&
+      const.forall(c => Objects.equals(c, True)) &&
+      (enuum.isEmpty || enuum.get.contains(True)) &&
       ifVis.forall(vis => if_then_else(vis.visitTrue(index),
         thenVis.map(_.visitTrue(index)), elseVis.map(_.visitTrue(index))))
   }
@@ -193,8 +193,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       allOfVis.forall(_.visitInt64(l, index)) &&
       anyOfVis.forall(_.visitInt64(l, index)) &&
       oneOfVis.forall(_.visitInt64(l, index)) &&
-      const.forall(c => Objects.equals(c, l)) &&
-      (enuum.isEmpty || enuum.get.contains(l)) &&
+      const.forall(c => Objects.equals(c.value, l)) &&
+      (enuum.isEmpty || enuum.get.contains(Num(l))) &&
       ifVis.forall(vis => if_then_else(vis.visitInt64(l, index),
         thenVis.map(_.visitInt64(l, index)), elseVis.map(_.visitInt64(l, index))))
   }
@@ -224,8 +224,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       allOfVis.forall(_.visitFloat64(d, index)) &&
       anyOfVis.forall(_.visitFloat64(d, index)) &&
       oneOfVis.forall(_.visitFloat64(d, index)) &&
-      const.forall(c => Objects.equals(c, d)) &&
-      (enuum.isEmpty || enuum.get.contains(d)) &&
+      const.forall(c => Objects.equals(c.value, d)) &&
+      (enuum.isEmpty || enuum.get.contains(Num(d))) &&
       ifVis.forall(vis => if_then_else(vis.visitFloat64(d, index),
         thenVis.map(_.visitFloat64(d, index)), elseVis.map(_.visitFloat64(d, index))))
   }
@@ -251,8 +251,8 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
       allOfVis.forall(_.visitString(s, index)) &&
       anyOfVis.forall(_.visitString(s, index)) &&
       oneOfVis.forall(_.visitString(s, index)) &&
-      const.forall(c => Objects.equals(c, s)) &&
-      (enuum.isEmpty || enuum.get.exists(el => Objects.equals(el, s))) &&
+      const.forall(c => Objects.equals(c.value, s)) &&
+      (enuum.isEmpty || enuum.get.exists(el => Objects.equals(el.value, s))) &&
       ifVis.forall(vis => if_then_else(vis.visitString(s, index),
         thenVis.map(_.visitString(s, index)), elseVis.map(_.visitString(s, index))))
   }
@@ -303,7 +303,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
         enuum.foreach(en => res = res && en.exists(el => Objects.equals(el, arr)))
         uniqueItems.foreach(b => res = {
           val set = collection.mutable.Set[Any]()
-          res && arr.forall(set.add)
+          res && arr.value.forall(set.add)
         })
 
         res
@@ -480,7 +480,7 @@ class ObjectSchemaValidator(val schema: ObjectSchema,
           insVisitor.visitEnd(index) &&
           propNamesValid &&
           depReq.forall(map => map.filter((k, reqs) => propsVisited.contains(k))
-          .map((k, reqs) => reqs.asInstanceOf[Iterable[String]].forall(rreq => propsVisited.contains(rreq)))
+          .map((k, reqs) => reqs.asInstanceOf[Arr].value.forall(rreq => propsVisited.contains(rreq.str)))
           .forall(identity))
       }
     }

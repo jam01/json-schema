@@ -1,6 +1,6 @@
 package io.github.jam01.json_schema
 
-import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
+import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visitor}
 
 import scala.collection.mutable
 
@@ -20,22 +20,23 @@ class SchemaR(docbase: String,
               ids: mutable.Buffer[(String, ObjectSchema)] = mutable.ArrayBuffer.empty,
               anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = mutable.ArrayBuffer.empty,
               parent: Option[ObjectSchema] = None,
-              private var prel: Option[String] = None) extends SimpleVisitor[Any, Schema] {
+              private var prel: Option[String] = None) extends SimpleVisitor[Value, Schema] {
   override def expectedMsg: String = "expected boolean or object"
 
   override def visitTrue(index: Int): Schema = {
-    if (parent.isEmpty) reg.addOne(Uri.of(docbase), True); True
+    if (parent.isEmpty) reg.addOne(Uri.of(docbase), TrueSchema); TrueSchema
   }
 
   override def visitFalse(index: Int): Schema = {
-    if (parent.isEmpty) reg.addOne(Uri.of(docbase), False); False
+    if (parent.isEmpty) reg.addOne(Uri.of(docbase), FalseSchema); FalseSchema
   }
 
-  override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Any, Schema] = new ObjVisitor[Any, ObjectSchema] {
-    val lhm: LinkedHashMap[String, Any] = LinkedHashMap.empty
+  override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Value, Schema] = new ObjVisitor[Value, ObjectSchema] {
+    val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
     var key: String = "?"
     val sch: ObjectSchema = ObjectSchema(lhm, Uri.of(docbase), prel, parent)
-    if (parent.isEmpty) reg.addOne(Uri.of(docbase), sch)
+    if (parent.isEmpty)
+      reg.addOne(Uri.of(docbase), sch)
 
     override def visitKey(index: Int): Visitor[_, _] = StringVisitor
 
@@ -46,11 +47,11 @@ class SchemaR(docbase: String,
       case "items" | "contains" | "additionalProperties" | "propertyNames" | "if" | "then" | "else" | "not" =>
         new SchemaR(docbase, reg, ids, anchors, Some(sch), Some(s"/$key"))
       // kws with map(key -> schema)
-      case "$defs" | "properties" | "patternProperties" | "dependentSchemas" => new SimpleVisitor[Schema, collection.Map[String, Schema]] {
+      case "$defs" | "properties" | "patternProperties" | "dependentSchemas" => new SimpleVisitor[Schema, Obj] {
         override def expectedMsg: String = "expected object"
 
-        override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Schema, collection.Map[String, Schema]] =
-          new CollectObjVisitor[Schema](new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) { // TODO: consider anon implementation
+        override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Schema, Obj] =
+          new CollectObjVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) { // TODO: consider anon implementation
             override def subVisitor: Visitor[_, _] = {
               vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$k");
               super.subVisitor
@@ -58,11 +59,11 @@ class SchemaR(docbase: String,
           }
       }
       // kws with seq(schema)
-      case "prefixItems" | "allOf" | "anyOf" | "oneOf" => new SimpleVisitor[Schema, collection.Seq[Schema]] {
+      case "prefixItems" | "allOf" | "anyOf" | "oneOf" => new SimpleVisitor[Schema, Arr] {
         override def expectedMsg: String = "expected array"
 
-        override def visitArray(length: Int, index: Int): ArrVisitor[Schema, collection.Seq[Schema]] =
-          new CollectArrVisitor[Schema](new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) { // TODO: consider anon implementation
+        override def visitArray(length: Int, index: Int): ArrVisitor[Schema, Arr] =
+          new CollectArrVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) { // TODO: consider anon implementation
             private var nextIdx = 0
 
             override def subVisitor: Visitor[_, _] = {
@@ -70,7 +71,7 @@ class SchemaR(docbase: String,
               super.subVisitor
             }
 
-            override def visitValue(v: Schema, index: Int): Unit = {
+            override def visitValue(v: Value, index: Int): Unit = {
               super.visitValue(v, index);
               nextIdx += 1
             }
@@ -79,11 +80,11 @@ class SchemaR(docbase: String,
       // non-schemas
       case _ => LiteralVisitor
 
-    override def visitValue(v: Any, index: Int): Unit = {
+    override def visitValue(v: Value, index: Int): Unit = {
       lhm.addOne(key, v)
-      if ("$id".equals(key)) ids.addOne(v.asInstanceOf[String], sch)
-      else if ("$anchor".equals(key)) anchors.addOne(v.asInstanceOf[String], false, sch)
-      else if ("$dynamicAnchor".equals(key)) anchors.addOne(v.asInstanceOf[String], true, sch)
+      if ("$id".equals(key)) ids.addOne(v.str, sch)
+      else if ("$anchor".equals(key)) anchors.addOne(v.str, false, sch)
+      else if ("$dynamicAnchor".equals(key)) anchors.addOne(v.str, true, sch)
     }
 
     override def visitEnd(index: Int): ObjectSchema = {

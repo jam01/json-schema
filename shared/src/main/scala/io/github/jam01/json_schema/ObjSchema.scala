@@ -1,6 +1,6 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.json_schema.ObjSchema.{refError}
+import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
 
 import java.net.URI
 import scala.collection.{Map, Seq, immutable}
@@ -8,10 +8,6 @@ import scala.collection.{Map, Seq, immutable}
 private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.scala-lang.org/tour/self-types.html
   def getId: Option[String] = {
     getString("$id")
-  }
-
-  def getLocation: String = {
-    getId.getOrElse(parent.map(_.getLocation + prel.get).getOrElse(docbase))
   }
 
   def getBase: Uri = {
@@ -27,10 +23,8 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     getString("$dynamicRef").map(dynref => getBase.resolve(dynref, true))
   }
 
-  def get(s: String): Option[Any] = {
-    val o = mMap.getValue(s)
-    if (mMap.containsKey(s) && o == null) Some(null)
-    else Option(o)
+  def get(k: String): Option[Value] = {
+    value.get(k)
   }
 
   /**
@@ -40,10 +34,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast as a boolean, or None if the entry has a null value or does not exist
    */
-  def getBoolean(s: String): Option[Boolean] = {
-    mMap.getValue(s) match
-      case null => None
-      case x => Some(x.asInstanceOf[Boolean])
+  def getBoolean(k: String): Option[Boolean] = {
+    value.get(k).map {
+      case Bool(b) => b
+      case _ => throw IllegalStateException("Expected Boolean")
+    }
   }
 
   // see: https://stackoverflow.com/q/11338954
@@ -54,11 +49,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast as a int, or None if the entry has a null value or does not exist
    */
-  def getInt(s: String): Option[Int] = {
-    mMap.getValue(s) match
-      case null => None
-      case n: Number => Some(n.intValue()) // TODO: should throw?
-      case x => Some(x.asInstanceOf[Int])
+  def getInt(k: String): Option[Int] = {
+    value.get(k).map {
+      case Num(num) => num match
+        case l: Long => l.intValue
+        case d: Double => d.intValue
+      case _ => throw IllegalStateException("Expected Integer")
+    }
   }
 
   /**
@@ -68,10 +65,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
    */
-  def getLong(s: String): Option[Long] = {
-    mMap.getValue(s) match
-      case null => None
-      case x => Some(x.asInstanceOf[Long])
+  def getLong(k: String): Option[Long] = {
+    value.get(k).map {
+      case Num(num) => num match
+        case l: Long => l
+        case _ => throw IllegalStateException("Expected Long")
+      case _ => throw IllegalStateException("Expected Long")
+    }
   }
 
   /**
@@ -81,10 +81,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
    */
-  def getDouble(s: String): Option[Double] = {
-    mMap.getValue(s) match
-      case null => None
-      case x => Some(x.asInstanceOf[Double])
+  def getDouble(k: String): Option[Double] = {
+    value.get(k).map {
+      case Num(num) => num match
+        case d: Double => d
+        case _ => throw IllegalStateException("Expected Double")
+      case _ => throw IllegalStateException("Expected Double")
+    }
   }
 
   /**
@@ -94,12 +97,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
    */
-  def getNumber(s: String): Option[Long | Double] = {
-    mMap.getValue(s) match
-      case null => None
-      case l: Long => Option(l)
-      case d: Double => Option(d)
-      case x => throw ClassCastException(s"class ${x.getClass.getName} cannot be cast to class java.lang.Long or java.lang.Double")
+  def getNumber(k: String): Option[Long | Double] = {
+    value.get(k).map {
+      case Num(num) => num
+      case _ => throw IllegalStateException("Expected Number")
+    }
   }
 
   /**
@@ -109,8 +111,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast as a String, or None if the entry has a null value or does not exist
    */
-  def getString(s: String): Option[String] = {
-    Option(mMap.getValue(s).asInstanceOf[String])
+  def getString(k: String): Option[String] = {
+    value.get(k).map {
+      case Str(str) => str
+      case _ => throw IllegalStateException("Expected String")
+    }
   }
 
   /**
@@ -118,10 +123,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    *
    * @throws ClassCastException if the value is not a JSON Object
    * @param s the entry key
-   * @return an Option of the value cast as a Map[String, Any], or None if the entry has a null value or does not exist
+   * @return an Option of the value cast as a Map[String, Value], or None if the entry has a null value or does not exist
    */
-  def getObjectOpt(s: String): Option[Map[String, Any]] = {
-    Option(mMap.getValue(s).asInstanceOf[Map[String, Any]])
+  def getObjectOpt(k: String): Option[Map[String, Value]] = {
+    value.get(k).map {
+      case Obj(obj) => obj
+      case _ => throw IllegalStateException("Expected Object")
+    }
   }
 
   /**
@@ -129,10 +137,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    *
    * @throws ClassCastException if the value is not a JSON Array
    * @param s the entry key
-   * @return an Option of the value cast as a Seq[Any], or None if the entry has a null value or does not exist
+   * @return an Option of the value cast as a Seq[Value], or None if the entry has a null value or does not exist
    */
-  def getArrayOpt(s: String): Option[Seq[Any]] = {
-    Option(mMap.getValue(s).asInstanceOf[Seq[Any]])
+  def getArrayOpt(k: String): Option[Seq[Value]] = {
+    value.get(k).map {
+      case Arr(arr) => arr
+      case _ => throw IllegalStateException("Expected Array")
+    }
   }
 
   /**
@@ -140,23 +151,14 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    *
    * @throws ClassCastException if the value is not an Array
    * @param s the entry key
-   * @return the value cast as Seq[Any], or an empty Seq if the entry has a null value or does not exist
+   * @return the value cast as Seq[Value], or an empty Seq if the entry has a null value or does not exist
    */
-  def getArray(s: String): Seq[Any] = {
-    mMap.getValue(s) match
-      case null => Seq.empty
-      case x: Any => x.asInstanceOf[Seq[Any]]
-  }
-
-  /**
-   * Optionally returns the JSON Array of Strings associated with the given key.
-   *
-   * @throws ClassCastException if the value is not a JSON Array of Strings
-   * @param s the entry key
-   * @return an Option of the value cast as a Seq[String], or None if the entry has a null value or does not exist
-   */
-  def getStringArrayOpt(s: String): Option[Seq[String]] = {
-    Option(mMap.getValue(s).asInstanceOf[Seq[String]])
+  def getArray(k: String): Seq[Value] = {
+    value.get(k) match
+      case None => Seq.empty
+      case Some(unk) => unk match
+        case Arr(arr) => arr
+        case _ => throw IllegalStateException("Expected Array")
   }
 
   /**
@@ -166,10 +168,12 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return the value cast as Seq[String], or an empty Seq if the entry has a null value or does not exist
    */
-  def getStringArray(s: String): Seq[String] = {
-    mMap.getValue(s) match
-      case null => Seq.empty
-      case x: Any => x.asInstanceOf[Seq[String]]
+  def getStringArray(k: String): Seq[String] = {
+    value.get(k) match
+      case None => Nil
+      case Some(unk) => unk match
+        case Arr(arr) => arr.map(_.str) // perf: consider using getArray and casting at item use-site
+        case _ => throw IllegalStateException("Expected Array")
   }
 
   /**
@@ -180,24 +184,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return the value cast or wrapped as Seq[String], or an empty Seq if the entry has a null value or does not exist
    */
-  def getAsStringArray(s: String): collection.Seq[String] = {
-    mMap.getValue(s) match
-      case seq: collection.Seq[Any] => seq.asInstanceOf[collection.Seq[String]]
-      case null => Nil
-      case x => immutable.Seq(x.asInstanceOf[String])
-  }
-
-  /**
-   * Returns the JSON Array of Objects associated with the given key.
-   *
-   * @throws ClassCastException if the value is not an Array
-   * @param s the entry key
-   * @return the value cast as Seq[Map[String, Any]], or an empty Seq if the entry has a null value or does not exist
-   */
-  def getObjectArray(s: String): collection.Seq[Map[String, Any]] = {
-    mMap.getValue(s) match
-      case seq: collection.Seq[Any] => seq.asInstanceOf[collection.Seq[Map[String, Any]]]
-      case x => immutable.Seq(x.asInstanceOf[Map[String, Any]])
+  def getAsStringArray(k: String): collection.Seq[String] = {
+    value.get(k) match
+      case None => Nil
+      case Some(unk) => unk match
+        case Arr(arr) => arr.map(_.str) // perf: consider using getArray and casting at item use-site
+        case Str(str) => Seq(str)
+        case _ => throw IllegalStateException("Expected Array or String")
   }
 
   /**
@@ -207,8 +200,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast or converted to a Schema, or None if the entry has a null value or does not exist
    */
-  def getAsSchemaOpt(s: String): Option[Schema] = {
-    Option(mMap.getValue(s).asInstanceOf[Schema])
+  def getSchemaOpt(k: String): Option[Schema] = {
+    value.get(k).map {
+      case sch: Schema => sch
+      case _ => throw IllegalStateException("Expected Schema")
+    }
   }
 
   /**
@@ -219,43 +215,26 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
    * @param s the entry key
    * @return an Option of the value cast as a Seq[Schema], or None if the entry has a null value or does not exist
    */
-  def getAsSchemaArrayOpt(s: String): Option[Seq[Schema]] = {
-    Option(mMap.getValue(s).asInstanceOf[collection.Seq[Schema]])
+  def getSchemaArrayOpt(k: String): Option[Seq[Schema]] = {
+    value.get(k).map(_.arr.map(_.sch))
   }
 
-  def getAsSchemaObjectOpt(s: String): Option[Map[String, Schema]] = {
-    mMap.getValue(s) match
-      case null => None
-      case m: collection.Map[String, Any] => Some(m.asInstanceOf[Map[String, Schema]])
-      case x => Option(x.asInstanceOf[Map[String, Schema]])
-  }
-
-  /**
-   * Returns the JSON Array of Schemas associated with the given key, potentially converting JSON value into
-   * Schemas.
-   *
-   * @throws ClassCastException if the value is not a JSON Array of Schemas or its items cannot be converted to Schemas
-   * @param s the entry key
-   * @return the value cast as a Seq[Schema], or None if the entry has a null value or does not exist
-   */
-  def getAsSchemaArray(s: String): Seq[Schema] = {
-    mMap.getValue(s) match
-      case null => Seq.empty
-      case x => x.asInstanceOf[collection.Seq[Schema]]
+  def getSchemaObjectOpt(k: String): Option[Map[String, Schema]] = {
+    value.get(k).map(_.obj.map((k, v) => (k, v.sch)))
   }
 
   override def schBy0(ptr: JsonPointer): Schema = {
     var i = 0
-    var res: Any = this
+    var res: Value = this
     val it = ptr.refTokens.iterator; it.next() // skip first empty string token // TODO: consider a ROOT Ptr
     for (key <- it) { // TODO: unescape?
       res = res match
-        case ObjectSchema(omMap, _, _, _) => omMap.getOrElse(key, refError(ptr, i))
-        case obj: collection.Map[String, Any] => obj.getOrElse(key, refError(ptr, i))
-        case arr: collection.Seq[Any] =>
+        case ObjectSchema(obj, _, _, _) => getOrThrow(obj, key, refError(ptr, i))
+        case Obj(value) => getOrThrow(value, key, refError(ptr, i))
+        case Arr(value) =>
           val i = key.toInt;
-          if (arr.length <= i) ObjSchema.refError(ptr, i)
-          arr(i)
+          if (value.length <= i) throw refError(ptr, i)
+          value(i)
         case x: Any => throw new IllegalArgumentException(s"unsupported type ${x.getClass.getName}")
 
       i = i + 1
@@ -263,10 +242,18 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
 
     res.asInstanceOf[Schema]
   }
+
+  override def toString: String = value.toString()
 }
 
 object ObjSchema {
+  private def getOrThrow[K, V](map: Map[K, V], k: K, err: Exception): V = {
+    val ret = map.get(k)
+    if (ret.isEmpty) throw err
+    else ret.get
+  }
+
   // check it fragment exists if not add it
-  private def refError(ptr: JsonPointer, idx: Int): Unit =
-    throw new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
+  private def refError(ptr: JsonPointer, idx: Int): Exception =
+    new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
 }
