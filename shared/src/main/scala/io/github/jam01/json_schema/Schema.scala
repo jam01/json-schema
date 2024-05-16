@@ -62,6 +62,19 @@ sealed trait Value {
   }
 }
 
+object Value {
+  given iterable2Arr[T](using f: T => Value): Conversion[IterableOnce[T], Arr] with
+    override def apply(x: IterableOnce[T]): Arr = Arr(x.iterator.map(f))
+  given iterable2Obj[T](using f: T => Value): Conversion[IterableOnce[(String, T)], Obj] with
+    override def apply(it: IterableOnce[(String, T)]): Obj = Obj(LinkedHashMap(it.iterator.map(x => (x._1, f(x._2)))))
+  given Conversion[Boolean, Bool] = (i: Boolean) => if (i) True else False
+  given Conversion[Long, Num] = (i: Long) => Num(i)
+  given Conversion[Float, Num] = (i: Float) => Num(i)
+  given Conversion[Double, Num] = (i: Double) => Num(i)
+  given Conversion[Null, Null.type] = (i: Null) => Null
+  given Conversion[CharSequence, Str] = (s: CharSequence) => Str(s.toString)
+}
+
 case class Str(value: String) extends Value
 
 case class Obj(value: LinkedHashMap[String, Value]) extends Value
@@ -90,6 +103,9 @@ object Arr {
   }
 }
 
+// TODO: make part of AST
+// TODO: add decimal64
+// https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/math/BigDecimal.html#relation-to-ieee-754-decimal-arithmetic-heading
 case class Num(value: Long | Double) extends Value
 
 sealed abstract class Bool extends Value {
@@ -111,7 +127,7 @@ case object True extends Bool {
 }
 
 case object Null extends Value {
-  def value = null
+  def value: Null = null
 }
 
 sealed trait Schema extends Value {

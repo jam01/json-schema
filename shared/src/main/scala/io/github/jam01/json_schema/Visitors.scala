@@ -123,7 +123,7 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
 
 
 
-class CollectObjVisitor(protected val vis: Visitor[_, Value]) extends ObjVisitor[Value, Obj] {
+class CollectObjVisitor(protected val vis: Visitor[Value, Value]) extends ObjVisitor[Value, Obj] {
   val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
   var k: String = "?"
 
@@ -134,7 +134,7 @@ class CollectObjVisitor(protected val vis: Visitor[_, Value]) extends ObjVisitor
   override def visitEnd(index: Int): Obj = Obj(lhm)
 }
 
-class CollectArrVisitor(protected val vis: Visitor[_, Value]) extends ArrVisitor[Value, Arr] {
+class CollectArrVisitor(protected val vis: Visitor[Value, Value]) extends ArrVisitor[Value, Arr] {
   val arr: mutable.ArrayBuffer[Value] = mutable.ArrayBuffer()
 
   override def subVisitor: Visitor[_, _] = vis
@@ -151,7 +151,7 @@ object StringVisitor extends SimpleVisitor[Nothing, String] {
 }
 
 
-object LiteralVisitor extends JsonVisitor[_, Value] {
+object LiteralVisitor extends JsonVisitor[Value, Value] {
   override def visitNull(index: Int): Value = Null
   override def visitFalse(index: Int): Value = False
   override def visitTrue(index: Int): Value = True
