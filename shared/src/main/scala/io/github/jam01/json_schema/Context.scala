@@ -16,20 +16,20 @@ final case class Context(insloc: mutable.Stack[String], // TODO: consider making
         .map(sch => sch.schBy(JsonPointer(s.toString.substring(ptr + 1))))
   }
 
-  def getDynSch(s: Uri, oschval: ObjectSchemaValidator): Option[Schema] = {
-    if (s.toString.contains("#/")) return getSch(Uri.of(s.toString, false))
+  def getDynSch(loc: Uri, current: VocabValidator): Option[Schema] = {
+    if (loc.toString.contains("#/")) return getSch(Uri.of(loc.toString, false))
 
-    val sch0 = getSch(s)
-    if (sch0.isEmpty) return getSch(Uri.of(s.toString, false)) // trying w/o dynamic
+    val sch0 = getSch(loc)
+    if (sch0.isEmpty) return getSch(Uri.of(loc.toString, false)) // trying w/o dynamic
 
-    val dynScope = mutable.ArrayBuffer(oschval.schema)
-    var oschval0 = oschval
-    while (oschval0.dynParent.nonEmpty) {
-      dynScope.addOne(oschval0.dynParent.get.schema)
-      oschval0 = oschval0.dynParent.get
+    val dynScope = mutable.ArrayBuffer(current.schema)
+    var head = current
+    while (head.dynParent.nonEmpty) {
+      dynScope.addOne(head.dynParent.get.schema)
+      head = head.dynParent.get
     }
 
-    val anchor = "#" + s.uri.getRawFragment
+    val anchor = "#" + loc.uri.getRawFragment
     dynScope.reverseIterator
       .map(osch => osch.getBase.resolve(anchor, true))
       .find(dref => reg.contains(dref))

@@ -17,12 +17,12 @@ class ObjectSchemaValidatorTest {
 
   @Test
   def valid_str(): Unit = {
-    assertTrue(ObjectSchemaValidator.validate(strSch).visitString("valid", -1))
+    assertTrue(ObjectSchemaValidator.of(strSch).visitString("valid", -1))
   }
 
   @Test
   def invalid_str(): Unit = { // string too long
-    assertFalse(ObjectSchemaValidator.validate(strSch).visitString("12345678901234567", -1))
+    assertFalse(ObjectSchemaValidator.of(strSch).visitString("12345678901234567", -1))
   }
 
 
@@ -38,7 +38,7 @@ class ObjectSchemaValidatorTest {
   def valid_arr(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.validate(arrSch))
+      .transform(ObjectSchemaValidator.of(arrSch))
     assertTrue(r)
   }
 
@@ -46,7 +46,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_length(): Unit = { // arr too long
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3", "valid4", "invalid5"]""")
-      .transform(ObjectSchemaValidator.validate(arrSch))
+      .transform(ObjectSchemaValidator.of(arrSch))
     assertFalse(r)
   }
 
@@ -54,7 +54,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_items(): Unit = { // 2nd string too long
     val r = ujson.Readable
       .fromString("""["valid", "12345678901234567", "valid3"]""")
-      .transform(ObjectSchemaValidator.validate(arrSch))
+      .transform(ObjectSchemaValidator.of(arrSch))
     assertFalse(r)
   }
 
@@ -65,7 +65,7 @@ class ObjectSchemaValidatorTest {
 
     val r = ujson.Readable
       .fromString("""["valid", ["valid", "valid2", "valid3"], "valid3"]""")
-      .transform(ObjectSchemaValidator.validate(arrSchNest))
+      .transform(ObjectSchemaValidator.of(arrSchNest))
     assertTrue(r)
   }
 
@@ -79,7 +79,7 @@ class ObjectSchemaValidatorTest {
 
     val r = ujson.Readable
       .fromString("""["valid", ["valid", "12345678901234567", "valid3"], "valid3"]""")
-      .transform(ObjectSchemaValidator.validate(arrSchNest))
+      .transform(ObjectSchemaValidator.of(arrSchNest))
     assertFalse(r)
   }
 
@@ -92,7 +92,7 @@ class ObjectSchemaValidatorTest {
 
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.validate(arrSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(arrSchRef, ctx = ctx))
     assertTrue(r)
   }
 
@@ -105,7 +105,7 @@ class ObjectSchemaValidatorTest {
 
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.validate(arrSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(arrSchRef, ctx = ctx))
     assertFalse(r)
   }
 
@@ -129,7 +129,7 @@ class ObjectSchemaValidatorTest {
   def valid_obj(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(ObjectSchemaValidator.validate(objSch))
+      .transform(ObjectSchemaValidator.of(objSch))
     assertTrue(r)
   }
 
@@ -137,7 +137,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_required(): Unit = { // foo prop required
     val r = ujson.Readable
       .fromString("""{"nfoo": "bar"}""")
-      .transform(ObjectSchemaValidator.validate(objSch))
+      .transform(ObjectSchemaValidator.of(objSch))
     assertFalse(r)
   }
 
@@ -145,7 +145,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_props(): Unit = { // foo prop must be string
     val r = ujson.Readable
       .fromString("""{"foo": null}""")
-      .transform(ObjectSchemaValidator.validate(objSch))
+      .transform(ObjectSchemaValidator.of(objSch))
     assertFalse(r)
   }
 
@@ -154,7 +154,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_length(): Unit = { // obj too long
     val r = ujson.Readable
       .fromString("""{"foo": "null", "arr": [], "null": null}""")
-      .transform(ObjectSchemaValidator.validate(objSch))
+      .transform(ObjectSchemaValidator.of(objSch))
     assertFalse(r)
   }
 
@@ -162,7 +162,7 @@ class ObjectSchemaValidatorTest {
   def valid_nest_obj_props(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar"}}""")
-      .transform(ObjectSchemaValidator.validate(objSch))
+      .transform(ObjectSchemaValidator.of(objSch))
     assertTrue(r)
   }
 
@@ -170,7 +170,7 @@ class ObjectSchemaValidatorTest {
   def invalid_nest_obj_props(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar", "null": null}}""")
-      .transform(ObjectSchemaValidator.validate(objSch))
+      .transform(ObjectSchemaValidator.of(objSch))
     assertFalse(r)
   }
 
@@ -183,7 +183,7 @@ class ObjectSchemaValidatorTest {
 
     val r = ujson.Readable
       .fromString("""{"foo": "bar", "null": null}""")
-      .transform(ObjectSchemaValidator.validate(objSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(objSchRef, ctx = ctx))
     assertTrue(r)
   }
 
@@ -196,7 +196,7 @@ class ObjectSchemaValidatorTest {
 
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(ObjectSchemaValidator.validate(objSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(objSchRef, ctx = ctx))
     assertFalse(r)
   }
 }

@@ -5,22 +5,21 @@ import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import scala.collection.mutable
 
-class Core(schema: ObjectSchema,
-           schloc: JsonPointer = JsonPointer(),
-           ctx: Context = Context.empty,
-           dynParent: Option[ObjectSchemaValidator] = None) extends ObjectSchemaValidator(schema, schloc, ctx, dynParent) {
-  private val _refVis: Option[JsonVisitor[_, Boolean]] = schema
-    .getRef
+class Core(schema: ObjectSchema, 
+           ctx: Context = Context.empty, 
+           schloc: JsonPointer = JsonPointer(), 
+           dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, schloc, dynParent) {
+
+  private val _refVis: Option[JsonVisitor[_, Boolean]] = schema.getRef
     .map(s => ctx.getSch(s) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("$ref"), ctx, Some(this)))
-  private val _dynRefVis: Option[JsonVisitor[_, Boolean]] = schema
-    .getDynRef
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("$ref"), Some(this)))
+  private val _dynRefVis: Option[JsonVisitor[_, Boolean]] = schema.getDynRef
     .map(s => ctx.getDynSch(s, this) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("$dynamicRef"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("$dynamicRef"), Some(this)))
 
   override def visitNull(index: Int): Boolean = {
     _refVis.forall(_.visitNull(index)) &&

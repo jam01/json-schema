@@ -5,6 +5,7 @@ import io.github.jam01.json_schema.Uri.conformUri
 import java.net.URI
 
 final case class Uri(uri: URI, isDyn: Boolean = false) {
+  // TODO: consider tracking fragment 
   private lazy val str = conformUri(uri.toString)
 
   def resolve(ref: String, resIsDyn: Boolean = false): Uri = {

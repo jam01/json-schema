@@ -17,19 +17,6 @@ class CompositeVisitor[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Se
     new CompositeObjVisitor[T, J](delegates.map(_.visitObject(length, true, index)): _*)
 }
 
-class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T, J]*) extends JsonVisitor[Seq[T], J] {
-  override def visitNull(index: Int): J = reducer(delegates.map(_.visitNull(index)))
-  override def visitFalse(index: Int): J = reducer(delegates.map(_.visitFalse(index)))
-  override def visitTrue(index: Int): J = reducer(delegates.map(_.visitTrue(index)))
-  override def visitFloat64(d: Double, index: Int): J = reducer(delegates.map(_.visitFloat64(d, index)))
-  override def visitInt64(i: Long, index: Int): J = reducer(delegates.map(_.visitInt64(i, index)))
-  override def visitString(s: CharSequence, index: Int): J = reducer(delegates.map(_.visitString(s, index)))
-  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], J] =
-    new CompositeArrVisitorReducer[T, J](reducer, delegates.map(_.visitArray(length, index)): _*)
-  override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], J] =
-    new CompositeObjVisitorReducer[T, J](reducer, delegates.map(_.visitObject(length, true, index)): _*)
-}
-
 class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[_], Seq[J]] {
   // unsure why ArrVisitor[Seq[T], Seq[J]] doesn't work when delArrVis if Arr[_, J]
   //  .../json_schema/ObjectSchemaValidator.scala:99:78
@@ -80,6 +67,25 @@ class CompositeObjVisitor[-T, +J](delObjVis: ObjVisitor[T, J]*) extends ObjVisit
 }
 
 
+class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T, J]*) extends JsonVisitor[Seq[T], J] {
+  override def visitNull(index: Int): J = reducer(delegates.map(_.visitNull(index)))
+
+  override def visitFalse(index: Int): J = reducer(delegates.map(_.visitFalse(index)))
+
+  override def visitTrue(index: Int): J = reducer(delegates.map(_.visitTrue(index)))
+
+  override def visitInt64(i: Long, index: Int): J = reducer(delegates.map(_.visitInt64(i, index)))
+
+  override def visitFloat64(d: Double, index: Int): J = reducer(delegates.map(_.visitFloat64(d, index)))
+
+  override def visitString(s: CharSequence, index: Int): J = reducer(delegates.map(_.visitString(s, index)))
+
+  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], J] =
+    new CompositeArrVisitorReducer[T, J](reducer, delegates.map(_.visitArray(length, index)): _*)
+
+  override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], J] =
+    new CompositeObjVisitorReducer[T, J](reducer, delegates.map(_.visitObject(length, true, index)): _*)
+}
 
 class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], J] {
   override def subVisitor: Visitor[_, _] = new CompositeVisitor(delArrVis.map(_.subVisitor): _*)
@@ -122,6 +128,16 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
 }
 
 
+object LiteralVisitor extends JsonVisitor[Value, Value] {
+  override def visitNull(index: Int): Value = Null
+  override def visitFalse(index: Int): Value = False
+  override def visitTrue(index: Int): Value = True
+  override def visitFloat64(d: Double, index: Int): Value = Num(d)
+  override def visitInt64(i: Long, index: Int): Value = Num(i)
+  override def visitString(s: CharSequence, index: Int): Value = Str(s.toString)
+  override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(LiteralVisitor)
+  override def visitArray(length: Int, index: Int): ArrVisitor[Value, Arr] = new CollectArrVisitor(LiteralVisitor)
+}
 
 class CollectObjVisitor(protected val vis: Visitor[Value, Value]) extends ObjVisitor[Value, Obj] {
   val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
@@ -143,21 +159,8 @@ class CollectArrVisitor(protected val vis: Visitor[Value, Value]) extends ArrVis
 }
 
 
-
 object StringVisitor extends SimpleVisitor[Nothing, String] {
   def expectedMsg = "expected string"
 
   override def visitString(s: CharSequence, index: Int): String = s.toString
-}
-
-
-object LiteralVisitor extends JsonVisitor[Value, Value] {
-  override def visitNull(index: Int): Value = Null
-  override def visitFalse(index: Int): Value = False
-  override def visitTrue(index: Int): Value = True
-  override def visitFloat64(d: Double, index: Int): Value = Num(d)
-  override def visitInt64(i: Long, index: Int): Value = Num(i)
-  override def visitString(s: CharSequence, index: Int): Value = Str(s.toString)
-  override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(LiteralVisitor)
-  override def visitArray(length: Int, index: Int): ArrVisitor[Value, Arr] = new CollectArrVisitor(LiteralVisitor)
 }

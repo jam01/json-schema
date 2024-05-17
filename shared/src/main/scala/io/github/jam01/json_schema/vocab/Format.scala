@@ -7,11 +7,10 @@ import java.time.format.DateTimeParseException
 import java.time.{Duration, LocalDate, OffsetDateTime}
 import java.util.UUID
 
-class Format(schema: ObjectSchema,
-             schloc: JsonPointer = JsonPointer(),
-             ctx: Context = Context.empty,
-             dynParent: Option[ObjectSchemaValidator] = None)
-  extends ObjectSchemaValidator(schema, schloc, ctx, dynParent) {
+class Format(schema: ObjectSchema, 
+             ctx: Context = Context.empty, 
+             schloc: JsonPointer = JsonPointer(), 
+             dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, schloc, dynParent) {
 
   private val format: Option[String] = schema.getString("format")
 

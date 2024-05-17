@@ -1,7 +1,7 @@
 package io.github.jam01.json_schema.vocab
 
 import io.github.jam01.json_schema.*
-import io.github.jam01.json_schema.vocab.ValidationValidator.asBigDec
+import io.github.jam01.json_schema.vocab.Validation.asBigDec
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
@@ -9,11 +9,10 @@ import java.util.Objects
 import scala.collection.mutable
 import scala.util.matching.Regex
 
-class ValidationValidator(schema: ObjectSchema,
-                          schloc: JsonPointer = JsonPointer(),
-                          ctx: Context = Context.empty,
-                          dynParent: Option[ObjectSchemaValidator] = None)
-  extends ObjectSchemaValidator(schema, schloc, ctx, dynParent) {
+class Validation(schema: ObjectSchema, 
+                 ctx: Context = Context.empty,
+                 schloc: JsonPointer = JsonPointer(),
+                 dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, schloc, dynParent) {
 
   private val tyype: collection.Seq[String] = schema.getAsStringArray("type")
   private val const = schema.value.get("const")
@@ -212,7 +211,7 @@ class ValidationValidator(schema: ObjectSchema,
   }
 }
 
-object ValidationValidator {
+object Validation {
   private def asBigDec(num: Long | Double) = num match
     case l: Long => BigDecimal.valueOf(l)
     case d: Double => BigDecimal.valueOf(d)

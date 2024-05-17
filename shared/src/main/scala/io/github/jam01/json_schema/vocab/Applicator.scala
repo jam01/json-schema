@@ -1,7 +1,7 @@
 package io.github.jam01.json_schema.vocab
 
 import io.github.jam01.json_schema._
-import io.github.jam01.json_schema.vocab.ApplicatorValidator.if_then_else
+import io.github.jam01.json_schema.vocab.Applicator.if_then_else
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
@@ -11,15 +11,14 @@ import java.util.{Objects, UUID}
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
 
-class ApplicatorValidator(schema: ObjectSchema,
-                          schloc: JsonPointer = JsonPointer(),
-                          ctx: Context = Context.empty,
-                          dynParent: Option[ObjectSchemaValidator] = None) 
-  extends ObjectSchemaValidator(schema, schloc, ctx, dynParent) {
+class Applicator(schema: ObjectSchema, 
+                 ctx: Context = Context.empty, 
+                 schloc: JsonPointer = JsonPointer(), 
+                 dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, schloc, dynParent) {
 
   private val prefixItems: Option[collection.Seq[Schema]] = schema.getSchemaArrayOpt("prefixItems")
   private val itemsVis: Option[ArrVisitor[_, Boolean]] = schema.getSchemaOpt("items")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("items"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("items"), Some(this)))
     .map(schValidator => new ArrVisitor[Boolean, Boolean] {
       private var subsch = true
 
@@ -31,7 +30,7 @@ class ApplicatorValidator(schema: ObjectSchema,
   private val maxContains: Option[Int] = schema.getInt("maxContains")
   private val minContains: Option[Int] = schema.getInt("minContains")
   private val contains: Option[ArrVisitor[_, Boolean]] = schema.getSchemaOpt("contains")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("contains"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("contains"), Some(this)))
     .map(schValidator => new ArrVisitor[Boolean, Boolean] {
       private var matched = 0
 
@@ -51,7 +50,7 @@ class ApplicatorValidator(schema: ObjectSchema,
     })
   
   private val addlPropsVis: Option[ObjVisitor[_, Boolean]] = schema.getSchemaOpt("additionalProperties")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("additionalProperties"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("additionalProperties"), Some(this)))
     .map(schValidator => new ObjVisitor[Boolean, Boolean] {
       private var subsch = true
 
@@ -65,26 +64,26 @@ class ApplicatorValidator(schema: ObjectSchema,
   private val patternProperties: Option[collection.Map[Regex, Schema]] = schema.getSchemaObjectOpt("patternProperties")
     .map(obj => obj.map(entry => (new Regex(entry._1).unanchored, entry._2)))
   private val depSchsViss: Option[collection.Map[String, JsonVisitor[_, Boolean]]] = schema.getSchemaObjectOpt("dependentSchemas")
-    .map(obj => obj.map(entry => (entry._1, SchemaValidator.of(entry._2, schloc.appendRefTokens("dependentSchemas", entry._1), ctx, Some(this)))))
+    .map(obj => obj.map(entry => (entry._1, SchemaValidator.of(entry._2, ctx, schloc.appended("dependentSchemas", entry._1), Some(this)))))
   private val propNymVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("propertyNames")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("propertyNames"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("propertyNames"), Some(this)))
   private val ifVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("if")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("if"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("if"), Some(this)))
   private val thenVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("then")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("then"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("then"), Some(this)))
   private val elseVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("else")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("else"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("else"), Some(this)))
   private val allOfVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaArrayOpt("allOf")
-    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("allOf", schidx._2.toString), ctx, Some(this))))
+    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, schloc.appended("allOf", schidx._2.toString), Some(this))))
     .map(schViss => new CompositeVisitorReducer(_.forall(identity), schViss.toSeq: _*))
   private val oneOfVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaArrayOpt("oneOf")
-    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("oneOf", schidx._2.toString), ctx, Some(this))))
+    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, schloc.appended("oneOf", schidx._2.toString), Some(this))))
     .map(schViss => new CompositeVisitorReducer(_.count(identity) == 1, schViss.toSeq: _*))
   private val anyOfVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaArrayOpt("anyOf")
-    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, schloc.appendRefTokens("anyOf", schidx._2.toString), ctx, Some(this))))
+    .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, schloc.appended("anyOf", schidx._2.toString), Some(this))))
     .map(schViss => new CompositeVisitorReducer(_.exists(identity), schViss.toSeq: _*))
   private val notVis: Option[JsonVisitor[_, Boolean]] = schema.getSchemaOpt("not")
-    .map(sch => SchemaValidator.of(sch, schloc.appendRefToken("not"), ctx, Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, schloc.appended("not"), Some(this)))
 
   override def visitNull(index: Int): Boolean = {
     notVis.forall(!_.visitNull(index)) &&
@@ -189,7 +188,7 @@ class ApplicatorValidator(schema: ObjectSchema,
       val prefixItemsVisitor: Option[ArrVisitor[_, Boolean]] = prefixItems.map(arr => new ArrVisitor[Boolean, Boolean] {
         private var subsch = true
 
-        override def subVisitor: Visitor[_, _] = SchemaValidator.of(arr(nextIdx), schloc.appendRefTokens("prefixItems", nextIdx.toString), ctx, Some(ApplicatorValidator.this))
+        override def subVisitor: Visitor[_, _] = SchemaValidator.of(arr(nextIdx), ctx, schloc.appended("prefixItems", nextIdx.toString), Some(Applicator.this))
         override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
         override def visitEnd(index: Int): Boolean = subsch
       })
@@ -266,7 +265,7 @@ class ApplicatorValidator(schema: ObjectSchema,
         private var subsch = true
         override def visitKey(index: Int): Visitor[_, _] = ???
         override def visitKeyValue(v: Any): Unit = ???
-        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m(currentKey), schloc.appendRefTokens("properties", currentKey), ctx, Some(ApplicatorValidator.this))
+        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m(currentKey), ctx, schloc.appended("properties", currentKey), Some(Applicator.this))
         override def visitValue(v: Boolean, index: Int): Unit = subsch = subsch && v
         override def visitEnd(index: Int): Boolean = subsch
       })
@@ -279,7 +278,7 @@ class ApplicatorValidator(schema: ObjectSchema,
         override def visitKey(index: Int): Visitor[_, _] = ???
         override def visitKeyValue(v: Any): Unit = ???
         override def subVisitor: Visitor[_, _] = new CompositeVisitor(matchedPatternSchs.map(pattSch =>
-          SchemaValidator.of(pattSch._2, schloc.appendRefTokens("patternProperties", pattSch._1), ctx, Some(ApplicatorValidator.this))): _*)
+          SchemaValidator.of(pattSch._2, ctx, schloc.appended("patternProperties", pattSch._1), Some(Applicator.this))): _*)
         override def visitValue(v: Seq[Boolean], index: Int): Unit = subsch = v.forall(identity)
         override def visitEnd(index: Int): Boolean = subsch
       })
@@ -332,7 +331,7 @@ class ApplicatorValidator(schema: ObjectSchema,
   }
 }
 
-object ApplicatorValidator {
+object Applicator {
   private def if_then_else(iff: Boolean, thenn: Option[Boolean], els: Option[Boolean]): Boolean = {
     if (iff && thenn.nonEmpty) thenn.get
     else if (!iff && els.nonEmpty) els.get
