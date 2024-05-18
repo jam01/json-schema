@@ -9,10 +9,10 @@ import java.util.Objects
 import scala.collection.mutable
 import scala.util.matching.Regex
 
-class Validation(schema: ObjectSchema, 
-                 ctx: Context = Context.empty,
-                 schloc: JsonPointer = JsonPointer(),
-                 dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, schloc, dynParent) {
+class Validation(schema: ObjectSchema,
+                 ctx: Context = Context.Empty,
+                 path: JsonPointer = JsonPointer(),
+                 dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, path, dynParent) {
 
   private val tyype: collection.Seq[String] = schema.getAsStringArray("type")
   private val const = schema.value.get("const")
@@ -99,30 +99,12 @@ class Validation(schema: ObjectSchema,
 
   override def visitString(s: CharSequence, index: Int): Boolean = {
     (tyype.isEmpty || tyype.contains("string")) &&
-      pattern.forall(_.matches(s)) && // TODO: memoize
+      pattern.forall(_.matches(s)) && // TODO: memoize?
       minLength.forall(s.toString.codePointCount(0, s.length()) >= _) &&
       maxLength.forall(s.toString.codePointCount(0, s.length()) <= _) &&
       const.forall(c => Objects.equals(c.value, s)) &&
       (enuum.isEmpty || enuum.get.exists(el => Objects.equals(el.value, s)))
   }
-
-  /*
-   * When visiting an arr/obj, there are keywords that apply to the given instance using this schema eg: maxProperties,
-   * there are applicator kws that apply to the given instance eg: $ref, and there are applicator kws that only apply to
-   * child elements eg: properties. Further, some of the kws for child elements may apply conditionally.
-   *
-   * The implementation chosen is to create a `insVisitor` which is a Arr/ObjVisitor potentially composing all of the
-   * applicators for the given instance. Also a variable `childVisitor` which is an Arr/ObjVisitor potentially
-   * composing `insVisitor` and all of the child element applicators that apply to the next child, usually determined
-   * by its index or preceding key for Objects.
-   *
-   * The Arr/ObjVisitor returned applies the non-applicator kws for the current schema, but more interestingly it tracks
-   * which visitors ought to be visited on each method. Specifically `insVisitor` is invoked on all methods, whereas
-   * `childVisitor` is recreated based on the child to be visited and invoked only in child methods.
-   *
-   * When visitEnd() is invoked on the returned ObjVisitor, it composes the results from: all non-applicator kws,
-   * `insVisitor` and all of child visitors invoked before through the `childVisitor` variable.
-   */
 
   override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
     val insVisitors = mutable.ArrayBuffer[ArrVisitor[_, Boolean]]()

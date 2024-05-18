@@ -4,7 +4,7 @@ import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 object SchemaValidator {
   def of(sch: Schema,
-         ctx: Context = Context.empty,
+         ctx: Context = Context.Empty,
          path: JsonPointer = JsonPointer(),
          dynParent: Option[VocabValidator] = None): JsonVisitor[_, Boolean] = {
     sch match
@@ -69,7 +69,7 @@ private abstract class BooleanArrValidator(bool: Boolean) extends ArrVisitor[Boo
 }
 
 object ObjectSchemaValidator {
-  def of(schema: ObjectSchema, ctx: Context = Context.empty, schloc: JsonPointer = JsonPointer(), dynParent: Option[VocabValidator] = None): JsonVisitor[_, Boolean] = {
+  def of(schema: ObjectSchema, ctx: Context = Context.Empty, schloc: JsonPointer = JsonPointer(), dynParent: Option[VocabValidator] = None): JsonVisitor[_, Boolean] = {
 
     new CompositeVisitorReducer(_.forall(identity), Seq(vocab.Core(schema, ctx, schloc, dynParent),
       vocab.Applicator(schema, ctx, schloc, dynParent),

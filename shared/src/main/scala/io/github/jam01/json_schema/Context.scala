@@ -38,6 +38,19 @@ final case class Context(insloc: mutable.Stack[String], // TODO: consider making
 }
 
 object Context {
-  def empty: Context = Context(mutable.Stack(""),
+  def Empty: Context = Context(mutable.Stack(""),
     immutable.Map.empty[Uri, Schema])
+
+  // TODO: should be int?
+  object OutputStructure {
+    val Flag: Byte = 0
+    val Basic: Byte = 1
+    val Detailed: Byte = 2
+    val Verbose: Byte = 3
+  }
+  object Mode {
+    val Assertion: Byte = 0
+    val Annotation: Byte = 1
+    val Both: Byte = 2
+  }
 }
