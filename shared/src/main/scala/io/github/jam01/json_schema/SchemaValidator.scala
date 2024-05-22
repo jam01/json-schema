@@ -82,8 +82,8 @@ object ObjectSchemaValidator {
     new MapReader[Seq[Any], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
       override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit = {
         val units = v.flatten
-        if units.map(_.valid).forall(identity) then {
-          OutputUnit(true, Some(path), None, Some(ctx.insPtr), None, units.filter(_.valid), None, Nil)
+        if (units.map(_.valid).forall(identity)) {
+          OutputUnit(true, Some(path), None, Some(ctx.insPtr), None, Nil, None, Nil)
         } else {
           OutputUnit(false, Some(path), None, Some(ctx.insPtr), None, units.filterNot(_.valid), None, Nil)
         }

@@ -196,14 +196,19 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     contains.foreach(vis => insVisitors.addOne(vis))
-
-    val iffVisitors: mutable.ArrayBuffer[ArrVisitor[_, OutputUnit]] = new mutable.ArrayBuffer(3)
     ifVis.foreach(vis =>
       if (thenVis.isEmpty && elseVis.isEmpty) ()
       else {
-        iffVisitors.addOne(vis.visitArray(length, index))
-        if (thenVis.nonEmpty) iffVisitors.addOne(thenVis.get.visitArray(length, index))
-        if (elseVis.nonEmpty) iffVisitors.addOne(elseVis.get.visitArray(length, index))
+        val viss: mutable.ArrayBuffer[ArrVisitor[_, OutputUnit]] = new mutable.ArrayBuffer(3)
+        viss.addOne(vis.visitArray(length, index))
+        if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitArray(length, index))
+        if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitArray(length, index))
+
+        insVisitors.addOne(new MapArrContext(new CompositeArrVisitor(viss.toSeq: _*), units => {
+          if_then_else(units.head,
+            thenVis.map(_ => units(1)),
+            elseVis.map(_ => if (thenVis.isEmpty) units(1) else units(2)))
+        }))
       })
 
     val insVisitor: ArrVisitor[_, collection.Seq[OutputUnit]] = new CompositeArrVisitor(insVisitors.toSeq: _*)
@@ -226,7 +231,6 @@ class Applicator(schema: ObjectSchema,
 
         if (prefixItems.nonEmpty && prefixItems.get.length >= nextIdx + 1) { childVisitors.addOne(prefixItemsVisitor.get) }
         else if (itemsVis.nonEmpty) childVisitors.addOne(itemsVis.get)
-        childVisitors.addAll(iffVisitors)
 
         childVisitor =
           if (childVisitors.length == 1) childVisitors.head
@@ -245,12 +249,6 @@ class Applicator(schema: ObjectSchema,
 
         prefixItemsVisitor.foreach(pv => units.addOne(pv.visitEnd(index)))
         itemsVis.foreach(iv => units.addOne(iv.visitEnd(index)))
-        if (iffVisitors.nonEmpty) {
-          val iff = if_then_else(iffVisitors.head.visitEnd(index),
-            thenVis.map(_ => iffVisitors(1).visitEnd(index)),
-            elseVis.map(_ => (if (thenVis.isEmpty) iffVisitors(1) else iffVisitors(2)).visitEnd(index)))
-          iff.foreach(units.addOne)
-        }
         units
       }
     }
@@ -264,15 +262,20 @@ class Applicator(schema: ObjectSchema,
     allOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
-
-    val iffVisitors: mutable.ArrayBuffer[ObjVisitor[_, OutputUnit]] = new mutable.ArrayBuffer(3)
     ifVis.foreach(vis =>
       if (thenVis.isEmpty && elseVis.isEmpty) ()
       else {
-        iffVisitors.addOne(vis.visitObject(length, true, index))
-        if (thenVis.nonEmpty) iffVisitors.addOne(thenVis.get.visitObject(length, true, index))
-        if (elseVis.nonEmpty) iffVisitors.addOne(elseVis.get.visitObject(length, true, index))
-      }) // TODO: can we do like depSchsObjViss?
+        val viss: mutable.ArrayBuffer[ObjVisitor[_, OutputUnit]] = new mutable.ArrayBuffer(3)
+        viss.addOne(vis.visitObject(length, true, index))
+        if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitObject(length, true, index))
+        if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitObject(length, true, index))
+
+        insVisitors.addOne(new MapObjContext(new CompositeObjVisitor(viss.toSeq: _*), units => {
+          if_then_else(units.head,
+            thenVis.map(_ => units(1)),
+            elseVis.map(_ => if (thenVis.isEmpty) units(1) else units(2)))
+        }))
+      })
 
     val depSchsObjViss: Option[collection.Map[String, ObjVisitor[_, (String, OutputUnit)]]] =
       depSchsViss.map(viss => viss.map(entry => (entry._1,
@@ -341,7 +344,6 @@ class Applicator(schema: ObjectSchema,
         if (properties.nonEmpty && properties.get.contains(currentKey)) { isAddl = false; childVisitors.addOne(propsVisitor.get) }
         if (matchedPatternSchs.nonEmpty) { isAddl = false; childVisitors.addOne(patternPropsVisitor.get) }
         if (isAddl) addlPropsVis.foreach(vis => childVisitors.addOne(vis))
-        childVisitors.addAll(iffVisitors)
 
         childVisitor =
           if (childVisitors.length == 1) childVisitors.head
@@ -359,19 +361,13 @@ class Applicator(schema: ObjectSchema,
         patternPropsVisitor.foreach(iv => units.addOne(iv.visitEnd(index)))
         addlPropsVis.foreach(iv => units.addOne(iv.visitEnd(index)))
         validate(Applicator.PropertyNames, "", units, propNamesValid)
-        if (iffVisitors.nonEmpty) {
-          val iff = if_then_else(iffVisitors.head.visitEnd(index),
-            thenVis.map(_ => iffVisitors(1).visitEnd(index)),
-            elseVis.map(_ => (if (thenVis.isEmpty) iffVisitors(1) else iffVisitors(2)).visitEnd(index)))
-          iff.foreach(units.addOne)
-        }
         units
       }
     }
   }
 
   /* helper methods */
-  private def and(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose? 
+  private def and(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose?
     if (units.map(_.valid).forall(identity)) {
       OutputUnit(true, Some(kw), None, Some(ctx.insPtr), None, units.filter(_.valid), None, Nil)
     } else {
@@ -379,7 +375,7 @@ class Applicator(schema: ObjectSchema,
     }
   }
 
-  private def one(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose? 
+  private def one(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose?
     if (units.count(_.valid) == 1) {
       OutputUnit(true, Some(kw), None, Some(ctx.insPtr), None, units.filter(_.valid), None, Nil)
     } else {
@@ -387,24 +383,24 @@ class Applicator(schema: ObjectSchema,
     }
   }
 
-  private def any(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose? 
+  private def any(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose?
     if (units.exists(_.valid)) {
       OutputUnit(true, Some(kw), None, Some(ctx.insPtr), None, units.filter(_.valid), None, Nil)
     } else {
       OutputUnit(false, Some(kw), None, Some(ctx.insPtr), None, units.filterNot(_.valid), None, Nil)
     }
   }
-  
-  private def if_then_else(iff: OutputUnit, thenn: Option[OutputUnit], els: Option[OutputUnit]): Option[OutputUnit] = {
+
+  private def if_then_else(iff: OutputUnit, thenn: Option[OutputUnit], els: Option[OutputUnit]): OutputUnit = {
     if (iff.valid && thenn.nonEmpty) {
-      if (thenn.get.valid) { if (false /* && verbose */) Some(valid("then")) else None }
-      else Some(OutputUnit(false, Some(path.appended("then")), None, Some(ctx.insPtr), None, Seq(thenn.get), None, Nil))
+      if (thenn.get.valid) { valid("then") }
+      else OutputUnit(false, Some(path.appended("then")), None, Some(ctx.insPtr), None, Seq(thenn.get), None, Nil)
     }
     else if (!iff.valid && els.nonEmpty) {
-      if (els.get.valid) { if (false /* && verbose */) Some(valid("else")) else None }
-      else Some(OutputUnit(false, Some(path.appended("else")), None, Some(ctx.insPtr), None, Seq(thenn.get), None, Nil))
+      if (els.get.valid) { valid("else") }
+      else OutputUnit(false, Some(path.appended("else")), None, Some(ctx.insPtr), None, Seq(thenn.get), None, Nil)
     }
-    else None
+    else ???
   }
 }
 
