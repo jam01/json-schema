@@ -64,7 +64,7 @@ sealed trait Value {
 
 object Value {
   given iterable2Arr[T](using f: T => Value): Conversion[IterableOnce[T], Arr] with
-    override def apply(x: IterableOnce[T]): Arr = Arr(x.iterator.map(f))
+    override def apply(x: IterableOnce[T]): Arr = Arr.from(x.iterator.map(f))
   given iterable2Obj[T](using f: T => Value): Conversion[IterableOnce[(String, T)], Obj] with
     override def apply(it: IterableOnce[(String, T)]): Obj = Obj(LinkedHashMap(it.iterator.map(x => (x._1, f(x._2)))))
   given Conversion[Boolean, Bool] = (i: Boolean) => if (i) True else False
@@ -95,6 +95,14 @@ object Obj {
 case class Arr(value: mutable.ArrayBuffer[Value]) extends Value
 
 object Arr {
+  def from[T](items: IterableOnce[T])(implicit conv: T => Value): Arr = {
+    val buf = new mutable.ArrayBuffer[Value]()
+    items.iterator.foreach{ item =>
+      buf += (conv(item): Value)
+    }
+    Arr(buf)
+  }
+  
   def apply(items: Value*): Arr = {
     val buf = new mutable.ArrayBuffer[Value](items.length)
     items.foreach { item =>

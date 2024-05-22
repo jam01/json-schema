@@ -5,7 +5,8 @@ import scala.collection.{immutable, mutable}
 // TODO: consider making a record 
 final case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq
                    reg: collection.Map[Uri, Schema]) {
-  def insPtr: String = JsonPointer.strValueOf(insloc.reverseIterator)
+  def insPtrStr: String = JsonPointer.strValueOf(insloc.reverseIterator)
+  def insPtr: JsonPointer = JsonPointer(insloc.reverseIterator.toSeq)
 
   def getSch(s: Uri): Option[Schema] = {
     val ptr = s.toString.lastIndexOf("#/")

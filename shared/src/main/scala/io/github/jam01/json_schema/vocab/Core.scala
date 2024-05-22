@@ -1,71 +1,89 @@
 package io.github.jam01.json_schema.vocab
 
-import io.github.jam01.json_schema._
+import io.github.jam01.json_schema.*
+import upickle.core.Visitor.MapArrContext
 import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 class Core(schema: ObjectSchema,
            ctx: Context = Context.Empty,
            path: JsonPointer = JsonPointer(),
            dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, path, dynParent) {
 
-  private val _refVis: Option[JsonVisitor[_, Boolean]] = schema.getRef
+  private val _refVis: Option[Visitor[_, OutputUnit]] = schema.getRef
     .map(s => ctx.getSch(s) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("$ref"), Some(this)))
-  private val _dynRefVis: Option[JsonVisitor[_, Boolean]] = schema.getDynRef
+  private val _dynRefVis: Option[Visitor[_, OutputUnit]] = schema.getDynRef
     .map(s => ctx.getDynSch(s, this) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("$dynamicRef"), Some(this)))
 
-  override def visitNull(index: Int): Boolean = {
-    _refVis.forall(_.visitNull(index)) &&
-      _dynRefVis.forall(_.visitNull(index))
+  override def visitNull(index: Int): collection.Seq[OutputUnit] = {
+    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
+
+    _refVis.map(rv => rv.visitNull(index)).foreach(u => addUnit(units, u))
+    _dynRefVis.map(drv => drv.visitNull(index)).foreach(u => addUnit(units, u))
+    units
   }
 
-  override def visitFalse(index: Int): Boolean = {
-    _refVis.forall(_.visitFalse(index)) &&
-      _dynRefVis.forall(_.visitFalse(index))
+  override def visitFalse(index: Int): collection.Seq[OutputUnit] = {
+    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
+
+    _refVis.map(rv => rv.visitFalse(index)).foreach(u => addUnit(units, u))
+    _dynRefVis.map(drv => drv.visitFalse(index)).foreach(u => addUnit(units, u))
+    units
   }
 
-  override def visitTrue(index: Int): Boolean = {
-    _refVis.forall(_.visitTrue(index)) &&
-      _dynRefVis.forall(_.visitTrue(index))
+  override def visitTrue(index: Int): collection.Seq[OutputUnit] = {
+    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
+
+    _refVis.map(rv => rv.visitTrue(index)).foreach(u => addUnit(units, u))
+    _dynRefVis.map(drv => drv.visitTrue(index)).foreach(u => addUnit(units, u))
+    units
   }
 
-  override def visitInt64(l: Long, index: Int): Boolean = {
-    _refVis.forall(_.visitInt64(l, index)) &&
-      _dynRefVis.forall(_.visitInt64(l, index))
+  override def visitInt64(l: Long, index: Int): collection.Seq[OutputUnit] = {
+    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
+
+    _refVis.map(rv => rv.visitFloat64(l, index)).foreach(u => addUnit(units, u))
+    _dynRefVis.map(drv => drv.visitFloat64(l, index)).foreach(u => addUnit(units, u))
+    units
   }
 
-  override def visitFloat64(d: Double, index: Int): Boolean = {
-    _refVis.forall(_.visitFloat64(d, index)) &&
-      _dynRefVis.forall(_.visitFloat64(d, index))
+  override def visitFloat64(d: Double, index: Int): collection.Seq[OutputUnit] = {
+    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
+
+    _refVis.map(rv => rv.visitFloat64(d, index)).foreach(u => addUnit(units, u))
+    _dynRefVis.map(drv => drv.visitFloat64(d, index)).foreach(u => addUnit(units, u))
+    units
   }
 
-  override def visitString(s: CharSequence, index: Int): Boolean = {
-    _refVis.forall(_.visitString(s, index)) &&
-      _dynRefVis.forall(_.visitString(s, index))
+  override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
+    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
+
+    _refVis.map(rv => rv.visitString(s, index)).foreach(u => addUnit(units, u))
+    _dynRefVis.map(drv => drv.visitString(s, index)).foreach(u => addUnit(units, u))
+    units
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[_, Boolean] = {
-    val insVisitors = mutable.ArrayBuffer[ArrVisitor[_, Boolean]]()
+  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[OutputUnit]] = {
+    val insVisitors: mutable.ArrayBuffer[ArrVisitor[_, OutputUnit]] = new ArrayBuffer(2)
     _refVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
 
-    if (insVisitors.length == 1) insVisitors.head
-    else new CompositeArrVisitorReducer(_.forall(identity), insVisitors.toSeq: _*)
+    new CompositeArrVisitor(insVisitors.toSeq: _*)
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[_, Boolean] = {
-    val insVisitors = mutable.ArrayBuffer.empty[ObjVisitor[_, Boolean]]
-    _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
-    _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, index)))
+  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Seq[OutputUnit]] = {
+    val insVisitors: mutable.ArrayBuffer[ObjVisitor[_, OutputUnit]] = new ArrayBuffer(2)
+    _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
+    _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
 
-    if (insVisitors.length == 1) insVisitors.head
-    else new CompositeObjVisitorReducer(_.forall(identity), insVisitors.toSeq: _*)
+    new CompositeObjVisitor(insVisitors.toSeq: _*)
   }
 }
