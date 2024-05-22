@@ -1,6 +1,6 @@
 package com.github.plokhotnyuk.jsoniter_scala.upickle
 
-import com.github.plokhotnyuk.jsoniter_scala.core.{JsonReader, JsonValueCodec}
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import upickle.core.Visitor
 import upickle.jsoniter.{VisitorNumberReader, VisitorDecoder}
 

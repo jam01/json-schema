@@ -22,7 +22,7 @@
             <!-- https://github.com/davidB/scala-maven-plugin/blob/4.8.0/src/it/test_scala3/pom.xml -->
             <groupId>org.scala-lang</groupId>
             <artifactId>scala3-library_3</artifactId>
-            <version>3.3.1</version>
+            <version>3.4.2</version>
         </dependency>
         <dependency>
             <groupId>com.lihaoyi</groupId>
