@@ -5,7 +5,7 @@ import com.github.plokhotnyuk.jsoniter_scala.upickle.JsoniterScalaCodec
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.{assertEquals, assertThrows, assertTrue}
 import ujson.StringRenderer
-import upickle.core.{NoOpVisitor, Visitor}
+import upickle.core.NoOpVisitor
 
 import java.io.StringWriter
 

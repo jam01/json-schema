@@ -214,8 +214,6 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
 
     res.asInstanceOf[Schema]
   }
-
-  override def toString: String = value.toString()
 }
 
 object ObjSchema {

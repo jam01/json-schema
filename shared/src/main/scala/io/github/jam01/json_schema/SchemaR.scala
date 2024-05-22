@@ -4,7 +4,7 @@ import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visit
 
 import scala.collection.mutable
 
-class SchemaR private(docbase: String,
+class SchemaR private(docbase: Uri,
               reg: mutable.Map[Uri, Schema] = mutable.Map(),
               ids: mutable.Buffer[(String, ObjectSchema)] = mutable.ArrayBuffer.empty,
               anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = mutable.ArrayBuffer.empty,
@@ -14,19 +14,19 @@ class SchemaR private(docbase: String,
   override def expectedMsg: String = "Expected boolean or object"
 
   override def visitTrue(index: Int): Schema = {
-    if (parent.isEmpty) reg.addOne(Uri.of(docbase), TrueSchema); TrueSchema
+    if (parent.isEmpty) reg.addOne(docbase, TrueSchema); TrueSchema
   }
 
   override def visitFalse(index: Int): Schema = {
-    if (parent.isEmpty) reg.addOne(Uri.of(docbase), FalseSchema); FalseSchema
+    if (parent.isEmpty) reg.addOne(docbase, FalseSchema); FalseSchema
   }
 
   override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Value, Schema] = new ObjVisitor[Value, ObjectSchema] {
     val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
     var key: String = "?"
-    val sch: ObjectSchema = ObjectSchema(lhm, Uri.of(docbase), parent, prel)
+    val sch: ObjectSchema = ObjectSchema(lhm, docbase, parent, prel)
     if (parent.isEmpty)
-      reg.addOne(Uri.of(docbase), sch)
+      reg.addOne(docbase, sch)
 
     override def visitKey(index: Int): Visitor[_, _] = StringVisitor
 
@@ -94,5 +94,5 @@ object SchemaR {
    * @param docbase the initial base for the schema
    * @param reg     the schema registry to populate when traversing schemas
    */
-  def apply(docbase: String, reg: mutable.Map[Uri, Schema] = mutable.Map()): SchemaR = new SchemaR(docbase, reg)
+  def apply(docbase: Uri, reg: mutable.Map[Uri, Schema] = mutable.Map()): SchemaR = new SchemaR(docbase, reg)
 }

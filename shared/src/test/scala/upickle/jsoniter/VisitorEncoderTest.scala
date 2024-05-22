@@ -1,16 +1,12 @@
 package upickle.jsoniter
 
 import com.github.plokhotnyuk.jsoniter_scala.core.writeToString
-import io.github.jam01.json_schema.{Arr, Obj, Transformer}
-import org.junit.jupiter.api.Assertions.{assertThrows, assertTrue}
+import io.github.jam01.json_schema.{Arr, Obj}
 import org.junit.jupiter.api.Test
 import org.skyscreamer.jsonassert.JSONAssert
-import upickle.core.NoOpVisitor
-
-import scala.collection.immutable.Seq
 
 class VisitorEncoderTest {
-  val obj: Arr =
+  val arr: Arr =
     Arr(0, 1, "bloop",
       3, null, 5.5d,
       Arr("a", "b", "c"),
@@ -24,7 +20,7 @@ class VisitorEncoderTest {
   def main(): Unit = {
     val jsonStr = """[0, 1, "bloop", 3, null, 5.5, ["a", "b", "c"], {"foo7": "bar", "arr": [null, null]}]"""
 
-    val res = writeToString(obj)(VisitorEncoder)
+    val res = writeToString(arr)(VisitorEncoder)
     JSONAssert.assertEquals(jsonStr, res, true)
   }
 }

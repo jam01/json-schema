@@ -10,7 +10,6 @@ import scala.collection.mutable
 import scala.util.Using
 
 class TestSuiteTest {
-
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
   def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema, ctx: Context): Unit = {
@@ -38,7 +37,7 @@ object TestSuiteTest {
       remotes.filter(Files.isRegularFile(_))
         .forEach(p => {
           //println(p.toString)
-          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR("file:" + p.toString, reg = res))
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri.of("file:" + p.toString), reg = res))
         })
     }
 
@@ -47,7 +46,7 @@ object TestSuiteTest {
       meta.filter(Files.isRegularFile(_))
         .forEach(p => {
           //println(p.toString)
-          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR("file:" + p.toString, reg = res))
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri.of("file:" + p.toString), reg = res))
         })
     }
 
@@ -79,7 +78,7 @@ object TestSuiteTest {
           test.obj.get("description").get.str,
           test.obj.get("data").get,
           test.obj.get("valid").get.bool,
-          testcase.obj.get("schema").get.transform(SchemaR("urn:uuid:" + UUID.randomUUID().toString, reg = reg)),
+          testcase.obj.get("schema").get.transform(SchemaR(Uri.of("urn:uuid:" + UUID.randomUUID().toString), reg = reg)),
           Context(mutable.Stack(""), reg)))
       }
     }

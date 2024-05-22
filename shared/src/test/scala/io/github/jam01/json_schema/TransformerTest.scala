@@ -1,11 +1,10 @@
 package io.github.jam01.json_schema
 
-import org.junit.jupiter.api.Assertions.{assertThrows, assertTrue}
 import org.junit.jupiter.api.Test
 import upickle.core.NoOpVisitor
 
 class TransformerTest {
-  val obj: Arr =
+  val arr: Arr =
     Arr(0, 1, "bloop",
       3, null, 5.5d,
       Arr("a", "b", "c"),
@@ -17,6 +16,6 @@ class TransformerTest {
   
   @Test
   def transformer(): Unit = {
-    Transformer.transform(obj, NoOpVisitor)
+    Transformer.transform(arr, NoOpVisitor)
   }
 }

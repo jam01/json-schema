@@ -3,6 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.LinkedHashMap
 
 import scala.collection.mutable
+import scala.util.hashing.MurmurHash3
 
 /*
  * based on com.lihaoyi:ujson_3:3.3.1 Value.scala
@@ -98,7 +99,7 @@ object Obj {
 case class Arr(value: mutable.ArrayBuffer[Value]) extends Value
 
 object Arr {
-  def from[T](items: IterableOnce[T])(implicit conv: T => Value): Arr = {
+  def from[T](items: IterableOnce[T])(using conv: T => Value): Arr = {
     val buf = new mutable.ArrayBuffer[Value]()
     items.iterator.foreach{ item =>
       buf += (conv(item): Value)
@@ -169,8 +170,33 @@ case object FalseSchema extends BooleanSchema {
 // https://users.scala-lang.org/t/refactoring-class-hierarchy-into-adt/6997
 // https://contributors.scala-lang.org/t/pre-sip-sealed-enumerating-allowed-sub-types/3768
 // https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
-final case class ObjectSchema(value: LinkedHashMap[String, Value],
+case class ObjectSchema(value: LinkedHashMap[String, Value],
                               protected val docbase: Uri,
                               protected val parent: Option[ObjectSchema] = None,
-                              protected val prel: Option[String] = None) extends ObjSchema with Schema
+                              protected val prel: Option[String] = None) extends ObjSchema with Schema {
                               /* relative pointer from parent */
+
+  // equals and hashCode ignores parent in order to avoid circular references
+  // (parent schema's children will reference the parent)
+  // this is ok since the structure is still validated, including the exact parent-child traversal
+  // this is only an issue if SchemaR and/or manual object creation incorrectly set parents
+  override def equals(obj: Any): Boolean = {
+    obj match
+      case ObjectSchema(value0, docbase0, _, prel0) =>
+        value == value0 &&
+          docbase == docbase0 &&
+          prel0 == prel &&
+          this.canEqual(obj)
+      case _ => false
+  }
+
+  override def hashCode(): Int = {
+    var h = "ObjectSchema".##
+    h = MurmurHash3.mix(h, value.##)
+    h = MurmurHash3.mix(h, docbase.##)
+    h = MurmurHash3.mix(h, prel.##)
+    MurmurHash3.finalizeHash(h, 3)
+  }
+
+  override def toString: String = value.toString()
+}
