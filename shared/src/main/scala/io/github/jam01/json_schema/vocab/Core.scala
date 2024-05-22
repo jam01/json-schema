@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 class Core(schema: ObjectSchema,
            ctx: Context = Context.Empty,
            path: JsonPointer = JsonPointer(),
-           dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, path, dynParent) {
+           dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
   private val _refVis: Option[Visitor[_, OutputUnit]] = schema.getRef
     .map(s => ctx.getSch(s) match

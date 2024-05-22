@@ -1,5 +1,5 @@
 package io.github.jam01.json_schema
-import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
+import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import scala.collection.mutable
 

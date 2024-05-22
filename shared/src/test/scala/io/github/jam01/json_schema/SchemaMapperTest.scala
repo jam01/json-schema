@@ -51,14 +51,14 @@ class SchemaMapperTest {
   @Test
   def _true(): Unit = {
     val jsonStr = "true"
-    val sch = StringParser.transform(jsonStr, new SchemaR("(test)"))
+    val sch = StringParser.transform(jsonStr, SchemaR("(test)"))
     Assertions.assertEquals(TrueSchema, sch)
   }
 
   @Test
   def _false(): Unit = {
     val jsonStr = "false"
-    val sch = StringParser.transform(jsonStr, new SchemaR("(test)"))
+    val sch = StringParser.transform(jsonStr, SchemaR("(test)"))
     Assertions.assertEquals(FalseSchema, sch)
   }
 
@@ -84,7 +84,7 @@ class SchemaMapperTest {
                     |    }
                     |  }
                     |}""".stripMargin
-    val sch = StringParser.transform(jsonStr, new SchemaR("(test)"))
+    val sch = StringParser.transform(jsonStr, SchemaR("(test)"))
     println()
   }
 }

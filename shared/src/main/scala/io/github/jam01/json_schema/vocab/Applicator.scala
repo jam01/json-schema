@@ -11,7 +11,7 @@ import scala.util.matching.Regex
 class Applicator(schema: ObjectSchema,
                  ctx: Context = Context.Empty,
                  path: JsonPointer = JsonPointer(),
-                 dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, path, dynParent) {
+                 dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
   private val prefixItems: Option[collection.Seq[Schema]] = schema.getSchemaArrayOpt("prefixItems")
   private val itemsVis: Option[ArrVisitor[_, OutputUnit]] = schema.getSchemaOpt("items")
@@ -77,10 +77,10 @@ class Applicator(schema: ObjectSchema,
     .map(schViss => new CompositeVisitorReducer(units => and(path.appended("allOf"), units), schViss.toSeq: _*))
   private val oneOfVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaArrayOpt("oneOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended("oneOf", schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => one(path.appended("oneOf"), units), schViss.toSeq: _*)) // TODO: count == 1
+    .map(schViss => new CompositeVisitorReducer(units => one(path.appended("oneOf"), units), schViss.toSeq: _*))
   private val anyOfVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaArrayOpt("anyOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended("anyOf", schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => any(path.appended("anyOf"), units), schViss.toSeq: _*)) // TODO: exists
+    .map(schViss => new CompositeVisitorReducer(units => any(path.appended("anyOf"), units), schViss.toSeq: _*))
   private val notVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaOpt("not")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("not"), Some(this)))
 
@@ -369,36 +369,36 @@ class Applicator(schema: ObjectSchema,
   /* helper methods */
   private def and(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose?
     if (units.map(_.valid).forall(identity)) {
-      OutputUnit(true, Some(kw), None, Some(ctx.insPtr), None, units.filter(_.valid), None, Nil)
+      OutputUnit(true, Some(kw), None, Some(ctx.currentLoc), None, units.filter(_.valid), None, Nil)
     } else {
-      OutputUnit(false, Some(kw), None, Some(ctx.insPtr), None, units.filterNot(_.valid), None, Nil)
+      OutputUnit(false, Some(kw), None, Some(ctx.currentLoc), None, units.filterNot(_.valid), None, Nil)
     }
   }
 
   private def one(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose?
     if (units.count(_.valid) == 1) {
-      OutputUnit(true, Some(kw), None, Some(ctx.insPtr), None, units.filter(_.valid), None, Nil)
+      OutputUnit(true, Some(kw), None, Some(ctx.currentLoc), None, units.filter(_.valid), None, Nil)
     } else {
-      OutputUnit(false, Some(kw), None, Some(ctx.insPtr), None, units.filterNot(_.valid), None, Nil)
+      OutputUnit(false, Some(kw), None, Some(ctx.currentLoc), None, units.filterNot(_.valid), None, Nil)
     }
   }
 
   private def any(kw: JsonPointer, units: collection.Seq[OutputUnit]): OutputUnit = { // TODO: if verbose?
     if (units.exists(_.valid)) {
-      OutputUnit(true, Some(kw), None, Some(ctx.insPtr), None, units.filter(_.valid), None, Nil)
+      OutputUnit(true, Some(kw), None, Some(ctx.currentLoc), None, units.filter(_.valid), None, Nil)
     } else {
-      OutputUnit(false, Some(kw), None, Some(ctx.insPtr), None, units.filterNot(_.valid), None, Nil)
+      OutputUnit(false, Some(kw), None, Some(ctx.currentLoc), None, units.filterNot(_.valid), None, Nil)
     }
   }
 
   private def if_then_else(iff: OutputUnit, thenn: Option[OutputUnit], els: Option[OutputUnit]): OutputUnit = {
     if (iff.valid && thenn.nonEmpty) {
       if (thenn.get.valid) { valid("then") }
-      else OutputUnit(false, Some(path.appended("then")), None, Some(ctx.insPtr), None, Seq(thenn.get), None, Nil)
+      else OutputUnit(false, Some(path.appended("then")), None, Some(ctx.currentLoc), None, Seq(thenn.get), None, Nil)
     }
     else if (!iff.valid && els.nonEmpty) {
       if (els.get.valid) { valid("else") }
-      else OutputUnit(false, Some(path.appended("else")), None, Some(ctx.insPtr), None, Seq(thenn.get), None, Nil)
+      else OutputUnit(false, Some(path.appended("else")), None, Some(ctx.currentLoc), None, Seq(thenn.get), None, Nil)
     }
     else ???
   }

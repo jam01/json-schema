@@ -2,11 +2,9 @@ package io.github.jam01.json_schema
 
 import scala.collection.{immutable, mutable}
 
-// TODO: consider making a record 
-final case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq
+final case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq -- need to make a factory-type of class
                    reg: collection.Map[Uri, Schema]) {
-  def insPtrStr: String = JsonPointer.strValueOf(insloc.reverseIterator)
-  def insPtr: JsonPointer = JsonPointer(insloc.reverseIterator.toSeq)
+  def currentLoc: JsonPointer = JsonPointer(insloc.reverseIterator.toSeq)
 
   def getSch(s: Uri): Option[Schema] = {
     val ptr = s.toString.lastIndexOf("#/")
@@ -17,7 +15,7 @@ final case class Context(insloc: mutable.Stack[String], // TODO: consider making
         .map(sch => sch.schBy(JsonPointer(s.toString.substring(ptr + 1))))
   }
 
-  def getDynSch(loc: Uri, current: VocabValidator): Option[Schema] = {
+  def getDynSch(loc: Uri, current: BaseValidator): Option[Schema] = {
     if (loc.toString.contains("#/")) return getSch(Uri.of(loc.toString, false))
 
     val sch0 = getSch(loc)

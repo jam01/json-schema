@@ -2,12 +2,11 @@ package io.github.jam01.json_schema
 
 import upickle.core.{Abort, ObjVisitor, Visitor}
 
-// TODO: consider adding all methods throwing, to use instead of SimpleVisitor 
 trait JsonVisitor[-T, +J] extends Visitor[T, J] {
-  def expectedMsg = "expected string, integer, number, object, array, or null"
+  def expectedMsg = "Expected null, boolean, number, string, object or array"
 
   override def visitUInt64(i: Long, index: Int): J = {
-    if (i < 0) visitString(java.lang.Long.toUnsignedString(i), index)
+    if (i < 0) visitString(java.lang.Long.toUnsignedString(i), index) // TODO: eventually fwd to visBigInt
     else visitInt64(i, index)
   }
 
@@ -22,6 +21,12 @@ trait JsonVisitor[-T, +J] extends Visitor[T, J] {
 
   override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): J =
     visitFloat64(java.lang.Double.valueOf(s.asInstanceOf[String]), index)
+
+  /* TODO: enable support
+  def visitBigInt(i: BigInt, index: Int): J
+  https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/math/BigDecimal.html#relation-to-ieee-754-decimal-arithmetic-heading
+  def visitBigDecimal(i: BigDecimal, index: Int): J
+   */
 
   override def visitChar(s: Char, index: Int): J = visitString(s.toString, index)
 

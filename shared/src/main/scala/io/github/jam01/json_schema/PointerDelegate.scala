@@ -7,7 +7,7 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 /**
  * A delegating visitor that keeps track of the current node visited as a JSON Pointer.
  *
- * For Arrays, the child location will be set before fwding the subVisitor invocation. For Objects, the entry location
+ * For arrays, the child location will be set before fwding the subVisitor invocation. For objects, the entry location
  * will be set before fwding visitKey invocation.
  *
  * @param delegate the visitor to fwd nodes

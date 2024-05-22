@@ -19,7 +19,7 @@ final case class OutputUnit(valid: Boolean,
                       error: Option[String] = None,
                       errors: collection.Seq[OutputUnit] = Nil,
                       annotation: Option[Any] = None,
-                      annotations: collection.Seq[OutputUnit] = Nil) {
+                      annotations: collection.Seq[OutputUnit] = Nil) { // TODO: consider T | Null 
 
   def not(): OutputUnit = {
     if (valid) {

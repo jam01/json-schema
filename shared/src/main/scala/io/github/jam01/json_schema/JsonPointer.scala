@@ -8,7 +8,12 @@ final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
 
   def appended(refToks: String*): JsonPointer = JsonPointer(refTokens.appendedAll(refToks))
 
-  override def toString: String = JsonPointer.toString(refTokens)
+  override def toString: String = {
+    refTokens.iterator
+      .map(_.replace("~", "~0")
+        .replace("/", "~1"))
+      .mkString("/")
+  }
 }
 
 object JsonPointer {
@@ -19,13 +24,6 @@ object JsonPointer {
       .map(_.replace("~0", "~")
         .replace("~1", "/") // TODO: replace w/regex?
       ))
-  }
-
-  // TODO: do we need this? public?
-  def strValueOf(it: collection.IterableOnce[String]): String = {
-    val itr = it.iterator
-    if (!itr.hasNext) throw new IllegalArgumentException("invalid JSON Pointer")
-    toString(itr)
   }
 
   private def toString(it: collection.IterableOnce[String]): String = {

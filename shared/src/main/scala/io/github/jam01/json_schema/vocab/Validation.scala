@@ -12,7 +12,7 @@ import scala.util.matching.Regex
 class Validation(schema: ObjectSchema,
                  ctx: Context = Context.Empty,
                  path: JsonPointer = JsonPointer(),
-                 dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, path, dynParent) {
+                 dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
   private val tyype: collection.Seq[String] = schema.getAsStringArray(Validation.Tyype)
   private val const = schema.get(Validation.Const)

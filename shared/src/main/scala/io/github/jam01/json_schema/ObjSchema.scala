@@ -2,8 +2,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
 
-import java.net.URI
-import scala.collection.{Map, Seq, immutable}
+import scala.collection.{Map, Seq}
 
 private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.scala-lang.org/tour/self-types.html
   def getId: Option[String] = {
@@ -11,8 +10,8 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   def getBase: Uri = {
-    val base = parent.map(_.getBase).getOrElse(docbase)
-    getId.map(id => base.resolve(id)).getOrElse(base)
+    val effbase = parent.map(_.getBase).getOrElse(docbase)
+    getId.map(id => effbase.resolve(id)).getOrElse(effbase)
   }
 
   def getRef: Option[Uri] = {
@@ -28,11 +27,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the boolean associated with the given key.
+   * Optionally returns the boolean associated with the given key
    *
-   * @throws ClassCastException if the value is not a boolean
-   * @param s the entry key
-   * @return an Option of the value cast as a boolean, or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a boolean
+   * @param k the entry key
+   * @return an Option of the boolean value, or None if the entry does not exist
    */
   def getBoolean(k: String): Option[Boolean] = {
     value.get(k).map {
@@ -41,13 +40,12 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     }
   }
 
-  // see: https://stackoverflow.com/q/11338954
   /**
-   * Optionally returns the int associated with the given key.
+   * Optionally returns the int associated with the given key
    *
-   * @throws ClassCastException if the value is not a int
-   * @param s the entry key
-   * @return an Option of the value cast as a int, or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a int
+   * @param k the entry key
+   * @return an Option of the int value, or None if the entry does not exist
    */
   def getInt(k: String): Option[Int] = {
     value.get(k).map {
@@ -59,11 +57,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the long or double associated with the given key.
+   * Optionally returns the number associated with the given key
    *
-   * @throws ClassCastException if the value is not a double
-   * @param s the entry key
-   * @return an Option of the value cast as a long, or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a double
+   * @param k the entry key
+   * @return an Option of the number value, or None if the entry does not exist
    */
   def getNumber(k: String): Option[Long | Double] = {
     value.get(k).map {
@@ -73,11 +71,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the String associated with the given key.
+   * Optionally returns the string associated with the given key
    *
-   * @throws ClassCastException if the value is not a String
-   * @param s the entry key
-   * @return an Option of the value cast as a String, or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a String
+   * @param k the entry key
+   * @return an Option of the String value, or None if the entry does not exist
    */
   def getString(k: String): Option[String] = {
     value.get(k).map {
@@ -87,11 +85,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the JSON Object associated with the given key.
+   * Optionally returns the JSON object associated with the given key
    *
-   * @throws ClassCastException if the value is not a JSON Object
-   * @param s the entry key
-   * @return an Option of the value cast as a Map[String, Value], or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a JSON object
+   * @param k the entry key
+   * @return an Option of the Map[String, Value] value, or None if the entry does not exist
    */
   def getObjectOpt(k: String): Option[Map[String, Value]] = {
     value.get(k).map {
@@ -101,11 +99,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the JSON Array associated with the given key.
+   * Optionally returns the JSON array associated with the given key
    *
-   * @throws ClassCastException if the value is not a JSON Array
-   * @param s the entry key
-   * @return an Option of the value cast as a Seq[Value], or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a JSON array
+   * @param k the entry key
+   * @return an Option of the Seq[Value] value, or None if the entry does not exist
    */
   def getArrayOpt(k: String): Option[Seq[Value]] = {
     value.get(k).map {
@@ -115,11 +113,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Returns the JSON Array associated with the given key.
+   * Returns the JSON array associated with the given key
    *
-   * @throws ClassCastException if the value is not an Array
-   * @param s the entry key
-   * @return the value cast as Seq[Value], or an empty Seq if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not an Array
+   * @param k the entry key
+   * @return the Seq[Value] value, or an empty Seq if the entry does not exist
    */
   def getArray(k: String): Seq[Value] = {
     value.get(k) match
@@ -130,11 +128,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Returns the JSON Array of Strings associated with the given key.
+   * Returns the JSON array of strings associated with the given key
    *
-   * @throws ClassCastException if the value is not an Array
-   * @param s the entry key
-   * @return the value cast as Seq[String], or an empty Seq if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not an Array
+   * @param k the entry key
+   * @return the Seq[String] value, or an empty Seq if the entry does not exist
    */
   def getStringArray(k: String): Seq[String] = {
     value.get(k) match
@@ -145,12 +143,12 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Returns the JSON value associated with the given key as an Array of Strings, wrapping the String value if it's not
-   * an Array.
+   * Returns the JSON value associated with the given key as an array of strings, wrapping a single string value if 
+   * found
    *
-   * @throws ClassCastException if the value is not an Array of Strings or an single String
-   * @param s the entry key
-   * @return the value cast or wrapped as Seq[String], or an empty Seq if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not an Array of strings or a String
+   * @param k the entry key
+   * @return the Seq[String] value, possibly wrapping a string, or an empty Seq if the entry does not exist
    */
   def getAsStringArray(k: String): collection.Seq[String] = {
     value.get(k) match
@@ -162,11 +160,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the Schema associated with the given key, potentially converting a JSON value into a Schema.
+   * Optionally returns the Schema associated with the given key
    *
-   * @throws ClassCastException if the value is not a Schema or cannot be converted into one
-   * @param s the entry key
-   * @return an Option of the value cast or converted to a Schema, or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a Schema
+   * @param k the entry key
+   * @return an Option of the Schema value, or None if the entry does not exist
    */
   def getSchemaOpt(k: String): Option[Schema] = {
     value.get(k).map {
@@ -176,17 +174,23 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   /**
-   * Optionally returns the JSON Array of Schemas associated with the given key, potentially converting JSON value into
-   * Schemas.
+   * Optionally returns the JSON array of Schemas associated with the given key
    *
-   * @throws ClassCastException if the value is not a JSON Array of Schemas or its items cannot be converted to Schemas
-   * @param s the entry key
-   * @return an Option of the value cast as a Seq[Schema], or None if the entry has a null value or does not exist
+   * @throws IllegalStateException if the value is not a JSON array of Schemas
+   * @param k the entry key
+   * @return an Option of the Seq[Schema] value, or None if the entry does not exist
    */
   def getSchemaArrayOpt(k: String): Option[Seq[Schema]] = {
     value.get(k).map(_.arr.map(_.sch))
   }
 
+  /**
+   * Optionally returns the JSON object of Schemas associated with the given key
+   *
+   * @throws IllegalStateException if the value is not a JSON object of Schemas
+   * @param k the entry key
+   * @return an Option of the Map[String, Schema] value, or None if the entry does not exist
+   */
   def getSchemaObjectOpt(k: String): Option[Map[String, Schema]] = {
     value.get(k).map(_.obj.map((k, v) => (k, v.sch)))
   }
@@ -221,7 +225,7 @@ object ObjSchema {
     else ret.get
   }
 
-  // check it fragment exists if not add it
+  // TODO: check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Exception =
     new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
 }

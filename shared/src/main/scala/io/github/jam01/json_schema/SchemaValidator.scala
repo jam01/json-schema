@@ -8,7 +8,7 @@ object SchemaValidator {
   def of(sch: Schema,
          ctx: Context = Context.Empty,
          path: JsonPointer = JsonPointer(),
-         dynParent: Option[VocabValidator] = None): Visitor[_, OutputUnit] = {
+         dynParent: Option[BaseValidator] = None): Visitor[_, OutputUnit] = {
     sch match
       case bs: BooleanSchema => BooleanSchemaValidator.of(bs)
       case os: ObjectSchema => ObjectSchemaValidator.of(os, ctx, path, dynParent)
@@ -72,8 +72,9 @@ private abstract class BooleanArrValidator(bool: Boolean) extends ArrVisitor[Out
 
 object ObjectSchemaValidator {
   def of(schema: ObjectSchema, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer(),
-         dynParent: Option[VocabValidator] = None): Visitor[_, OutputUnit] = {
+         dynParent: Option[BaseValidator] = None): Visitor[_, OutputUnit] = {
 
+    // TODO: selective vocabs 
     val comp: JsonVisitor[Seq[Any], Seq[collection.Seq[OutputUnit]]] = 
       new CompositeVisitor(vocab.Core(schema, ctx, path, dynParent),
         vocab.Applicator(schema, ctx, path, dynParent),
@@ -83,9 +84,9 @@ object ObjectSchemaValidator {
       override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit = {
         val units = v.flatten
         if (units.map(_.valid).forall(identity)) {
-          OutputUnit(true, Some(path), None, Some(ctx.insPtr), None, Nil, None, Nil)
+          OutputUnit(true, Some(path), None, Some(ctx.currentLoc), None, Nil, None, Nil)
         } else {
-          OutputUnit(false, Some(path), None, Some(ctx.insPtr), None, units.filterNot(_.valid), None, Nil)
+          OutputUnit(false, Some(path), None, Some(ctx.currentLoc), None, units.filterNot(_.valid), None, Nil)
         }
       }
     }

@@ -4,6 +4,9 @@ import upickle.core.LinkedHashMap
 
 import scala.collection.mutable
 
+/*
+ * based on com.lihaoyi:ujson_3:3.3.1 Value.scala
+ */
 sealed trait Value {
   def value: Any
 
@@ -113,8 +116,6 @@ object Arr {
 }
 
 // TODO: make part of AST
-// TODO: add decimal64
-// https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/math/BigDecimal.html#relation-to-ieee-754-decimal-arithmetic-heading
 case class Num(value: Long | Double) extends Value
 
 sealed abstract class Bool extends Value {
@@ -168,15 +169,8 @@ case object FalseSchema extends BooleanSchema {
 // https://users.scala-lang.org/t/refactoring-class-hierarchy-into-adt/6997
 // https://contributors.scala-lang.org/t/pre-sip-sealed-enumerating-allowed-sub-types/3768
 // https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
-
-/**
- *
- * @param obj     underlying Map of keywords -> values
- * @param docbase a base uri assigned by the application
- * @param prel    the relative JSON pointer from the parent schema
- * @param parent  the parent schema, if any
- */
 final case class ObjectSchema(value: LinkedHashMap[String, Value],
-                              docbase: Uri,
-                              prel: Option[String] = None,
-                              parent: Option[ObjectSchema] = None) extends ObjSchema with Schema
+                              protected val docbase: Uri,
+                              protected val parent: Option[ObjectSchema] = None,
+                              protected val prel: Option[String] = None) extends ObjSchema with Schema
+                              /* relative pointer from parent */

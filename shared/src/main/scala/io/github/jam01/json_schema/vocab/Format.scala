@@ -10,7 +10,7 @@ import java.util.UUID
 class Format(schema: ObjectSchema,
              ctx: Context = Context.Empty,
              path: JsonPointer = JsonPointer(),
-             dynParent: Option[VocabValidator] = None) extends VocabValidator(schema, ctx, path, dynParent) {
+             dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
   private val format: Option[String] = schema.getString("format")
 

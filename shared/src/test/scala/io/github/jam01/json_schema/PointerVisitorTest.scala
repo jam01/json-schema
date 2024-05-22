@@ -28,12 +28,12 @@ class PointerVisitorTest {
 }
 
 class CtxPointerVisitor(ctx: Context) extends JsonVisitor[Value, Value] {
-  override def visitNull(index: Int): Value = ctx.insPtrStr
-  override def visitFalse(index: Int): Value = ctx.insPtrStr
-  override def visitTrue(index: Int): Value = ctx.insPtrStr
-  override def visitFloat64(d: Double, index: Int): Value = ctx.insPtrStr
-  override def visitInt64(i: Long, index: Int): Value = ctx.insPtrStr
-  override def visitString(s: CharSequence, index: Int): Value = ctx.insPtrStr
+  override def visitNull(index: Int): Value = ctx.currentLoc.toString
+  override def visitFalse(index: Int): Value = ctx.currentLoc.toString
+  override def visitTrue(index: Int): Value = ctx.currentLoc.toString
+  override def visitFloat64(d: Double, index: Int): Value = ctx.currentLoc.toString
+  override def visitInt64(i: Long, index: Int): Value = ctx.currentLoc.toString
+  override def visitString(s: CharSequence, index: Int): Value = ctx.currentLoc.toString
   override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(this)
   override def visitArray(length: Int, index: Int): ArrVisitor[Value, Arr] = new CollectArrVisitor(this)
 }
