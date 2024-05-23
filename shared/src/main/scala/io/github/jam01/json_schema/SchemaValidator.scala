@@ -8,7 +8,7 @@ object SchemaValidator {
   def of(sch: Schema,
          ctx: Context = Context.Empty,
          path: JsonPointer = JsonPointer(),
-         dynParent: Option[BaseValidator] = None): Visitor[_, OutputUnit] = {
+         dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
     sch match
       case bs: BooleanSchema => BooleanSchemaValidator.of(bs)
       case os: ObjectSchema => ObjectSchemaValidator.of(os, ctx, path, dynParent)
@@ -18,12 +18,12 @@ object SchemaValidator {
 object BooleanSchemaValidator {
   val True: BooleanSchemaValidator = new BooleanSchemaValidator(true) {
     private val TrueArrValidator = new BooleanArrValidator(true) {
-      override def subVisitor: Visitor[_, _] = BooleanSchemaValidator.True
+      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.True
     }
 
     private val TrueObjValidator = new BooleanObjValidator(true) {
-      override def subVisitor: Visitor[_, _] = BooleanSchemaValidator.True
-      override def visitKey(index: Int): Visitor[_, _] = BooleanSchemaValidator.True
+      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.True
+      override def visitKey(index: Int): Visitor[?, ?] = BooleanSchemaValidator.True
     }
 
     override def visitArray(length: Int, index: Int): ArrVisitor[OutputUnit, OutputUnit] = TrueArrValidator
@@ -32,12 +32,12 @@ object BooleanSchemaValidator {
 
   val False: BooleanSchemaValidator = new BooleanSchemaValidator(false) {
     private val FalseArrVisitor = new BooleanArrValidator(false) {
-      override def subVisitor: Visitor[_, _] = BooleanSchemaValidator.False
+      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.False
     }
 
     private val FalseObjVisitor = new BooleanObjValidator(false) {
-      override def subVisitor: Visitor[_, _] = BooleanSchemaValidator.False
-      override def visitKey(index: Int): Visitor[_, _] = BooleanSchemaValidator.False
+      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.False
+      override def visitKey(index: Int): Visitor[?, ?] = BooleanSchemaValidator.False
     }
 
     override def visitArray(length: Int, index: Int): ArrVisitor[OutputUnit, OutputUnit] = FalseArrVisitor
@@ -72,7 +72,7 @@ private abstract class BooleanArrValidator(bool: Boolean) extends ArrVisitor[Out
 
 object ObjectSchemaValidator {
   def of(schema: ObjectSchema, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer(),
-         dynParent: Option[BaseValidator] = None): Visitor[_, OutputUnit] = {
+         dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
 
     // TODO: selective vocabs 
     val comp: JsonVisitor[Seq[Any], Seq[collection.Seq[OutputUnit]]] = 

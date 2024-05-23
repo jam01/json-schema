@@ -28,11 +28,11 @@ class SchemaR private(docbase: Uri,
     if (parent.isEmpty)
       reg.addOne(docbase, sch)
 
-    override def visitKey(index: Int): Visitor[_, _] = StringVisitor
+    override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
 
     override def visitKeyValue(v: Any): Unit = key = v.asInstanceOf[String]
 
-    override def subVisitor: Visitor[_, _] = key match
+    override def subVisitor: Visitor[?, ?] = key match
       // kws with schema
       case "items" | "contains" | "additionalProperties" | "propertyNames" | "if" | "then" | "else" | "not" =>
         new SchemaR(docbase, reg, ids, anchors, Some(sch), Some(s"/$key"))
@@ -42,7 +42,7 @@ class SchemaR private(docbase: Uri,
 
         override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Schema, Obj] =
           new CollectObjVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) {
-            override def subVisitor: Visitor[_, _] = {
+            override def subVisitor: Visitor[?, ?] = {
               vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$k") // setting prel using CollectObjVisitor fields
               super.subVisitor
             }
@@ -56,7 +56,7 @@ class SchemaR private(docbase: Uri,
           new CollectArrVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) {
             private var nextIdx = 0
 
-            override def subVisitor: Visitor[_, _] = {
+            override def subVisitor: Visitor[?, ?] = {
               vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$nextIdx") // setting prel using CollectArrVisitor fields
               super.subVisitor
             }

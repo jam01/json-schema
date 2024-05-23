@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets
 // https://github.com/com-lihaoyi/upickle/blob/3.1.3/ujson/src/ujson/JsVisitor.scala
 final class VisitorDecoder[J](maxDepth: Int,
                               numReader: VisitorNumberReader,
-                              v: Visitor[_, J]) extends JsonValueCodec[J] {
+                              v: Visitor[?, J]) extends JsonValueCodec[J] {
   override def nullValue: J = null.asInstanceOf[J]
 
   override def encodeValue(x: J, out: JsonWriter): Unit =
@@ -21,7 +21,7 @@ final class VisitorDecoder[J](maxDepth: Int,
   override def decodeValue(in: JsonReader, default: J): J =
     decode(in, maxDepth, v)
 
-  private[this] def decode[Z](in: JsonReader, depth: Int, v: Visitor[_, Z]): Z = {
+  private def decode[Z](in: JsonReader, depth: Int, v: Visitor[?, Z]): Z = {
     val b = in.nextToken()
     if (b == '"') {
       in.rollbackToken()
@@ -69,12 +69,12 @@ final class VisitorDecoder[J](maxDepth: Int,
 }
 
 abstract class VisitorNumberReader {
-  def read[N](in: JsonReader, v: Visitor[_, N]): N
+  def read[N](in: JsonReader, v: Visitor[?, N]): N
 }
 
 object VisitorNumberReader {
   val Default: VisitorNumberReader = new VisitorNumberReader {
-    override def read[N](in: JsonReader, v: Visitor[_, N]): N = {
+    override def read[N](in: JsonReader, v: Visitor[?, N]): N = {
       in.setMark()
       var isNeg = false
       var digits = 0

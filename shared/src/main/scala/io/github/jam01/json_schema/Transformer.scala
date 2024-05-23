@@ -3,7 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.{LinkedHashMap, Visitor}
 
 object Transformer extends upickle.core.Transformer[Value] {
-  override def transform[T](o: Value, v: Visitor[_, T]): T = { // see ujson.Value#transform
+  override def transform[T](o: Value, v: Visitor[?, T]): T = { // see ujson.Value#transform
     o match
       case null | Null => v.visitNull(-1)
       case Bool(bool) => if (bool) v.visitTrue(-1) else v.visitFalse(-1)
@@ -20,7 +20,7 @@ object Transformer extends upickle.core.Transformer[Value] {
         case ObjectSchema(obj, _, _, _) => transformObj(obj, v)
   }
 
-  private def transformObj[T](obj: LinkedHashMap[String, Value], v: Visitor[_, T]) = {
+  private def transformObj[T](obj: LinkedHashMap[String, Value], v: Visitor[?, T]) = {
     val ctx = v.visitObject(obj.size, true, -1).narrow
     for (kv <- obj) {
       val keyVisitor = ctx.visitKey(-1)

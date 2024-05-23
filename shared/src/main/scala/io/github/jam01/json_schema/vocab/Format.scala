@@ -51,9 +51,9 @@ class Format(schema: ObjectSchema,
 //      case _ => true) // TODO: throw unsupported exc
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[OutputUnit]] =
+  override def visitArray(length: Int, index: Int): ArrVisitor[?, collection.Seq[OutputUnit]] =
     ??? //BooleanSchemaValidator.True.visitArray(length, index)
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Seq[OutputUnit]] =
+  override def visitObject(length: Int, index: Int): ObjVisitor[?, collection.Seq[OutputUnit]] =
     ??? //BooleanSchemaValidator.True.visitObject(length, index)}
 }

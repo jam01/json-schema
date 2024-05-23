@@ -14,25 +14,25 @@ class Applicator(schema: ObjectSchema,
                  dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
   private val prefixItems: Option[collection.Seq[Schema]] = schema.getSchemaArrayOpt("prefixItems")
-  private val itemsVis: Option[ArrVisitor[_, OutputUnit]] = schema.getSchemaOpt("items")
+  private val itemsVis: Option[ArrVisitor[?, OutputUnit]] = schema.getSchemaOpt("items")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("items"), Some(this)))
     .map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
       private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
 
-      override def subVisitor: Visitor[_, _] = schValidator
+      override def subVisitor: Visitor[?, ?] = schValidator
       override def visitValue(u: OutputUnit, index: Int): Unit = units.addOne(u)
       override def visitEnd(index: Int): OutputUnit = and(path.appended("items"), units)
     })
 
   private val maxContains: Option[Int] = schema.getInt("maxContains")
   private val minContains: Option[Int] = schema.getInt("minContains")
-  private val contains: Option[ArrVisitor[_, OutputUnit]] = schema.getSchemaOpt("contains")
+  private val contains: Option[ArrVisitor[?, OutputUnit]] = schema.getSchemaOpt("contains")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("contains"), Some(this)))
     .map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
       private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
       private var matched = 0
 
-      override def subVisitor: Visitor[_, _] = schValidator
+      override def subVisitor: Visitor[?, ?] = schValidator
       override def visitValue(u: OutputUnit, index: Int): Unit = if (u.valid) matched = matched + 1
       override def visitEnd(index: Int): OutputUnit = {
         var res = matched > 0
@@ -47,41 +47,41 @@ class Applicator(schema: ObjectSchema,
       }
     })
 
-  private val addlPropsVis: Option[ObjVisitor[_, OutputUnit]] = schema.getSchemaOpt("additionalProperties")
+  private val addlPropsVis: Option[ObjVisitor[?, OutputUnit]] = schema.getSchemaOpt("additionalProperties")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("additionalProperties"), Some(this)))
     .map(schValidator => new ObjVisitor[OutputUnit, OutputUnit] {
       private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
       private var subsch = true
 
-      override def visitKey(index: Int): Visitor[_, _] = ???
+      override def visitKey(index: Int): Visitor[?, ?] = ???
       override def visitKeyValue(v: Any): Unit = ???
-      override def subVisitor: Visitor[_, _] = schValidator
+      override def subVisitor: Visitor[?, ?] = schValidator
       override def visitValue(u: OutputUnit, index: Int): Unit = units.addOne(u)
       override def visitEnd(index: Int): OutputUnit = and(path.appended("additionalProperties"), units)
     })
   private val properties: Option[collection.Map[String, Schema]] = schema.getSchemaObjectOpt("properties")
   private val patternProperties: Option[collection.Map[Regex, Schema]] = schema.getSchemaObjectOpt("patternProperties")
     .map(obj => obj.map(entry => (new Regex(entry._1).unanchored, entry._2)))
-  private val depSchsViss: Option[collection.Map[String, Visitor[_, OutputUnit]]] = schema.getSchemaObjectOpt("dependentSchemas")
+  private val depSchsViss: Option[collection.Map[String, Visitor[?, OutputUnit]]] = schema.getSchemaObjectOpt("dependentSchemas")
     .map(obj => obj.map(entry => (entry._1, SchemaValidator.of(entry._2, ctx, path.appended("dependentSchemas", entry._1), Some(this)))))
-  private val propNymVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaOpt("propertyNames")
+  private val propNymVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt("propertyNames")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("propertyNames"), Some(this)))
-  private val ifVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaOpt("if")
+  private val ifVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt("if")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("if"), Some(this)))
-  private val thenVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaOpt("then")
+  private val thenVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt("then")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("then"), Some(this)))
-  private val elseVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaOpt("else")
+  private val elseVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt("else")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("else"), Some(this)))
-  private val allOfVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaArrayOpt("allOf")
+  private val allOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt("allOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended("allOf", schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => and(path.appended("allOf"), units), schViss.toSeq: _*))
-  private val oneOfVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaArrayOpt("oneOf")
+    .map(schViss => new CompositeVisitorReducer(units => and(path.appended("allOf"), units), schViss.toSeq*))
+  private val oneOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt("oneOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended("oneOf", schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => one(path.appended("oneOf"), units), schViss.toSeq: _*))
-  private val anyOfVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaArrayOpt("anyOf")
+    .map(schViss => new CompositeVisitorReducer(units => one(path.appended("oneOf"), units), schViss.toSeq*))
+  private val anyOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt("anyOf")
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended("anyOf", schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => any(path.appended("anyOf"), units), schViss.toSeq: _*))
-  private val notVis: Option[Visitor[_, OutputUnit]] = schema.getSchemaOpt("not")
+    .map(schViss => new CompositeVisitorReducer(units => any(path.appended("anyOf"), units), schViss.toSeq*))
+  private val notVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt("not")
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("not"), Some(this)))
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = {
@@ -189,8 +189,8 @@ class Applicator(schema: ObjectSchema,
    * `insVisitor` and all of child visitors invoked before through the `childVisitor` variable.
    */
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[OutputUnit]] = {
-    val insVisitors: mutable.ArrayBuffer[ArrVisitor[_, OutputUnit]] = new mutable.ArrayBuffer(7)
+  override def visitArray(length: Int, index: Int): ArrVisitor[?, collection.Seq[OutputUnit]] = {
+    val insVisitors: mutable.ArrayBuffer[ArrVisitor[?, OutputUnit]] = new mutable.ArrayBuffer(7)
     notVis.foreach(vis => insVisitors.addOne(new MapArrContext(vis.visitArray(length, index), unit => unit.not())))
     allOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
@@ -199,42 +199,42 @@ class Applicator(schema: ObjectSchema,
     ifVis.foreach(vis =>
       if (thenVis.isEmpty && elseVis.isEmpty) ()
       else {
-        val viss: mutable.ArrayBuffer[ArrVisitor[_, OutputUnit]] = new mutable.ArrayBuffer(3)
+        val viss: mutable.ArrayBuffer[ArrVisitor[?, OutputUnit]] = new mutable.ArrayBuffer(3)
         viss.addOne(vis.visitArray(length, index))
         if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitArray(length, index))
         if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitArray(length, index))
 
-        insVisitors.addOne(new MapArrContext(new CompositeArrVisitor(viss.toSeq: _*), units => {
+        insVisitors.addOne(new MapArrContext(new CompositeArrVisitor(viss.toSeq*), units => {
           if_then_else(units.head,
             thenVis.map(_ => units(1)),
             elseVis.map(_ => if (thenVis.isEmpty) units(1) else units(2)))
         }))
       })
 
-    val insVisitor: ArrVisitor[_, collection.Seq[OutputUnit]] = new CompositeArrVisitor(insVisitors.toSeq: _*)
-    var childVisitor: ArrVisitor[_, _] = null // to be assigned based on child
+    val insVisitor: ArrVisitor[?, collection.Seq[OutputUnit]] = new CompositeArrVisitor(insVisitors.toSeq*)
+    var childVisitor: ArrVisitor[?, ?] = null // to be assigned based on child
 
     new ArrVisitor[Any, collection.Seq[OutputUnit]] {
       private var nextIdx = 0
 
       // returns subVisitor based on child index
-      val prefixItemsVisitor: Option[ArrVisitor[_, OutputUnit]] = prefixItems.map(arr => new ArrVisitor[OutputUnit, OutputUnit] {
+      val prefixItemsVisitor: Option[ArrVisitor[?, OutputUnit]] = prefixItems.map(arr => new ArrVisitor[OutputUnit, OutputUnit] {
         private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
 
-        override def subVisitor: Visitor[_, _] = SchemaValidator.of(arr(nextIdx), ctx, path.appended("prefixItems", nextIdx.toString), Some(Applicator.this))
+        override def subVisitor: Visitor[?, ?] = SchemaValidator.of(arr(nextIdx), ctx, path.appended("prefixItems", nextIdx.toString), Some(Applicator.this))
         override def visitValue(u: OutputUnit, index: Int): Unit = units.addOne(u)
         override def visitEnd(index: Int): OutputUnit = and(path.appended("prefixItemsVisitor"), units)
       })
 
-      override def subVisitor: Visitor[_, _] = {
-        val childVisitors: mutable.ArrayBuffer[ArrVisitor[_, OutputUnit]] = mutable.ArrayBuffer.from(insVisitors)
+      override def subVisitor: Visitor[?, ?] = {
+        val childVisitors: mutable.ArrayBuffer[ArrVisitor[?, OutputUnit]] = mutable.ArrayBuffer.from(insVisitors)
 
         if (prefixItems.nonEmpty && prefixItems.get.length >= nextIdx + 1) { childVisitors.addOne(prefixItemsVisitor.get) }
         else if (itemsVis.nonEmpty) childVisitors.addOne(itemsVis.get)
 
         childVisitor =
           if (childVisitors.length == 1) childVisitors.head
-          else new CompositeArrVisitor(childVisitors.toSeq: _*)
+          else new CompositeArrVisitor(childVisitors.toSeq*)
         childVisitor.subVisitor
       }
 
@@ -254,10 +254,10 @@ class Applicator(schema: ObjectSchema,
     }
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Seq[OutputUnit]] = {
+  override def visitObject(length: Int, index: Int): ObjVisitor[?, collection.Seq[OutputUnit]] = {
     val propsVisited = mutable.ArrayBuffer.empty[String] // properties visited
 
-    val insVisitors = mutable.ArrayBuffer.empty[ObjVisitor[_, OutputUnit]]
+    val insVisitors = mutable.ArrayBuffer.empty[ObjVisitor[?, OutputUnit]]
     notVis.foreach(vis => insVisitors.addOne(new MapObjContext(vis.visitObject(length, true, index), unit => unit.not())))
     allOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
@@ -265,61 +265,61 @@ class Applicator(schema: ObjectSchema,
     ifVis.foreach(vis =>
       if (thenVis.isEmpty && elseVis.isEmpty) ()
       else {
-        val viss: mutable.ArrayBuffer[ObjVisitor[_, OutputUnit]] = new mutable.ArrayBuffer(3)
+        val viss: mutable.ArrayBuffer[ObjVisitor[?, OutputUnit]] = new mutable.ArrayBuffer(3)
         viss.addOne(vis.visitObject(length, true, index))
         if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitObject(length, true, index))
         if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitObject(length, true, index))
 
-        insVisitors.addOne(new MapObjContext(new CompositeObjVisitor(viss.toSeq: _*), units => {
+        insVisitors.addOne(new MapObjContext(new CompositeObjVisitor(viss.toSeq*), units => {
           if_then_else(units.head,
             thenVis.map(_ => units(1)),
             elseVis.map(_ => if (thenVis.isEmpty) units(1) else units(2)))
         }))
       })
 
-    val depSchsObjViss: Option[collection.Map[String, ObjVisitor[_, (String, OutputUnit)]]] =
+    val depSchsObjViss: Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]] =
       depSchsViss.map(viss => viss.map(entry => (entry._1,
         MapObjContext(entry._2.visitObject(length, true, index), b => (entry._1, b)))))
     depSchsObjViss.foreach(viss =>
-      insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq: _*), k_units => {
+      insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq*), k_units => {
         val apply = k_units.filter((k, unit) => propsVisited.contains(k))
         validate("dependentSchemas", "Some schemas did not successfully apply", apply.forall((k, u) => u.valid))
       })))
 
-    val insVisitor: ObjVisitor[_, collection.Seq[OutputUnit]] = new CompositeObjVisitor(insVisitors.toSeq: _*)
+    val insVisitor: ObjVisitor[?, collection.Seq[OutputUnit]] = new CompositeObjVisitor(insVisitors.toSeq*)
 
-    var childVisitor: ObjVisitor[_, _] = null // to be assigned based on child
+    var childVisitor: ObjVisitor[?, ?] = null // to be assigned based on child
 
     new ObjVisitor[Any, collection.Seq[OutputUnit]] {
       private var propNamesValid = true
       private var currentKey: String = "?"
 
       // returns subVisitor based on currentKey
-      val propsVisitor: Option[ObjVisitor[_, OutputUnit]] = properties.map(m => new ObjVisitor[OutputUnit, OutputUnit] {
+      val propsVisitor: Option[ObjVisitor[?, OutputUnit]] = properties.map(m => new ObjVisitor[OutputUnit, OutputUnit] {
         private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
         private var subsch = true
 
-        override def visitKey(index: Int): Visitor[_, _] = ???
+        override def visitKey(index: Int): Visitor[?, ?] = ???
         override def visitKeyValue(v: Any): Unit = ???
-        override def subVisitor: Visitor[_, _] = SchemaValidator.of(m(currentKey), ctx, path.appended("properties", currentKey), Some(Applicator.this))
+        override def subVisitor: Visitor[?, ?] = SchemaValidator.of(m(currentKey), ctx, path.appended("properties", currentKey), Some(Applicator.this))
         override def visitValue(u: OutputUnit, index: Int): Unit = units.addOne(u)
         override def visitEnd(index: Int): OutputUnit = and(path.appended("prefixItemsVisitor"), units)
       })
 
       private var matchedPatternSchs: Seq[(String, Schema)] = Nil // to be assigned based on key visited
       // returns subVisitor based on assigned matchedPatternSchs
-      val patternPropsVisitor: Option[ObjVisitor[_, OutputUnit]] = patternProperties.map(m => new ObjVisitor[Seq[OutputUnit], OutputUnit] {
+      val patternPropsVisitor: Option[ObjVisitor[?, OutputUnit]] = patternProperties.map(m => new ObjVisitor[Seq[OutputUnit], OutputUnit] {
         private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
 
-        override def visitKey(index: Int): Visitor[_, _] = ???
+        override def visitKey(index: Int): Visitor[?, ?] = ???
         override def visitKeyValue(v: Any): Unit = ???
-        override def subVisitor: Visitor[_, _] = new CompositeVisitor(matchedPatternSchs.map(pattSch =>
-          SchemaValidator.of(pattSch._2, ctx, path.appended("patternProperties", pattSch._1), Some(Applicator.this))): _*)
+        override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map(pattSch =>
+          SchemaValidator.of(pattSch._2, ctx, path.appended("patternProperties", pattSch._1), Some(Applicator.this)))*)
         override def visitValue(mult: Seq[OutputUnit], index: Int): Unit = mult.foreach(u => units.addOne(u))
         override def visitEnd(index: Int): OutputUnit = and(path.appended("patternProperties"), units)
       })
 
-      override def visitKey(index: Int): Visitor[_, _] = new SimpleVisitor[Nothing, Any] {
+      override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
         def expectedMsg = "expected string"
 
         override def visitString(s: CharSequence, index1: Int): Any = {
@@ -337,8 +337,8 @@ class Applicator(schema: ObjectSchema,
 
       override def visitKeyValue(v: Any): Unit = insVisitor.visitKeyValue(v)
 
-      override def subVisitor: Visitor[_, _] = {
-        val childVisitors: mutable.ArrayBuffer[ObjVisitor[_, OutputUnit]] = mutable.ArrayBuffer.from(insVisitors)
+      override def subVisitor: Visitor[?, ?] = {
+        val childVisitors: mutable.ArrayBuffer[ObjVisitor[?, OutputUnit]] = mutable.ArrayBuffer.from(insVisitors)
 
         var isAddl = true // if not in properties or matched patterns
         if (properties.nonEmpty && properties.get.contains(currentKey)) { isAddl = false; childVisitors.addOne(propsVisitor.get) }
@@ -347,7 +347,7 @@ class Applicator(schema: ObjectSchema,
 
         childVisitor =
           if (childVisitors.length == 1) childVisitors.head
-          else new CompositeObjVisitor(childVisitors.toSeq: _*)
+          else new CompositeObjVisitor(childVisitors.toSeq*)
         childVisitor.subVisitor
       }
 

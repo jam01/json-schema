@@ -16,6 +16,6 @@ object JsoniterScalaCodec {
    */
   def visitorDecoder[J](maxDepth: Int = 128,
                         numReader: VisitorNumberReader = VisitorNumberReader.Default,
-                        visitor: Visitor[_, J]): JsonValueCodec[J] =
+                        visitor: Visitor[?, J]): JsonValueCodec[J] =
     new VisitorDecoder(maxDepth, numReader, visitor)
 }

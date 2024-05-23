@@ -92,6 +92,10 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <addScalacArgs>-deprecation</addScalacArgs>
+                    <addScalacArgs>-feature</addScalacArgs>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -2,6 +2,7 @@ package io.github.jam01.json_schema
 
 import java.net.URLDecoder
 import java.nio.charset.Charset
+import scala.collection.immutable.ArraySeq
 
 final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
   if (refTokens.isEmpty) throw new IllegalArgumentException("invalid JSON Pointer")
@@ -21,6 +22,7 @@ object JsonPointer {
   
   def apply(s: String): JsonPointer = {
     JsonPointer(URLDecoder.decode(s, Charset.defaultCharset()).split("/", -1)
+      .toIndexedSeq
       .map(_.replace("~0", "~")
         .replace("~1", "/") // TODO: replace w/regex?
       ))

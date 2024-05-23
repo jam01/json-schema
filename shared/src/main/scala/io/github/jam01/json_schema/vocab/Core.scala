@@ -1,7 +1,6 @@
 package io.github.jam01.json_schema.vocab
 
 import io.github.jam01.json_schema.*
-import upickle.core.Visitor.MapArrContext
 import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import scala.collection.mutable
@@ -12,12 +11,12 @@ class Core(schema: ObjectSchema,
            path: JsonPointer = JsonPointer(),
            dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
-  private val _refVis: Option[Visitor[_, OutputUnit]] = schema.getRef
+  private val _refVis: Option[Visitor[?, OutputUnit]] = schema.getRef
     .map(s => ctx.getSch(s) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
     .map(sch => SchemaValidator.of(sch, ctx, path.appended("$ref"), Some(this)))
-  private val _dynRefVis: Option[Visitor[_, OutputUnit]] = schema.getDynRef
+  private val _dynRefVis: Option[Visitor[?, OutputUnit]] = schema.getDynRef
     .map(s => ctx.getDynSch(s, this) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
@@ -50,8 +49,8 @@ class Core(schema: ObjectSchema,
   override def visitInt64(l: Long, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.map(rv => rv.visitFloat64(l, index)).foreach(u => addUnit(units, u))
-    _dynRefVis.map(drv => drv.visitFloat64(l, index)).foreach(u => addUnit(units, u))
+    _refVis.map(rv => rv.visitInt64(l, index)).foreach(u => addUnit(units, u))
+    _dynRefVis.map(drv => drv.visitInt64(l, index)).foreach(u => addUnit(units, u))
     units
   }
 
@@ -71,19 +70,19 @@ class Core(schema: ObjectSchema,
     units
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[OutputUnit]] = {
-    val insVisitors: mutable.ArrayBuffer[ArrVisitor[_, OutputUnit]] = new ArrayBuffer(2)
+  override def visitArray(length: Int, index: Int): ArrVisitor[?, collection.Seq[OutputUnit]] = {
+    val insVisitors: mutable.ArrayBuffer[ArrVisitor[?, OutputUnit]] = new ArrayBuffer(2)
     _refVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
 
-    new CompositeArrVisitor(insVisitors.toSeq: _*)
+    new CompositeArrVisitor(insVisitors.toSeq*)
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Seq[OutputUnit]] = {
-    val insVisitors: mutable.ArrayBuffer[ObjVisitor[_, OutputUnit]] = new ArrayBuffer(2)
+  override def visitObject(length: Int, index: Int): ObjVisitor[?, collection.Seq[OutputUnit]] = {
+    val insVisitors: mutable.ArrayBuffer[ObjVisitor[?, OutputUnit]] = new ArrayBuffer(2)
     _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
 
-    new CompositeObjVisitor(insVisitors.toSeq: _*)
+    new CompositeObjVisitor(insVisitors.toSeq*)
   }
 }

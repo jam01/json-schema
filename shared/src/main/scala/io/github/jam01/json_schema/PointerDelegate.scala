@@ -18,7 +18,7 @@ class PointerDelegate[T, V](delegate: Visitor[T, V], ctx: Context) extends Deleg
     val arrVis: ArrVisitor[T, V] = delegate.visitArray(length, index)
     private var nextIdx = 0
 
-    override def subVisitor: Visitor[_, _] = {
+    override def subVisitor: Visitor[?, ?] = {
       ctx.insloc.push(String.valueOf(nextIdx))
       new PointerDelegate(arrVis.subVisitor, ctx)
     }
@@ -35,7 +35,7 @@ class PointerDelegate[T, V](delegate: Visitor[T, V], ctx: Context) extends Deleg
   override def visitObject(length: Int, jsonablekeys: Boolean, index: Int): ObjVisitor[T, V] = new ObjVisitor[T, V] {
     val objVis: ObjVisitor[T, V] = delegate.visitObject(length, jsonablekeys, index)
 
-    override def visitKey(index: Int): Visitor[_, _] = new SimpleVisitor[Nothing, Any] {
+    override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
       override def expectedMsg: String = "expected string"
 
       override def visitString(s: CharSequence, index: Int): Any = {
@@ -46,7 +46,7 @@ class PointerDelegate[T, V](delegate: Visitor[T, V], ctx: Context) extends Deleg
 
     override def visitKeyValue(v: Any): Unit = objVis.visitKeyValue(v)
 
-    override def subVisitor: Visitor[_, _] = new PointerDelegate(objVis.subVisitor, ctx)
+    override def subVisitor: Visitor[?, ?] = new PointerDelegate(objVis.subVisitor, ctx)
 
     override def visitValue(v: T, index: Int): Unit = { objVis.visitValue(v, index); ctx.insloc.pop }
 

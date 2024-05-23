@@ -15,7 +15,7 @@ import scala.collection.mutable
 abstract class BaseValidator(val schema: ObjectSchema,
                              val ctx: Context = Context.Empty,
                              val path: JsonPointer = JsonPointer(),
-                             val dynParent: Option[BaseValidator] = None) extends JsonVisitor[_, collection.Seq[OutputUnit]] {
+                             val dynParent: Option[BaseValidator] = None) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
   def valid(kw: String): OutputUnit = {
     OutputUnit(true, Some(path.appended(kw)), None, Some(ctx.currentLoc))
   }

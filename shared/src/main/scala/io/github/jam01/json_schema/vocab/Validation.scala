@@ -113,8 +113,8 @@ class Validation(schema: ObjectSchema,
     units
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[_, collection.Seq[OutputUnit]] = {
-    val insVisitor: ArrVisitor[_, collection.Seq[OutputUnit]] =
+  override def visitArray(length: Int, index: Int): ArrVisitor[?, collection.Seq[OutputUnit]] = {
+    val insVisitor: ArrVisitor[?, collection.Seq[OutputUnit]] =
       if (const.nonEmpty || enuum.nonEmpty || (uniqueItems.nonEmpty && uniqueItems.get))
         new MapArrContext(LiteralVisitor.visitArray(length, index), arr => {
           val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(3) // perf: should be re-used?
@@ -131,7 +131,7 @@ class Validation(schema: ObjectSchema,
           units
         })
       else new ArrVisitor[Any, collection.Seq[OutputUnit]] {
-        override def subVisitor: Visitor[_, _] = NoOpVisitor
+        override def subVisitor: Visitor[?, ?] = NoOpVisitor
         override def visitValue(v: Any, index: Int): Unit = ()
         override def visitEnd(index: Int): collection.Seq[OutputUnit] = Seq.empty
       }
@@ -139,7 +139,7 @@ class Validation(schema: ObjectSchema,
     new ArrVisitor[Any, collection.Seq[OutputUnit]] {
       private var nextIdx = 0
 
-      override def subVisitor: Visitor[_, _] = insVisitor.subVisitor
+      override def subVisitor: Visitor[?, ?] = insVisitor.subVisitor
 
       override def visitValue(v: Any, index: Int): Unit = {
         insVisitor.narrow.visitValue(v, index)
@@ -159,9 +159,9 @@ class Validation(schema: ObjectSchema,
     }
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[_, collection.Seq[OutputUnit]] = {
+  override def visitObject(length: Int, index: Int): ObjVisitor[?, collection.Seq[OutputUnit]] = {
     val propsVisited = mutable.ArrayBuffer[String]()
-    val insVisitor: ObjVisitor[_, collection.Seq[OutputUnit]] =
+    val insVisitor: ObjVisitor[?, collection.Seq[OutputUnit]] =
       if (const.nonEmpty || enuum.nonEmpty || (uniqueItems.nonEmpty && uniqueItems.get))
         new MapObjContext(LiteralVisitor.visitObject(length, index), obj => {
           val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
@@ -171,9 +171,9 @@ class Validation(schema: ObjectSchema,
           units
         })
       else new ObjVisitor[Any, collection.Seq[OutputUnit]] {
-        override def visitKey(index: Int): Visitor[_, _] = NoOpVisitor
+        override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
         override def visitKeyValue(v: Any): Unit = ()
-        override def subVisitor: Visitor[_, _] = NoOpVisitor
+        override def subVisitor: Visitor[?, ?] = NoOpVisitor
         override def visitValue(v: Any, index: Int): Unit = ()
         override def visitEnd(index: Int): collection.Seq[OutputUnit] = Seq.empty
       }
@@ -182,7 +182,7 @@ class Validation(schema: ObjectSchema,
     new ObjVisitor[Any, collection.Seq[OutputUnit]] {
       private var currentKey: String = "?"
 
-      override def visitKey(index: Int): Visitor[_, _] = new SimpleVisitor[Nothing, Any] {
+      override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
         def expectedMsg = "expected string"
 
         override def visitString(s: CharSequence, index1: Int): Any = {
@@ -194,7 +194,7 @@ class Validation(schema: ObjectSchema,
 
       override def visitKeyValue(v: Any): Unit = insVisitor.visitKeyValue(v)
 
-      override def subVisitor: Visitor[_, _] = insVisitor.subVisitor
+      override def subVisitor: Visitor[?, ?] = insVisitor.subVisitor
 
       override def visitValue(v: Any, index: Int): Unit = insVisitor.narrow.visitValue(v, index)
 
@@ -207,7 +207,7 @@ class Validation(schema: ObjectSchema,
         minProperties.foreach(min => validate(Validation.MinProperties, "Object has less properties than allowed", units, propsVisited.size >= min))
         depReq.foreach(depReqs => validate(Validation.DepRequired, "Object does not contain dependent required properties", units,  // TODO: which dep required failed? 
           depReqs.filter((k, reqs) => propsVisited.contains(k)) // all depRequired that apply (found in obj) as (dependent key, required)
-          .map((k, reqs) => reqs.arr.value.forall(rreq => propsVisited.contains(rreq.str))) // whether the required props were found
+          .map((k, reqs) => reqs.arr.forall(rreq => propsVisited.contains(rreq.str))) // whether the required props were found
           .forall(identity))) // whether all entries were satisfied
         units
       }

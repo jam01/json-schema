@@ -59,7 +59,7 @@ class JsonWriterVisitor(writer: JsonWriter) extends JsonVisitor[Any, JsonWriter]
   override def visitArray(length: Int, index: Int): ArrVisitor[Any, JsonWriter] = {
     writer.writeArrayStart()
     new ArrVisitor[Any, JsonWriter] {
-      override def subVisitor: Visitor[_, _] = JsonWriterVisitor.this
+      override def subVisitor: Visitor[?, ?] = JsonWriterVisitor.this
       override def visitValue(v: Any, index: Int): Unit = ()
       override def visitEnd(index: Int): JsonWriter = {
         writer.writeArrayEnd()
@@ -71,9 +71,9 @@ class JsonWriterVisitor(writer: JsonWriter) extends JsonVisitor[Any, JsonWriter]
   override def visitObject(length: Int, index: Int): ObjVisitor[Any, JsonWriter] = {
     writer.writeObjectStart()
     new ObjVisitor[Any, JsonWriter] {
-      override def visitKey(index: Int): Visitor[_, _] = StringVisitor
+      override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
       override def visitKeyValue(v: Any): Unit = writer.writeKey(v.toString)
-      override def subVisitor: Visitor[_, _] = JsonWriterVisitor.this
+      override def subVisitor: Visitor[?, ?] = JsonWriterVisitor.this
       override def visitValue(v: Any, index: Int): Unit = ()
       override def visitEnd(index: Int): JsonWriter = {
         writer.writeObjectEnd()
