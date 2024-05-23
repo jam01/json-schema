@@ -15,7 +15,7 @@ class Validation(schema: ObjectSchema,
                  dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
   private val tyype: collection.Seq[String] = schema.getAsStringArray(Validation.Tyype)
-  private val const = schema.get(Validation.Const)
+  private val const: Option[Value] = schema.get(Validation.Const)
   private val enuum: Option[collection.Seq[Value]] = schema.getArrayOpt(Validation.Enuum)
   private val multipleOf: Option[Long | Double] = schema.getNumber(Validation.MultipleOf)
   private val maximum: Option[Long | Double] = schema.getNumber(Validation.Maximum)
@@ -113,10 +113,10 @@ class Validation(schema: ObjectSchema,
     units
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[?, collection.Seq[OutputUnit]] = {
-    val insVisitor: ArrVisitor[?, collection.Seq[OutputUnit]] =
+  override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, collection.Seq[OutputUnit]] = {
+    val insVisitor: ArrVisitor[Nothing, collection.Seq[OutputUnit]] =
       if (const.nonEmpty || enuum.nonEmpty || (uniqueItems.nonEmpty && uniqueItems.get))
-        new MapArrContext(LiteralVisitor.visitArray(length, index), arr => {
+        new MapArrContext(LiteralVisitor.visitArray(length, index), arr => { // Vis[Value, coll.Seq[OUnit]]
           val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(3) // perf: should be re-used?
 
           const.foreach(c => validate(Validation.Const, "Array does not match expected constant", units, c == arr))
@@ -130,9 +130,9 @@ class Validation(schema: ObjectSchema,
 
           units
         })
-      else new ArrVisitor[Any, collection.Seq[OutputUnit]] {
+      else new ArrVisitor[Unit, collection.Seq[OutputUnit]] { // TODO: make object
         override def subVisitor: Visitor[?, ?] = NoOpVisitor
-        override def visitValue(v: Any, index: Int): Unit = ()
+        override def visitValue(v: Unit, index: Int): Unit = ()
         override def visitEnd(index: Int): collection.Seq[OutputUnit] = Seq.empty
       }
 
@@ -159,22 +159,22 @@ class Validation(schema: ObjectSchema,
     }
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[?, collection.Seq[OutputUnit]] = {
+  override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, collection.Seq[OutputUnit]] = {
     val propsVisited = mutable.ArrayBuffer[String]()
     val insVisitor: ObjVisitor[?, collection.Seq[OutputUnit]] =
       if (const.nonEmpty || enuum.nonEmpty || (uniqueItems.nonEmpty && uniqueItems.get))
-        new MapObjContext(LiteralVisitor.visitObject(length, index), obj => {
+        new MapObjContext(LiteralVisitor.visitObject(length, index), obj => { // Vis[Value, coll.Seq[OUnit]]
           val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
           const.foreach(c => validate(Validation.Const, "Object does not match expected constant", units, c == obj))
           enuum.foreach(e => validate(Validation.Enuum, "Object not found in enumeration", units, e.contains(obj)))
           units
         })
-      else new ObjVisitor[Any, collection.Seq[OutputUnit]] {
+      else new ObjVisitor[Unit, collection.Seq[OutputUnit]] { // TODO: make object 
         override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
         override def visitKeyValue(v: Any): Unit = ()
         override def subVisitor: Visitor[?, ?] = NoOpVisitor
-        override def visitValue(v: Any, index: Int): Unit = ()
+        override def visitValue(v: Unit, index: Int): Unit = ()
         override def visitEnd(index: Int): collection.Seq[OutputUnit] = Seq.empty
       }
 
@@ -199,7 +199,8 @@ class Validation(schema: ObjectSchema,
       override def visitValue(v: Any, index: Int): Unit = insVisitor.narrow.visitValue(v, index)
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index)); units.sizeHint(5)
+        val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
+        units.sizeHint(units.size + 5)
 
         if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got: object", units, tyype.contains("object"))
         required.foreach(req => validate(Validation.Required, s"Object does not contain required property $req", units, propsVisited.contains(req)))

@@ -4,35 +4,33 @@ import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visit
 
 import scala.collection.mutable
 
-class CompositeVisitor[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Seq[?], Seq[J]] {
+class CompositeVisitor[-T, +J](delegates: Visitor[T, J]*) extends JsonVisitor[Seq[T], Seq[J]] {
   override def visitNull(index: Int): Seq[J] = delegates.map(_.visitNull(index))
   override def visitFalse(index: Int): Seq[J] = delegates.map(_.visitFalse(index))
   override def visitTrue(index: Int): Seq[J] = delegates.map(_.visitTrue(index))
   override def visitFloat64(d: Double, index: Int): Seq[J] = delegates.map(_.visitFloat64(d, index))
   override def visitInt64(i: Long, index: Int): Seq[J] = delegates.map(_.visitInt64(i, index))
   override def visitString(s: CharSequence, index: Int): Seq[J] = delegates.map(_.visitString(s, index))
-  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[?], Seq[J]] =
+  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], Seq[J]] =
     new CompositeArrVisitor[T, J](delegates.map(_.visitArray(length, index))*)
-  override def visitObject(length: Int, index: Int): ObjVisitor[Seq[?], Seq[J]] =
+  override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], Seq[J]] =
     new CompositeObjVisitor[T, J](delegates.map(_.visitObject(length, true, index))*)
 }
 
-class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[?], Seq[J]] {
-  // unsure why ArrVisitor[Seq[T], Seq[J]] doesn't work when delArrVis if Arr[?, J]
-  //  .../json_schema/ObjectSchemaValidator.scala:99:78
-
-  //  Found:    (delegArrVis : Seq[upickle.core.ArrVisitor[?, Boolean]])
-  //  Required: Seq[upickle.core.ArrVisitor[Any, Boolean]] |
-  //    Array[? <: upickle.core.ArrVisitor[Any, Boolean]]
-  //  new MapArrContext[Seq[?], Seq[Boolean], Boolean](new CompositeArrVisitor(delegArrVis*), _.forall(identity)) {
-
+class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], Seq[J]] {
   override def subVisitor: Visitor[?, ?] =
     new CompositeVisitor(delArrVis.map(_.subVisitor)*)
 
-  override def visitValue(v: Seq[?], index: Int): Unit = {
+  override def visitValue(v: Seq[T], index: Int): Unit = {
     var i = 0
     while (i < delArrVis.length) {
-      delArrVis(i).visitValue(v(i).asInstanceOf[T], index)
+      try {
+        delArrVis(i).visitValue(v(i), index)
+      } catch
+        case e: Exception => {
+          println(e)
+          throw e
+        }
       i = i + 1
     }
   }
@@ -40,7 +38,7 @@ class CompositeArrVisitor[-T, +J](delArrVis: ArrVisitor[T, J]*) extends ArrVisit
   override def visitEnd(index: Int): Seq[J] = delArrVis.map(_.visitEnd(index))
 }
 
-class CompositeObjVisitor[-T, +J](delObjVis: ObjVisitor[T, J]*) extends ObjVisitor[Seq[?], Seq[J]] {
+class CompositeObjVisitor[-T, +J](delObjVis: ObjVisitor[T, J]*) extends ObjVisitor[Seq[T], Seq[J]] {
   override def visitKey(index: Int): Visitor[?, ?] =
     new CompositeVisitor(delObjVis.map(_.visitKey(index))*)
 
@@ -55,10 +53,10 @@ class CompositeObjVisitor[-T, +J](delObjVis: ObjVisitor[T, J]*) extends ObjVisit
   override def subVisitor: Visitor[?, ?] =
     new CompositeVisitor(delObjVis.map(_.subVisitor)*)
 
-  override def visitValue(v: Seq[?], index: Int): Unit = {
+  override def visitValue(v: Seq[T], index: Int): Unit = {
     var i = 0
     while (i < delObjVis.length) {
-      delObjVis(i).visitValue(v(i).asInstanceOf[T], index)
+      delObjVis(i).visitValue(v(i), index)
       i = i + 1
     }
   }

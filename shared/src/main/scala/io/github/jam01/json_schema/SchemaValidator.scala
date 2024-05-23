@@ -75,12 +75,12 @@ object ObjectSchemaValidator {
          dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
 
     // TODO: selective vocabs 
-    val comp: JsonVisitor[Seq[Any], Seq[collection.Seq[OutputUnit]]] = 
-      new CompositeVisitor(vocab.Core(schema, ctx, path, dynParent),
-        vocab.Applicator(schema, ctx, path, dynParent),
-        vocab.Validation(schema, ctx, path, dynParent))
+    val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] = 
+      new CompositeVisitor(vocab.Core(schema, ctx, path, dynParent), // Vis[Seq[Nothing], Seq[OUnit]]
+        vocab.Applicator(schema, ctx, path, dynParent), // Vis[Any, Seq[OUnit]]
+        vocab.Validation(schema, ctx, path, dynParent)) // Vis[Nothing, Seq[OUnit]] 
 
-    new MapReader[Seq[Any], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
+    new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
       override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit = {
         val units = v.flatten
         if (units.map(_.valid).forall(identity)) {
