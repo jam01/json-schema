@@ -1,46 +1,31 @@
 package io.github.jam01.json_schema
 
+import io.github.jam01.json_schema.ObjectSchemaValidatorTest.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertThrows, assertTrue}
+import ujson.StringParser
 import upickle.core.LinkedHashMap
 
 import scala.collection.mutable
 
 class ObjectSchemaValidatorTest {
-  val lhm: LinkedHashMap[String, Value] = LinkedHashMap(Seq(
-    "type" -> Str("string"),
-    "pattern" -> Str(".*"),
-    "maxLength" -> Num(16L),
-    "minLength" -> Num(3L)
-  ))
-  val strSch: ObjectSchema = ObjectSchema(lhm, Uri.of("mem://test"))
-
   @Test
   def valid_str(): Unit = {
-    val unit = ObjectSchemaValidator.of(strSch).visitString("valid", -1)
+    val unit = ObjectSchemaValidator.of(StrSch).visitString("valid", -1)
     assertTrue(unit.valid)
   }
 
   @Test
   def invalid_str(): Unit = { // string too long
-    val unit = ObjectSchemaValidator.of(strSch).visitString("12345678901234567", -1)
+    val unit = ObjectSchemaValidator.of(StrSch).visitString("12345678901234567", -1)
     assertFalse(unit.valid)
   }
-
-
-  val lhm2: LinkedHashMap[String, Value] = LinkedHashMap(Seq(
-    "type" -> Str("array"),
-    "maxItems" -> Num(4L),
-    "minItems" -> Num(2L),
-    "items" -> strSch
-  ))
-  val arrSch: ObjectSchema = ObjectSchema(lhm2, Uri.of("mem://test"))
 
   @Test
   def valid_arr(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(arrSch))
+      .transform(ObjectSchemaValidator.of(ArrSch))
     assertTrue(r.valid)
   }
 
@@ -48,7 +33,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_length(): Unit = { // arr too long
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3", "valid4", "invalid5"]""")
-      .transform(ObjectSchemaValidator.of(arrSch))
+      .transform(ObjectSchemaValidator.of(ArrSch))
     assertFalse(r.valid)
   }
 
@@ -56,82 +41,47 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_items(): Unit = { // 2nd string too long
     val r = ujson.Readable
       .fromString("""["valid", "12345678901234567", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(arrSch))
+      .transform(ObjectSchemaValidator.of(ArrSch))
     assertFalse(r.valid)
   }
 
   @Test
   def valid_nest_arr_items(): Unit = {
-    val lhm3 = lhm2.clone().addOne("items" -> ObjectSchema(LinkedHashMap(Seq("type" -> Arr(Str("string"), Str("array")))), Uri.of("")))
-    val arrSchNest = ObjectSchema(LinkedHashMap(lhm3), Uri.of("mem://test"))
-
     val r = ujson.Readable
       .fromString("""["valid", ["valid", "valid2", "valid3"], "valid3"]""")
-      .transform(ObjectSchemaValidator.of(arrSchNest))
+      .transform(ObjectSchemaValidator.of(ArrSchNest0))
     assertTrue(r.valid)
   }
 
   @Test
   def invalid_nest_arr_items(): Unit = { // nested arr fails items validation, its 2nd string too long
-    val lhm3 = lhm2.clone().addOne("items" -> ObjectSchema(LinkedHashMap(Seq(
-      "type" -> Arr(Str("string"), Str("array")),
-      "items" -> strSch
-    )), Uri.of("")))
-    val arrSchNest = ObjectSchema(LinkedHashMap(lhm3), Uri.of("mem://test"))
-
     val r = ujson.Readable
       .fromString("""["valid", ["valid", "12345678901234567", "valid3"], "valid3"]""")
-      .transform(ObjectSchemaValidator.of(arrSchNest))
+      .transform(ObjectSchemaValidator.of(ArrSchNest1))
     assertFalse(r.valid)
   }
 
   @Test
   def valid_arr_ref(): Unit = {
-    val refSch = ObjectSchema(LinkedHashMap(Seq("type" -> Str("array"), "minItems" -> Num(1L))), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> refSch))
-    val lhm3 = lhm2.clone().addOne("$ref" -> Str("str"))
-    val arrSchRef = ObjectSchema(LinkedHashMap(lhm3), Uri.of("mem://test"))
-
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(arrSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(ArrRefSch, Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> RefSch0))))
     assertTrue(r.valid)
   }
 
   @Test
   def invalid_arr_ref(): Unit = { // base schema dictates arr, but $ref dictates string
-    val refSch = ObjectSchema(LinkedHashMap(Seq("type" -> Str("string"))), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> refSch))
-    val lhm3 = lhm2.clone().addOne("$ref" -> Str("str"))
-    val arrSchRef = ObjectSchema(LinkedHashMap(lhm3), Uri.of("mem://test"))
-
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(arrSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(ArrRefSch, Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> RefSch1))))
     assertFalse(r.valid)
   }
-
-
-  val lhm4: LinkedHashMap[String, Value] = LinkedHashMap(Seq(
-    "type" -> Str("object"),
-    "maxProperties" -> Num(2L),
-    "minProperties" -> Num(1L),
-    "properties" -> Obj(LinkedHashMap(Seq(
-      "foo" -> strSch,
-      "arr" -> arrSch,
-      "obj" -> ObjectSchema(LinkedHashMap(Seq(
-        "type" -> Str("object"),
-        "maxProperties" -> Num(1L))), Uri.of("mem://test"))
-    ))),
-    "required" -> Arr(Str("foo"))
-  ))
-  val objSch: ObjectSchema = ObjectSchema(LinkedHashMap(lhm4), Uri.of("mem://test"))
 
   @Test
   def valid_obj(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(ObjectSchemaValidator.of(objSch))
+      .transform(ObjectSchemaValidator.of(ObjSch))
     assertTrue(r.valid)
   }
 
@@ -139,7 +89,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_required(): Unit = { // foo prop required
     val r = ujson.Readable
       .fromString("""{"nfoo": "bar"}""")
-      .transform(ObjectSchemaValidator.of(objSch))
+      .transform(ObjectSchemaValidator.of(ObjSch))
     assertFalse(r.valid)
   }
 
@@ -147,16 +97,15 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_props(): Unit = { // foo prop must be string
     val r = ujson.Readable
       .fromString("""{"foo": null}""")
-      .transform(ObjectSchemaValidator.of(objSch))
+      .transform(ObjectSchemaValidator.of(ObjSch))
     assertFalse(r.valid)
   }
-
 
   @Test
   def invalid_obj_length(): Unit = { // obj too long
     val r = ujson.Readable
       .fromString("""{"foo": "null", "arr": [], "null": null}""")
-      .transform(ObjectSchemaValidator.of(objSch))
+      .transform(ObjectSchemaValidator.of(ObjSch))
     assertFalse(r.valid)
   }
 
@@ -164,7 +113,7 @@ class ObjectSchemaValidatorTest {
   def valid_nest_obj_props(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar"}}""")
-      .transform(ObjectSchemaValidator.of(objSch))
+      .transform(ObjectSchemaValidator.of(ObjSch))
     assertTrue(r.valid)
   }
 
@@ -172,33 +121,149 @@ class ObjectSchemaValidatorTest {
   def invalid_nest_obj_props(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar", "null": null}}""")
-      .transform(ObjectSchemaValidator.of(objSch))
+      .transform(ObjectSchemaValidator.of(ObjSch))
     assertFalse(r.valid)
   }
 
   @Test
   def valid_obj_ref(): Unit = {
-    val refSch = ObjectSchema(LinkedHashMap(Seq("required" -> Arr(Str("null")))), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack(""), Map(Uri.of("mem://test/nullreq") -> refSch))
-    val lhm3 = lhm4.clone().addOne("$ref" -> Str("nullreq"))
-    val objSchRef = ObjectSchema(LinkedHashMap(lhm3), Uri.of("mem://test"))
-
     val r = ujson.Readable
       .fromString("""{"foo": "bar", "null": null}""")
-      .transform(ObjectSchemaValidator.of(objSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(ObjRefSch0, Context(mutable.Stack(""), Map(Uri.of("mem://test/nullreq") -> RefSch2))))
     assertTrue(r.valid)
   }
 
   @Test
   def invalid_obj_ref(): Unit = { // base schema dictates obj, but $ref dictates string
-    val refSch = ObjectSchema(LinkedHashMap(Seq("type" -> Str("string"))), Uri.of("mem://test"))
-    val ctx = Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> refSch))
-    val lhm3 = lhm4.clone().addOne("$ref" -> Str("str"))
-    val objSchRef = ObjectSchema(LinkedHashMap(lhm3), Uri.of("mem://test"))
-
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(ObjectSchemaValidator.of(objSchRef, ctx = ctx))
+      .transform(ObjectSchemaValidator.of(ObjRefSch1, Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> RefSch3))))
     assertFalse(r.valid)
   }
+
+//  val uri: Uri = Uri.of("mem://test")
+//  val strSchJs: String =
+//    """{
+//      "type": "string",
+//      "pattern": ".*",
+//      "maxLength": 16,
+//      "minLength": 3
+//    }"""
+//  val strSch: ObjectSchema = StringParser.transform(strSchJs, SchemaR(uri)).asInstanceOf[ObjectSchema]
+//
+//  val arrSchJs: String =
+//    s"""{
+//      "type": "array",
+//      "maxItems": 4,
+//      "minItems": 2,
+//      "items": $strSchJs
+//    }"""
+//  val arrSch: ObjectSchema = StringParser.transform(arrSchJs, SchemaR(uri)).asInstanceOf[ObjectSchema]
+//
+//  val arrSchNestJs0: String =
+//    """{
+//          "type": "array",
+//          "maxItems": 4,
+//          "minItems": 2,
+//          "items": {
+//            "type": ["string", "array"]
+//          }
+//    }"""
+//  val arrSchNest0: ObjectSchema = StringParser.transform(arrSchNestJs0, SchemaR(uri)).asInstanceOf[ObjectSchema]
+//
+//  val arrSchNestJs1 =
+//    s"""{
+//          "type": ["string", "array"],
+//          "maxItems": 4,
+//          "minItems": 2,
+//          "items": $strSchJs
+//    }"""
+//  val arrSchNest1: ObjectSchema = StringParser.transform(arrSchNestJs1, SchemaR(uri)).asInstanceOf[ObjectSchema]
+//
+//  val arrRefSchJs: String =
+//    s"""{
+//      "type": "array",
+//      "maxItems": 4,
+//      "minItems": 2,
+//      "items": $strSchJs,
+//      "$$ref": "str"
+//    }"""
+//  val arrRefSch: ObjectSchema = StringParser.transform(arrRefSchJs, SchemaR(uri)).asInstanceOf[ObjectSchema]
+//
+//  val refSchJs0 = """{ "type": "array", "minItems": 1 }"""
+//  val refSch0: ObjectSchema = StringParser.transform(refSchJs0, SchemaR(uri)).asInstanceOf[ObjectSchema]
+//
+//  val refSchJs1 = """{ "type": "string" }"""
+//  val refSch1: ObjectSchema = StringParser.transform(refSchJs1, SchemaR(uri)).asInstanceOf[ObjectSchema]
+}
+
+object ObjectSchemaValidatorTest {
+  val TestUri: Uri = Uri.of("mem://test")
+  val StrSch: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("string"),
+    "pattern" -> Str(".*"),
+    "maxLength" -> Num(16L),
+    "minLength" -> Num(3L)), TestUri)
+  val ArrSch: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("array"),
+    "maxItems" -> Num(4L),
+    "minItems" -> Num(2L),
+    "items" -> StrSch), TestUri)
+  val ArrSchNest0: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("array"),
+    "maxItems" -> Num(4L),
+    "minItems" -> Num(2L),
+    "items" -> ObjectSchema(LinkedHashMapFactory("type" -> Arr("string", "array")), TestUri)), TestUri)
+  val ArrSchNest1: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("array"),
+    "maxItems" -> Num(4L),
+    "minItems" -> Num(2L),
+    "items" -> ObjectSchema(LinkedHashMapFactory(
+      "type" -> Arr("string", "array"),
+      "items" -> StrSch), TestUri)), TestUri)
+  val ArrRefSch: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("array"),
+    "maxItems" -> Num(4L),
+    "minItems" -> Num(2L),
+    "items" -> StrSch,
+    "$ref" -> "str"), TestUri)
+  val RefSch0: ObjectSchema = ObjectSchema(LinkedHashMapFactory("type" -> Str("array"), "minItems" -> Num(1L)), TestUri)
+  val RefSch1: ObjectSchema = ObjectSchema(LinkedHashMapFactory("type" -> Str("string")), TestUri)
+  val ObjSch: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("object"),
+    "maxProperties" -> Num(2L),
+    "minProperties" -> Num(1L),
+    "properties" -> Obj(
+      "foo" -> StrSch,
+      "arr" -> ArrSch,
+      "obj" -> ObjectSchema(LinkedHashMapFactory(
+        "type" -> Str("object"),
+        "maxProperties" -> Num(1L)), TestUri)),
+    "required" -> Arr(Str("foo"))), TestUri)
+  val ObjRefSch0: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("object"),
+    "maxProperties" -> Num(2L),
+    "minProperties" -> Num(1L),
+    "properties" -> Obj(
+      "foo" -> StrSch,
+      "arr" -> ArrSch,
+      "obj" -> ObjectSchema(LinkedHashMapFactory(
+        "type" -> Str("object"),
+        "maxProperties" -> Num(1L)), TestUri)),
+    "required" -> Arr(Str("foo")),
+    "$ref" -> "nullreq"), TestUri)
+  val ObjRefSch1: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    "type" -> Str("object"),
+    "maxProperties" -> Num(2L),
+    "minProperties" -> Num(1L),
+    "properties" -> Obj(
+      "foo" -> StrSch,
+      "arr" -> ArrSch,
+      "obj" -> ObjectSchema(LinkedHashMapFactory(
+        "type" -> Str("object"),
+        "maxProperties" -> Num(1L)), TestUri)),
+    "required" -> Arr(Str("foo")),
+    "$ref" -> "str"), TestUri)
+  val RefSch2: ObjectSchema = ObjectSchema(LinkedHashMapFactory("required" -> Arr(Str("null"))), TestUri)
+  val RefSch3: ObjectSchema = ObjectSchema(LinkedHashMapFactory("type" -> Str("string")), TestUri)
 }
