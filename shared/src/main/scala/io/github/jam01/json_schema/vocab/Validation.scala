@@ -95,9 +95,9 @@ class Validation(schema: ObjectSchema,
     const.foreach(c => validate(Validation.Const, "Number found does not match expected constant", units, c == Num(num)))
     enuum.foreach(e => validate(Validation.Enuum, "Number not found in enumeration", units, e.contains(Num(num))))
     maximum.foreach(max => validate(Validation.Maximum, "Number is greater than maximum", units, lteq(num, max)))
-    minimum.foreach(min => validate(Validation.Maximum, "Number is less than minimum", units, gteq(num, min)))
-    exclusiveMax.foreach(max => validate(Validation.Maximum, "Number is greater than exclusive maximum", units, lt(num, max)))
-    exclusiveMin.foreach(min => validate(Validation.Maximum, "Number is less than exclusive minimum", units, gt(num, min)))
+    minimum.foreach(min => validate(Validation.Minimum, "Number is less than minimum", units, gteq(num, min)))
+    exclusiveMax.foreach(max => validate(Validation.ExclusiveMax, "Number is greater than exclusive maximum", units, lt(num, max)))
+    exclusiveMin.foreach(min => validate(Validation.ExclusiveMin, "Number is less than exclusive minimum", units, gt(num, min)))
   }
 
   // TODO: can we compare const & enum without creating a Value? 
@@ -125,7 +125,7 @@ class Validation(schema: ObjectSchema,
             val set = new mutable.HashSet[Value](arr.value.size, 1) // TODO: would .distinct work?
             arr.value.foreach(v => {
               if (!set.add(v)) units.addOne(invalid(Validation.UniqueItems, "Values in array are not unique"))
-              else if (false /* && verbose*/ ) units.addOne(valid(Validation.UniqueItems))
+              else if (ctx.isVerbose) units.addOne(valid(Validation.UniqueItems))
             }))
 
           units
@@ -152,7 +152,6 @@ class Validation(schema: ObjectSchema,
 
         if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got array", units, tyype.contains("array"))
         maxItems.foreach(max => validate(Validation.MaxItems, "Array has more items than allowed", units, nextIdx <= max))
-        minItems.foreach(min => validate(Validation.MinItems, "Array has less items than allowed", units, nextIdx >= min))
         minItems.foreach(min => validate(Validation.MinItems, "Array has less items than allowed", units, nextIdx >= min))
         units
       }

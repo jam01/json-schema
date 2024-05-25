@@ -2,9 +2,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjectSchemaValidatorTest.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertThrows, assertTrue}
-import ujson.StringParser
-import upickle.core.LinkedHashMap
+import org.junit.jupiter.api.Assertions.{assertFalse, assertTrue}
 
 import scala.collection.mutable
 
@@ -140,61 +138,6 @@ class ObjectSchemaValidatorTest {
       .transform(ObjectSchemaValidator.of(ObjRefSch1, Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> RefSch3))))
     assertFalse(r.valid)
   }
-
-//  val uri: Uri = Uri.of("mem://test")
-//  val strSchJs: String =
-//    """{
-//      "type": "string",
-//      "pattern": ".*",
-//      "maxLength": 16,
-//      "minLength": 3
-//    }"""
-//  val strSch: ObjectSchema = StringParser.transform(strSchJs, SchemaR(uri)).asInstanceOf[ObjectSchema]
-//
-//  val arrSchJs: String =
-//    s"""{
-//      "type": "array",
-//      "maxItems": 4,
-//      "minItems": 2,
-//      "items": $strSchJs
-//    }"""
-//  val arrSch: ObjectSchema = StringParser.transform(arrSchJs, SchemaR(uri)).asInstanceOf[ObjectSchema]
-//
-//  val arrSchNestJs0: String =
-//    """{
-//          "type": "array",
-//          "maxItems": 4,
-//          "minItems": 2,
-//          "items": {
-//            "type": ["string", "array"]
-//          }
-//    }"""
-//  val arrSchNest0: ObjectSchema = StringParser.transform(arrSchNestJs0, SchemaR(uri)).asInstanceOf[ObjectSchema]
-//
-//  val arrSchNestJs1 =
-//    s"""{
-//          "type": ["string", "array"],
-//          "maxItems": 4,
-//          "minItems": 2,
-//          "items": $strSchJs
-//    }"""
-//  val arrSchNest1: ObjectSchema = StringParser.transform(arrSchNestJs1, SchemaR(uri)).asInstanceOf[ObjectSchema]
-//
-//  val arrRefSchJs: String =
-//    s"""{
-//      "type": "array",
-//      "maxItems": 4,
-//      "minItems": 2,
-//      "items": $strSchJs,
-//      "$$ref": "str"
-//    }"""
-//  val arrRefSch: ObjectSchema = StringParser.transform(arrRefSchJs, SchemaR(uri)).asInstanceOf[ObjectSchema]
-//
-//  val refSchJs0 = """{ "type": "array", "minItems": 1 }"""
-//  val refSch0: ObjectSchema = StringParser.transform(refSchJs0, SchemaR(uri)).asInstanceOf[ObjectSchema]
-//
-//  val refSchJs1 = """{ "type": "string" }"""
-//  val refSch1: ObjectSchema = StringParser.transform(refSchJs1, SchemaR(uri)).asInstanceOf[ObjectSchema]
 }
 
 object ObjectSchemaValidatorTest {

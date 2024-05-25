@@ -75,20 +75,17 @@ object ObjectSchemaValidator {
          dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
 
     // TODO: selective vocabs 
-    val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] = 
-      new CompositeVisitor(vocab.Core(schema, ctx, path, dynParent), // Vis[Seq[Nothing], Seq[OUnit]]
+    val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
+      new PeekCompositeVisitor(u => ctx.add(u), () => ctx.clear(), // registers/clears sibling annotations
+        vocab.Core(schema, ctx, path, dynParent), // Vis[Seq[Nothing], Seq[OUnit]]
         vocab.Applicator(schema, ctx, path, dynParent), // Vis[Any, Seq[OUnit]]
-        vocab.Validation(schema, ctx, path, dynParent)) // Vis[Nothing, Seq[OUnit]] 
+        vocab.Validation(schema, ctx, path, dynParent), // Vis[Nothing, Seq[OUnit]]
+        vocab.Unevaluated(schema, ctx, path, dynParent)
+      )
 
     new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
-      override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit = {
-        val units = v.flatten
-        if (units.map(_.valid).forall(identity)) {
-          OutputUnit(true, Some(path), None, Some(ctx.currentLoc), None, Nil, None, Nil)
-        } else {
-          OutputUnit(false, Some(path), None, Some(ctx.currentLoc), None, units.filterNot(_.valid), None, Nil)
-        }
-      }
+      override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit =
+        ctx.struct.compose(path, v.flatten, ctx)
     }
   }
 }

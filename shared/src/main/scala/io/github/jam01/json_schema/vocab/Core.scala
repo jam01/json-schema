@@ -14,13 +14,13 @@ class Core(schema: ObjectSchema,
   private val _refVis: Option[Visitor[?, OutputUnit]] = schema.getRef
     .map(s => ctx.getSch(s) match
       case Some(sch) => sch
-      case None => throw new IllegalArgumentException(s"unavailable schema $s"))
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended("$ref"), Some(this)))
+      case None => throw new IllegalArgumentException(s"unavailable schema $s")) // TODO: add ctx.getSchOrThrow
+    .map(sch => SchemaValidator.of(sch, ctx, path.appended(Core._Ref), Some(this)))
   private val _dynRefVis: Option[Visitor[?, OutputUnit]] = schema.getDynRef
     .map(s => ctx.getDynSch(s, this) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"unavailable schema $s"))
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended("$dynamicRef"), Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, path.appended(Core._DynRef), Some(this)))
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
@@ -85,4 +85,9 @@ class Core(schema: ObjectSchema,
 
     new CompositeObjVisitor(insVisitors.toSeq*) // Vis[Seq[Nothing], Seq[OUnit]]
   }
+}
+
+object Core {
+  private val _Ref = "$ref"
+  private val _DynRef = "$dynamicRef"
 }

@@ -16,7 +16,7 @@ final class VisitorDecoder[J](maxDepth: Int,
   override def nullValue: J = null.asInstanceOf[J]
 
   override def encodeValue(x: J, out: JsonWriter): Unit =
-    throw new UnsupportedOperationException("only supports decoding")
+    throw new UnsupportedOperationException("Codec only supports decoding")
 
   override def decodeValue(in: JsonReader, default: J): J =
     decode(in, maxDepth, v)

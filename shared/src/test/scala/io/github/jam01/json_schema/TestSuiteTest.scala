@@ -53,8 +53,8 @@ object TestSuiteTest {
     res
   }
 
-  def args_provider: List[Arguments] = {
-    val args = new ArrayList[Arguments]()
+  def args_provider: java.util.List[Arguments] = {
+    val args = new java.util.ArrayList[Arguments]()
     Using(Files.walk(resource("test-suite/tests/draft2020-12/"), 1)) { tests =>
         tests.filter(Files.isRegularFile(_))
           .filter(p => !NotSupported.contains(p.getFileName.toString))
@@ -65,9 +65,9 @@ object TestSuiteTest {
     args
   }
 
-  def args_provider(path: Path): List[Arguments] = {
+  def args_provider(path: Path): java.util.List[Arguments] = {
     val suite = ujson.read(ujson.Readable.fromPath(path)).arr
-    val args = new ArrayList[Arguments]()
+    val args = new java.util.ArrayList[Arguments]()
 
     suite.foreach { testcase =>
       testcase.obj.get("tests").get.arr.foreach { test =>

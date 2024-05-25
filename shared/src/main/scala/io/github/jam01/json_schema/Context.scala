@@ -2,8 +2,12 @@ package io.github.jam01.json_schema
 
 import scala.collection.{immutable, mutable}
 
-final case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq -- need to make a factory-type of class
-                   reg: collection.Map[Uri, Schema]) {
+case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq -- need to make a factory-type of class
+                   reg: collection.Map[Uri, Schema],
+                   mode: Mode = Mode.Assertion,
+                   struct: OutputStructure = OutputStructure.Detailed,
+                   ffast: Boolean = false,
+                   allowAnnot: Seq[String] = Nil) {
   def currentLoc: JsonPointer = JsonPointer(insloc.reverseIterator.toSeq)
 
   def getSch(s: Uri): Option[Schema] = {
@@ -34,22 +38,49 @@ final case class Context(insloc: mutable.Stack[String], // TODO: consider making
       .find(dref => reg.contains(dref))
       .flatMap(dref => reg.get(dref))
   }
+
+  def isVerbose: Boolean = struct == OutputStructure.Verbose
+
+  val annots: mutable.Buffer[OutputUnit] = mutable.ArrayBuffer()
+  def add(u: collection.Seq[OutputUnit]): collection.Seq[OutputUnit] = { annots.addAll(u); u }
+  def clear(): Unit = annots.clear()
 }
 
 object Context {
-  def Empty: Context = Context(mutable.Stack(""),
+  val Empty: Context = Context(mutable.Stack(""),
     immutable.Map.empty[Uri, Schema])
+}
 
-  // TODO: should be int?
-  object OutputStructure {
-    val Flag: Byte = 0
-    val Basic: Byte = 1
-    val Detailed: Byte = 2
-    val Verbose: Byte = 3
-  }
-  object Mode {
-    val Assertion: Byte = 0
-    val Annotation: Byte = 1
-    val Both: Byte = 2
-  }
+sealed abstract class OutputStructure {
+  def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit
+}
+
+object OutputStructure {
+  val Flag: OutputStructure = new OutputStructure:
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      OutputUnit(units.map(_.valid).forall(identity))
+    }
+
+  val Basic: OutputStructure = new OutputStructure:
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      ???
+    }
+
+  val Detailed: OutputStructure = new OutputStructure:
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      val (annots, errs) = units.partition(_.valid)
+      if (errs.nonEmpty)
+        OutputUnit(false, Some(path), None, Some(ctx.currentLoc), None, errs, None, Nil)
+      else
+        OutputUnit(true, Some(path), None, Some(ctx.currentLoc), None, Nil, None, annots)
+    }
+
+  val Verbose: OutputStructure = new OutputStructure:
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      ???
+    }
+}
+
+enum Mode {
+  case Assertion, Annotation
 }

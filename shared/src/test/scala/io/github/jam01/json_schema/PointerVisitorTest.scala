@@ -17,7 +17,7 @@ class PointerVisitorTest {
     val jsonStr = """[0, 1, "bloop", 3, null, 5.5, ["a", "b", "c"], {"foo7": "bar", "arr": [null, null]}]"""
     val ctx = Context.Empty
 
-    val res = StringParser.transform(jsonStr, new PointerDelegate(new CtxPointerVisitor(ctx), ctx))
+    val res = StringParser.transform(jsonStr, new PointerDelegate(ctx, new CtxPointerVisitor(ctx)))
     Assertions.assertEquals(
       Arr("/0", "/1", "/2", "/3", "/4", "/5",
         Arr("/6/0", "/6/1", "/6/2"),

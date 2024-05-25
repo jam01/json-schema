@@ -1,5 +1,7 @@
 package io.github.jam01.json_schema
 
+import upickle.core.{Transformer, Visitor}
+
 /**
  * JSON Schema validation output unit
  *
@@ -19,13 +21,37 @@ final case class OutputUnit(valid: Boolean,
                       error: Option[String] = None,
                       errors: collection.Seq[OutputUnit] = Nil,
                       annotation: Option[Any] = None,
-                      annotations: collection.Seq[OutputUnit] = Nil) { // TODO: consider T | Null 
+                      annotations: collection.Seq[OutputUnit] = Nil) { // TODO: consider T | Null
+}
 
-  def not(): OutputUnit = {
-    if (valid) {
-      OutputUnit(false, kwLoc, absKwLoc, insLoc, None, Seq(this), None, Nil)
-    } else {
-      OutputUnit(true, kwLoc, absKwLoc, insLoc, None, Nil, None, Seq(this))
+object OutputUnitTransformer extends upickle.core.Transformer[OutputUnit] {
+  override def transform[T](j: OutputUnit, f: Visitor[?, T]): T = {
+    val ov = f.visitObject(-1, true, -1).narrow
+    ov.visitKeyValue(ov.visitKey(-1).visitString("valid", -1))
+    ov.visitValue(if (j.valid) ov.subVisitor.visitTrue(-1) else ov.subVisitor.visitFalse(-1), -1)
+
+    j.kwLoc.foreach(kw => {
+      ov.visitKeyValue(ov.visitKey(-1).visitString("keywordLocation", -1))
+      ov.visitValue(ov.subVisitor.visitString(kw.toString, -1), -1)      
+    })
+    
+    j.insLoc.foreach(iloc => {
+      ov.visitKeyValue(ov.visitKey(-1).visitString("instanceLocation", -1))
+      ov.visitValue(ov.subVisitor.visitString(iloc.toString, -1), -1)      
+    })
+    
+    j.error.foreach(err => {
+      ov.visitKeyValue(ov.visitKey(-1).visitString("error", -1))
+      ov.visitValue(ov.subVisitor.visitString(err, -1), -1)
+    })
+    
+    if (j.errors.nonEmpty) {
+      ov.visitKeyValue(ov.visitKey(-1).visitString("errors", -1))
+      val av = ov.subVisitor.visitArray(j.errors.size, -1).narrow
+      for (item <- j.errors) ov.visitValue(transform(item, ov.subVisitor), -1)
+      av.visitEnd(-1)
     }
+    
+    ov.visitEnd(-1)
   }
 }

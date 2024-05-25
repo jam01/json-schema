@@ -13,14 +13,14 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
  * @param delegate the visitor to fwd nodes
  * @param ctx the validation context, in order to mutate the <code>insloc</code>
  */
-class PointerDelegate[T, V](delegate: Visitor[T, V], ctx: Context) extends Delegate[T, V](delegate) {
+class PointerDelegate[T, V](ctx: Context, delegate: Visitor[T, V]) extends Delegate[T, V](delegate) {
   override def visitArray(length: Int, index: Int): ArrVisitor[T, V] = new ArrVisitor[T, V] {
     val arrVis: ArrVisitor[T, V] = delegate.visitArray(length, index)
     private var nextIdx = 0
 
     override def subVisitor: Visitor[?, ?] = {
       ctx.insloc.push(String.valueOf(nextIdx))
-      new PointerDelegate(arrVis.subVisitor, ctx)
+      new PointerDelegate(ctx, arrVis.subVisitor)
     }
 
     override def visitValue(v: T, index: Int): Unit = {
@@ -46,7 +46,7 @@ class PointerDelegate[T, V](delegate: Visitor[T, V], ctx: Context) extends Deleg
 
     override def visitKeyValue(v: Any): Unit = objVis.visitKeyValue(v)
 
-    override def subVisitor: Visitor[?, ?] = new PointerDelegate(objVis.subVisitor, ctx)
+    override def subVisitor: Visitor[?, ?] = new PointerDelegate(ctx, objVis.subVisitor)
 
     override def visitValue(v: T, index: Int): Unit = { objVis.visitValue(v, index); ctx.insloc.pop }
 

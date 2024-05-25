@@ -25,17 +25,17 @@ abstract class BaseValidator(val schema: ObjectSchema,
   }
   
   def validate(kw: String, err: String, isValid: Boolean): OutputUnit = {
-    if (isValid) { if (false /* verbose */ ) (); valid(kw) }
+    if (isValid) { if (ctx.isVerbose) (); valid(kw) }
     else invalid(kw, err)
   }
   
-  def validate(kw: String, err: String, units: mutable.ArrayBuffer[OutputUnit], isValid: Boolean): mutable.ArrayBuffer[OutputUnit] = {
-    if (isValid) { if (false /* verbose */) units.addOne(valid(kw)); units }
+  def validate(kw: String, err: String, units: mutable.Buffer[OutputUnit], isValid: Boolean): mutable.Buffer[OutputUnit] = {
+    if (isValid) { if (ctx.isVerbose) units.addOne(valid(kw)); units }
     else units.addOne(invalid(kw, err))
   }
   
-  def addUnit(units: mutable.ArrayBuffer[OutputUnit], unit: OutputUnit): mutable.ArrayBuffer[OutputUnit] = {
-    if (unit.valid) { if (false /* verbose */ ) units.addOne(unit); units }
+  def addUnit(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {
+    if (unit.valid) { if (ctx.isVerbose ) units.addOne(unit); units }
     else units.addOne(unit)
   }
 }

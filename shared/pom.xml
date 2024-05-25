@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.lihaoyi</groupId>
             <artifactId>upickle-core_3</artifactId>
-            <version>3.3.0</version>
+            <version>3.3.1</version>
         </dependency>
         <dependency>
             <groupId>com.github.plokhotnyuk.jsoniter-scala</groupId>
@@ -46,6 +46,11 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.lihaoyi</groupId>-->
+<!--            <artifactId>upickle_3</artifactId>-->
+<!--            <version>3.3.1</version>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>com.lihaoyi</groupId>
             <artifactId>ujson_3</artifactId>
@@ -93,8 +98,10 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <addScalacArgs>-deprecation</addScalacArgs>
-                    <addScalacArgs>-feature</addScalacArgs>
+                    <args>
+                        <arg>-deprecation</arg>
+                        <arg>-feature</arg>
+                    </args>
                 </configuration>
             </plugin>
             <plugin>
