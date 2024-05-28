@@ -10,6 +10,11 @@ case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.
                    allowAnnot: Seq[String] = Nil) {
   def currentLoc: JsonPointer = JsonPointer(insloc.reverseIterator.toSeq)
 
+  def getSchOrThrow(s: Uri): Schema =
+    getSch(s) match
+      case Some(sch) => sch
+      case None => throw new IllegalArgumentException(s"Unavailable schema $s")
+
   def getSch(s: Uri): Option[Schema] = {
     val ptr = s.toString.lastIndexOf("#/")
     if (ptr == -1)
@@ -18,6 +23,11 @@ case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.
       reg.get(Uri.of(s.toString.substring(0, ptr)))
         .map(sch => sch.schBy(JsonPointer(s.toString.substring(ptr + 1))))
   }
+
+  def getDynSchOrThrow(loc: Uri, current: BaseValidator): Schema =
+    getDynSch(loc, current) match
+      case Some(sch) => sch
+      case None => throw new IllegalArgumentException(s"Unavailable schema $loc")
 
   def getDynSch(loc: Uri, current: BaseValidator): Option[Schema] = {
     if (loc.toString.contains("#/")) return getSch(Uri.of(loc.toString, false))
@@ -70,9 +80,9 @@ object OutputStructure {
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
       val (annots, errs) = units.partition(_.valid)
       if (errs.nonEmpty)
-        OutputUnit(false, Some(path), None, Some(ctx.currentLoc), None, errs, None, Nil)
+        OutputUnit(false, Some(path), None, Some(ctx.currentLoc), errors = errs)
       else
-        OutputUnit(true, Some(path), None, Some(ctx.currentLoc), None, Nil, None, annots)
+        OutputUnit(true, Some(path), None, Some(ctx.currentLoc), annotations = annots)
     }
 
   val Verbose: OutputStructure = new OutputStructure:

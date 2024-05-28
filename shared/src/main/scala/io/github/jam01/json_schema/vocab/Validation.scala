@@ -1,7 +1,7 @@
 package io.github.jam01.json_schema.vocab
 
 import io.github.jam01.json_schema.*
-import io.github.jam01.json_schema.vocab.Validation.{asBigDec, gt, gteq, lt, lteq}
+import io.github.jam01.json_schema.vocab.Validation.*
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
@@ -14,51 +14,51 @@ class Validation(schema: ObjectSchema,
                  path: JsonPointer = JsonPointer(),
                  dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
-  private val tyype: collection.Seq[String] = schema.getAsStringArray(Validation.Tyype)
-  private val const: Option[Value] = schema.get(Validation.Const)
-  private val enuum: Option[collection.Seq[Value]] = schema.getArrayOpt(Validation.Enuum)
-  private val multipleOf: Option[Long | Double] = schema.getNumber(Validation.MultipleOf)
-  private val maximum: Option[Long | Double] = schema.getNumber(Validation.Maximum)
-  private val minimum: Option[Long | Double] = schema.getNumber(Validation.Minimum)
-  private val exclusiveMax: Option[Long | Double] = schema.getNumber(Validation.ExclusiveMax)
-  private val exclusiveMin: Option[Long | Double] = schema.getNumber(Validation.ExclusiveMin)
-  private val maxLength: Option[Int] = schema.getInt(Validation.MaxLength)
-  private val minLength: Option[Int] = schema.getInt(Validation.MinLength)
-  private val maxItems: Option[Int] = schema.getInt(Validation.MaxItems)
-  private val minItems: Option[Int] = schema.getInt(Validation.MinItems)
-  private val maxContains: Option[Int] = schema.getInt(Validation.MaxContains)
-  private val minContains: Option[Int] = schema.getInt(Validation.MinContains)
-  private val maxProperties: Option[Int] = schema.getInt(Validation.MaxProperties)
-  private val minProperties: Option[Int] = schema.getInt(Validation.MinProperties)
-  private val pattern: Option[Regex] = schema.getString(Validation.Pattern).map(s => new Regex(s).unanchored)
-  private val uniqueItems: Option[Boolean] = schema.getBoolean(Validation.UniqueItems)
-  private val required: collection.Seq[String] = schema.getStringArray(Validation.Required)
-  private val depReq: Option[collection.Map[String, Value]] = schema.getObjectOpt(Validation.DepRequired)
+  private val tyype: collection.Seq[String] = schema.getAsStringArray(Tyype)
+  private val const: Option[Value] = schema.get(Const)
+  private val enuum: Option[collection.Seq[Value]] = schema.getArrayOpt(Enuum)
+  private val multipleOf: Option[Long | Double] = schema.getNumber(MultipleOf)
+  private val maximum: Option[Long | Double] = schema.getNumber(Maximum)
+  private val minimum: Option[Long | Double] = schema.getNumber(Minimum)
+  private val exclusiveMax: Option[Long | Double] = schema.getNumber(ExclusiveMax)
+  private val exclusiveMin: Option[Long | Double] = schema.getNumber(ExclusiveMin)
+  private val maxLength: Option[Int] = schema.getInt(MaxLength)
+  private val minLength: Option[Int] = schema.getInt(MinLength)
+  private val maxItems: Option[Int] = schema.getInt(MaxItems)
+  private val minItems: Option[Int] = schema.getInt(MinItems)
+  private val maxContains: Option[Int] = schema.getInt(MaxContains)
+  private val minContains: Option[Int] = schema.getInt(MinContains)
+  private val maxProperties: Option[Int] = schema.getInt(MaxProperties)
+  private val minProperties: Option[Int] = schema.getInt(MinProperties)
+  private val pattern: Option[Regex] = schema.getString(Pattern).map(s => new Regex(s).unanchored)
+  private val uniqueItems: Option[Boolean] = schema.getBoolean(UniqueItems)
+  private val required: collection.Seq[String] = schema.getStringArray(Required)
+  private val depReq: Option[collection.Map[String, Value]] = schema.getObjectOpt(DepRequired)
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(3) // perf: should be re-used?
 
-    if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got 'null'", units, tyype.contains("null"))
-    const.foreach(c => validate(Validation.Const, "Value 'null' found does not match expected constant", units, c == Null))
-    enuum.foreach(e => validate(Validation.Enuum, "Value 'null' not found in enumeration", units, e.contains(Null)))
+    if (tyype.nonEmpty) addUnit(units, unitOf(tyype.contains("null"), Tyype, s"Expected $tyype, got null"))
+    const.foreach(c => addUnit(units, unitOf(c == Null, Const, "null does not match expected constant")))
+    enuum.foreach(e => addUnit(units, unitOf(e.contains(Null), Enuum, "null not found in enumeration")))
     units
   }
 
   override def visitFalse(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(3) // perf: should be re-used?
 
-    if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got 'false'", units, tyype.contains("boolean"))
-    const.foreach(c => validate(Validation.Const, "Value 'false' found does not match expected constant", units, c == False))
-    enuum.foreach(e => validate(Validation.Enuum, "Value 'false' not found in enumeration", units, e.contains(False)))
+    if (tyype.nonEmpty) addUnit(units, unitOf(tyype.contains("boolean"), Tyype, s"Expected $tyype, got false"))
+    const.foreach(c => addUnit(units, unitOf(c == False, Const, "false does not match expected constant")))
+    enuum.foreach(e => addUnit(units, unitOf(e.contains(False), Enuum, "false not found in enumeration")))
     units
   }
 
   override def visitTrue(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(3) // perf: should be re-used?
 
-    if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got 'true'", units, tyype.contains("boolean"))
-    const.foreach(c => validate(Validation.Const, "Value 'true' found does not match expected constant", units, c == True))
-    enuum.foreach(e => validate(Validation.Enuum, "Value 'true' not found in enumeration", units, e.contains(True)))
+    if (tyype.nonEmpty) addUnit(units, unitOf(tyype.contains("boolean"), Tyype, s"Expected $tyype, got true"))
+    const.foreach(c => addUnit(units, unitOf(c == True, Const, "true does not match expected constant")))
+    enuum.foreach(e => addUnit(units, unitOf(e.contains(True), Enuum, "true not found in enumeration")))
     units
   }
 
@@ -70,9 +70,9 @@ class Validation(schema: ObjectSchema,
         case md: Double => if (md.isWhole) l % md.longValue == 0 else false
     }
 
-    if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got 'true'", units, tyype.exists(t => "integer" == t || "number" == t))
+    if (tyype.nonEmpty) addUnit(units, unitOf(tyype.exists(t => "integer" == t || "number" == t), Tyype, s"Expected $tyype, got number"))
     visitNumber(l, units)
-    multipleOf.foreach(mult => validate(Validation.MultipleOf, "Number is not a multiple of", units, isMultiple(mult)))
+    multipleOf.foreach(mult => addUnit(units, unitOf(isMultiple(mult), MultipleOf, "Number is not a multiple")))
     units
   }
 
@@ -84,50 +84,47 @@ class Validation(schema: ObjectSchema,
         .compareTo(java.math.BigDecimal.ZERO) == 0
     } catch case ex: ArithmeticException => false
 
-    if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got 'true'", units, tyype.exists(t => "number" == t || "integer" == t && d.isWhole))
+    if (tyype.nonEmpty) addUnit(units, unitOf(tyype.exists(t => "number" == t || "integer" == t && d.isWhole), Tyype, s"Expected $tyype, got number"))
     visitNumber(d, units)
-    multipleOf.foreach(mult => validate(Validation.MultipleOf, "Number is not a multiple of", units, isMultiple(mult)))
+    multipleOf.foreach(mult => addUnit(units, unitOf(isMultiple(mult), MultipleOf, "Number is not a multiple")))
     units
   }
 
   // TODO: can we compare const & enum without creating a Value? 
   private def visitNumber(num: Long | Double, units: mutable.ArrayBuffer[OutputUnit]): Unit = {
-    const.foreach(c => validate(Validation.Const, "Number found does not match expected constant", units, c == Num(num)))
-    enuum.foreach(e => validate(Validation.Enuum, "Number not found in enumeration", units, e.contains(Num(num))))
-    maximum.foreach(max => validate(Validation.Maximum, "Number is greater than maximum", units, lteq(num, max)))
-    minimum.foreach(min => validate(Validation.Minimum, "Number is less than minimum", units, gteq(num, min)))
-    exclusiveMax.foreach(max => validate(Validation.ExclusiveMax, "Number is greater than exclusive maximum", units, lt(num, max)))
-    exclusiveMin.foreach(min => validate(Validation.ExclusiveMin, "Number is less than exclusive minimum", units, gt(num, min)))
+    const.foreach(c => addUnit(units, unitOf(c == Num(num), Const, "Number does not match expected constant")))
+    enuum.foreach(e => addUnit(units, unitOf(e.contains(Num(num)), Enuum, "Number not found in enumeration")))
+    maximum.foreach(max => addUnit(units, unitOf(lteq(num, max), Maximum, "Number is greater than maximum")))
+    minimum.foreach(min => addUnit(units, unitOf(gteq(num, min), Minimum, "Number is less than minimum")))
+    exclusiveMax.foreach(max => addUnit(units, unitOf(lt(num, max), ExclusiveMax, "Number is greater than exclusive maximum")))
+    exclusiveMin.foreach(min => addUnit(units, unitOf(gt(num, min), ExclusiveMin, "Number is less than exclusive minimum")))
   }
 
   // TODO: can we compare const & enum without creating a Value? 
   override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(6) // perf: should be re-used?
 
-    if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got string", units, tyype.contains("string"))
-    pattern.foreach(p => validate(Validation.Pattern, "String does not match pattern", units, p.matches(s))) // TODO: include string, opt truncated
-    maxLength.foreach(max => validate(Validation.MaxLength, "String is greater than maximum length", units, s.toString.codePointCount(0, s.length()) <= max))
-    minLength.foreach(min => validate(Validation.MinLength, "String is less than minimum length", units, s.toString.codePointCount(0, s.length()) >= min))
-    const.foreach(c => validate(Validation.Const, "String does not match expected constant", units, c == Str(s.toString)))
-    enuum.foreach(e => validate(Validation.Enuum, "String not found in enumeration", units, e.contains(Str(s.toString))))
+    if (tyype.nonEmpty) addUnit(units, unitOf(tyype.contains("string"), Tyype, s"Expected $tyype, got string"))
+    pattern.foreach(p => addUnit(units, unitOf(p.matches(s), Pattern, "String does not match pattern"))) // TODO: include string, opt truncated
+    maxLength.foreach(max => addUnit(units, unitOf(s.toString.codePointCount(0, s.length()) <= max, MaxLength, "String is greater than maximum length")))
+    minLength.foreach(min => addUnit(units, unitOf(s.toString.codePointCount(0, s.length()) >= min, MinLength, "String is less than minimum length")))
+    const.foreach(c => addUnit(units, unitOf(c == Str(s.toString), Const, "String does not match expected constant")))
+    enuum.foreach(e => addUnit(units, unitOf(e.contains(Str(s.toString)), Enuum, "String not found in enumeration")))
     units
   }
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, collection.Seq[OutputUnit]] = {
     val insVisitor: ArrVisitor[Nothing, collection.Seq[OutputUnit]] =
       if (const.nonEmpty || enuum.nonEmpty || (uniqueItems.nonEmpty && uniqueItems.get))
-        new MapArrContext(LiteralVisitor.visitArray(length, index), arr => { // Vis[Value, coll.Seq[OUnit]]
+        new MapArrContext(LiteralVisitor.visitArray(length, index), jsVal => { // Vis[Value, coll.Seq[OUnit]]
           val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(3) // perf: should be re-used?
 
-          const.foreach(c => validate(Validation.Const, "Array does not match expected constant", units, c == arr))
-          enuum.foreach(e => validate(Validation.Enuum, "Array not found in enumeration", units, e.contains(arr)))
-          uniqueItems.foreach(b =>
-            val set = new mutable.HashSet[Value](arr.value.size, 1) // TODO: would .distinct work?
-            arr.value.foreach(v => {
-              if (!set.add(v)) units.addOne(invalid(Validation.UniqueItems, "Values in array are not unique"))
-              else if (ctx.isVerbose) units.addOne(valid(Validation.UniqueItems))
-            }))
-
+          const.foreach(c => addUnit(units, unitOf(c == jsVal, Const, "Array does not match expected constant")))
+          enuum.foreach(e => addUnit(units, unitOf(e.contains(jsVal), Enuum, "Array not found in enumeration")))
+          uniqueItems.foreach(b => {
+            val set = new mutable.HashSet[Value](jsVal.arr.size, 1)
+            addUnit(units, unitOf(jsVal.arr.forall(e => set.add(e)), UniqueItems, "Values in array are not unique"))
+          })
           units
         })
       else new ArrVisitor[Unit, collection.Seq[OutputUnit]] { // TODO: make object
@@ -150,9 +147,9 @@ class Validation(schema: ObjectSchema,
         val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
         units.sizeHint(units.size + 3)
 
-        if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got array", units, tyype.contains("array"))
-        maxItems.foreach(max => validate(Validation.MaxItems, "Array has more items than allowed", units, nextIdx <= max))
-        minItems.foreach(min => validate(Validation.MinItems, "Array has less items than allowed", units, nextIdx >= min))
+        if (tyype.nonEmpty) addUnit(units, unitOf(tyype.contains("array"), Tyype, s"Expected $tyype, got array"))
+        maxItems.foreach(max => addUnit(units, unitOf(nextIdx <= max, MaxItems, "Array has more items than allowed")))
+        minItems.foreach(min => addUnit(units, unitOf(nextIdx >= min, MinItems, "Array has less items than allowed")))
         units
       }
     }
@@ -165,8 +162,8 @@ class Validation(schema: ObjectSchema,
         new MapObjContext(LiteralVisitor.visitObject(length, index), obj => { // Vis[Value, coll.Seq[OUnit]]
           val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-          const.foreach(c => validate(Validation.Const, "Object does not match expected constant", units, c == obj))
-          enuum.foreach(e => validate(Validation.Enuum, "Object not found in enumeration", units, e.contains(obj)))
+          const.foreach(c => addUnit(units, unitOf(c == obj, Const, "Object does not match expected constant")))
+          enuum.foreach(e => addUnit(units, unitOf(e.contains(obj), Enuum, "Object not found in enumeration")))
           units
         })
       else new ObjVisitor[Unit, collection.Seq[OutputUnit]] { // TODO: make object 
@@ -201,14 +198,13 @@ class Validation(schema: ObjectSchema,
         val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
         units.sizeHint(units.size + 5)
 
-        if (tyype.nonEmpty) validate(Validation.Tyype, s"Expected $tyype, got: object", units, tyype.contains("object"))
-        required.foreach(req => validate(Validation.Required, s"Object does not contain required property $req", units, propsVisited.contains(req)))
-        maxProperties.foreach(max => validate(Validation.MaxProperties, "Object has more properties than allowed", units, propsVisited.size <= max))
-        minProperties.foreach(min => validate(Validation.MinProperties, "Object has less properties than allowed", units, propsVisited.size >= min))
-        depReq.foreach(depReqs => validate(Validation.DepRequired, "Object does not contain dependent required properties", units,  // TODO: which dep required failed? 
-          depReqs.filter((k, reqs) => propsVisited.contains(k)) // all depRequired that apply (found in obj) as (dependent key, required)
+        if (tyype.nonEmpty) addUnit(units, unitOf(tyype.contains("object"), Tyype, s"Expected $tyype, got object"))
+        required.foreach(req => addUnit(units, unitOf(propsVisited.contains(req), Required, s"Object does not contain required property $req")))
+        maxProperties.foreach(max => addUnit(units, unitOf(propsVisited.size <= max, MaxProperties, "Object has more properties than allowed")))
+        minProperties.foreach(min => addUnit(units, unitOf(propsVisited.size >= min, MinProperties, "Object has less properties than allowed")))
+        depReq.foreach(depReqs => addUnit(units, unitOf(depReqs.filter((k, reqs) => propsVisited.contains(k)) // all depRequired that apply (found in obj) as (dependent key, required)
           .map((k, reqs) => reqs.arr.forall(rreq => propsVisited.contains(rreq.str))) // whether the required props were found
-          .forall(identity))) // whether all entries were satisfied
+          .forall(identity), DepRequired, "Object does not contain dependent required properties"))) // whether all entries were satisfied
         units
       }
     }

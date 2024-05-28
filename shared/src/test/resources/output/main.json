@@ -1,0 +1,196 @@
+{
+  "valid": false,
+  "keywordLocation": "",
+  "instanceLocation": "",
+  "errors": [
+    {
+      "valid": false,
+      "keywordLocation": "/$ref",
+      "instanceLocation": "",
+      "errors": [
+        {
+          "valid": false,
+          "keywordLocation": "/$ref/items",
+          "instanceLocation": "",
+          "errors": [
+            {
+              "valid": false,
+              "keywordLocation": "/$ref/items",
+              "instanceLocation": "/0",
+              "errors": [
+                {
+                  "valid": false,
+                  "keywordLocation": "/$ref/items/type",
+                  "instanceLocation": "/0",
+                  "error": "Expected List(number), got string"
+                }
+              ]
+            },
+            {
+              "valid": false,
+              "keywordLocation": "/$ref/items",
+              "instanceLocation": "/1",
+              "errors": [
+                {
+                  "valid": false,
+                  "keywordLocation": "/$ref/items/type",
+                  "instanceLocation": "/1",
+                  "error": "Expected List(number), got string"
+                }
+              ]
+            },
+            {
+              "valid": false,
+              "keywordLocation": "/$ref/items",
+              "instanceLocation": "/2",
+              "errors": [
+                {
+                  "valid": false,
+                  "keywordLocation": "/$ref/items/minimum",
+                  "instanceLocation": "/2",
+                  "error": "Number is less than minimum"
+                }
+              ]
+            },
+            {
+              "valid": false,
+              "keywordLocation": "/$ref/items",
+              "instanceLocation": "/3",
+              "errors": [
+                {
+                  "valid": false,
+                  "keywordLocation": "/$ref/items/minimum",
+                  "instanceLocation": "/3",
+                  "error": "Number is less than minimum"
+                }
+              ]
+            },
+            {
+              "valid": false,
+              "keywordLocation": "/$ref/items",
+              "instanceLocation": "/4",
+              "errors": [
+                {
+                  "valid": false,
+                  "keywordLocation": "/$ref/items/minimum",
+                  "instanceLocation": "/4",
+                  "error": "Number is less than minimum"
+                }
+              ]
+            },
+            {
+              "valid": false,
+              "keywordLocation": "/$ref/items",
+              "instanceLocation": "/5",
+              "errors": [
+                {
+                  "valid": false,
+                  "keywordLocation": "/$ref/items/type",
+                  "instanceLocation": "/5",
+                  "error": "Expected List(number), got string"
+                }
+              ]
+            },
+            {
+              "valid": false,
+              "keywordLocation": "/$ref/items",
+              "instanceLocation": "/6",
+              "errors": [
+                {
+                  "valid": false,
+                  "keywordLocation": "/$ref/items/minimum",
+                  "instanceLocation": "/6",
+                  "error": "Number is less than minimum"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "valid": false,
+          "keywordLocation": "/$ref/type",
+          "instanceLocation": "",
+          "error": "Expected List(string), got array"
+        }
+      ]
+    },
+    {
+      "valid": false,
+      "keywordLocation": "/items",
+      "instanceLocation": "",
+      "errors": [
+        {
+          "valid": false,
+          "keywordLocation": "/items",
+          "instanceLocation": "/0",
+          "errors": [
+            {
+              "valid": false,
+              "keywordLocation": "/items/type",
+              "instanceLocation": "/0",
+              "error": "Expected List(number), got string"
+            }
+          ]
+        },
+        {
+          "valid": false,
+          "keywordLocation": "/items",
+          "instanceLocation": "/1",
+          "errors": [
+            {
+              "valid": false,
+              "keywordLocation": "/items/type",
+              "instanceLocation": "/1",
+              "error": "Expected List(number), got string"
+            }
+          ]
+        },
+        {
+          "valid": false,
+          "keywordLocation": "/items",
+          "instanceLocation": "/5",
+          "errors": [
+            {
+              "valid": false,
+              "keywordLocation": "/items/type",
+              "instanceLocation": "/5",
+              "error": "Expected List(number), got string"
+            }
+          ]
+        },
+        {
+          "valid": false,
+          "keywordLocation": "/items",
+          "instanceLocation": "/6",
+          "errors": [
+            {
+              "valid": false,
+              "keywordLocation": "/items/maximum",
+              "instanceLocation": "/6",
+              "error": "Number is greater than maximum"
+            }
+          ]
+        },
+        {
+          "valid": false,
+          "keywordLocation": "/items",
+          "instanceLocation": "/7",
+          "errors": [
+            {
+              "valid": false,
+              "keywordLocation": "/items/maximum",
+              "instanceLocation": "/7",
+              "error": "Number is greater than maximum"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "valid": false,
+      "keywordLocation": "/type",
+      "instanceLocation": "",
+      "error": "Expected List(object), got array"
+    }
+  ]
+}

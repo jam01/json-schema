@@ -1,6 +1,7 @@
 package io.github.jam01.json_schema.vocab
 
 import io.github.jam01.json_schema.*
+import io.github.jam01.json_schema.vocab.Core.*
 import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import scala.collection.mutable
@@ -12,61 +13,57 @@ class Core(schema: ObjectSchema,
            dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
 
   private val _refVis: Option[Visitor[?, OutputUnit]] = schema.getRef
-    .map(s => ctx.getSch(s) match
-      case Some(sch) => sch
-      case None => throw new IllegalArgumentException(s"unavailable schema $s")) // TODO: add ctx.getSchOrThrow
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended(Core._Ref), Some(this)))
+    .map(s => ctx.getSchOrThrow(s))
+    .map(sch => SchemaValidator.of(sch, ctx, path.appended(_Ref), Some(this)))
   private val _dynRefVis: Option[Visitor[?, OutputUnit]] = schema.getDynRef
-    .map(s => ctx.getDynSch(s, this) match
-      case Some(sch) => sch
-      case None => throw new IllegalArgumentException(s"unavailable schema $s"))
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended(Core._DynRef), Some(this)))
+    .map(s => ctx.getDynSchOrThrow(s, this))
+    .map(sch => SchemaValidator.of(sch, ctx, path.appended(_DynRef), Some(this)))
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.map(rv => rv.visitNull(index)).foreach(u => addUnit(units, u))
-    _dynRefVis.map(drv => drv.visitNull(index)).foreach(u => addUnit(units, u))
+    _refVis.foreach(v => addUnit(units, v.visitNull(index)))
+    _dynRefVis.foreach(v => addUnit(units, v.visitNull(index)))
     units
   }
 
   override def visitFalse(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.map(rv => rv.visitFalse(index)).foreach(u => addUnit(units, u))
-    _dynRefVis.map(drv => drv.visitFalse(index)).foreach(u => addUnit(units, u))
+    _refVis.foreach(v => addUnit(units, v.visitFalse(index)))
+    _dynRefVis.foreach(v => addUnit(units, v.visitFalse(index)))
     units
   }
 
   override def visitTrue(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.map(rv => rv.visitTrue(index)).foreach(u => addUnit(units, u))
-    _dynRefVis.map(drv => drv.visitTrue(index)).foreach(u => addUnit(units, u))
+    _refVis.foreach(v => addUnit(units, v.visitTrue(index)))
+    _dynRefVis.foreach(v => addUnit(units, v.visitTrue(index)))
     units
   }
 
   override def visitInt64(l: Long, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.map(rv => rv.visitInt64(l, index)).foreach(u => addUnit(units, u))
-    _dynRefVis.map(drv => drv.visitInt64(l, index)).foreach(u => addUnit(units, u))
+    _refVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
+    _dynRefVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
     units
   }
 
   override def visitFloat64(d: Double, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.map(rv => rv.visitFloat64(d, index)).foreach(u => addUnit(units, u))
-    _dynRefVis.map(drv => drv.visitFloat64(d, index)).foreach(u => addUnit(units, u))
+    _refVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
+    _dynRefVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
     units
   }
 
   override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.map(rv => rv.visitString(s, index)).foreach(u => addUnit(units, u))
-    _dynRefVis.map(drv => drv.visitString(s, index)).foreach(u => addUnit(units, u))
+    _refVis.foreach(v => addUnit(units, v.visitString(s, index)))
+    _dynRefVis.foreach(v => addUnit(units, v.visitString(s, index)))
     units
   }
 

@@ -16,26 +16,25 @@ abstract class BaseValidator(val schema: ObjectSchema,
                              val ctx: Context = Context.Empty,
                              val path: JsonPointer = JsonPointer(),
                              val dynParent: Option[BaseValidator] = None) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
-  def valid(kw: String): OutputUnit = {
-    OutputUnit(true, Some(path.appended(kw)), None, Some(ctx.currentLoc))
-  }
-
-  def invalid(kw: String, err: String): OutputUnit = {
-    OutputUnit(false, Some(path.appended(kw)), None, Some(ctx.currentLoc), Some(err))
+  // TODO: should these be in Context instead?
+  def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
+    if (isValid) OutputUnit(true, Some(path.appended(kw)), None, Some(ctx.currentLoc)) 
+    else OutputUnit(false, Some(path.appended(kw)), None, Some(ctx.currentLoc), Some(err))
   }
   
-  def validate(kw: String, err: String, isValid: Boolean): OutputUnit = {
-    if (isValid) { if (ctx.isVerbose) (); valid(kw) }
-    else invalid(kw, err)
-  }
-  
-  def validate(kw: String, err: String, units: mutable.Buffer[OutputUnit], isValid: Boolean): mutable.Buffer[OutputUnit] = {
-    if (isValid) { if (ctx.isVerbose) units.addOne(valid(kw)); units }
-    else units.addOne(invalid(kw, err))
+  def unitOf(isValid: Boolean, kw: String,
+             err: Option[String], errs: collection.Seq[OutputUnit],
+             annot: Option[Value], annots: collection.Seq[OutputUnit]): OutputUnit = {
+    if (isValid) OutputUnit(true, Some(path.appended(kw)), None, Some(ctx.currentLoc),
+      annotation = if (ctx.isVerbose || ctx.mode == Mode.Annotation) annot else None,
+      annotations = if (ctx.isVerbose) errs.appendedAll(annots) else if (ctx.mode == Mode.Annotation) annots.filter(a => a.hasAnnotations) else Nil)
+    else OutputUnit(false, Some(path.appended(kw)), None, Some(ctx.currentLoc), err, errs)
   }
   
   def addUnit(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {
-    if (unit.valid) { if (ctx.isVerbose ) units.addOne(unit); units }
-    else units.addOne(unit)
+    if (unit.valid) {
+      if (ctx.isVerbose || (ctx.mode == Mode.Annotation && unit.hasAnnotations)) units.addOne(unit)
+      units
+    } else units.addOne(unit)
   }
 }

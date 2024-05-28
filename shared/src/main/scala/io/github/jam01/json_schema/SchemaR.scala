@@ -34,7 +34,7 @@ class SchemaR private(docbase: Uri,
 
     override def subVisitor: Visitor[?, ?] = key match
       // kws with schema
-      case "items" | "contains" | "additionalProperties" | "propertyNames" | "if" | "then" | "else" | "not" =>
+      case "items" | "contains" | "additionalProperties" | "propertyNames" | "if" | "then" | "else" | "not" | "unevaluatedProperties"| "unevaluatedItems" =>
         new SchemaR(docbase, reg, ids, anchors, Some(sch), Some(s"/$key"))
       // kws with map(key -> schema)
       case "$defs" | "properties" | "patternProperties" | "dependentSchemas" => new SimpleVisitor[Schema, Obj] {

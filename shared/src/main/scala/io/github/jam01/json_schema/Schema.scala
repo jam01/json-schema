@@ -119,6 +119,10 @@ object Arr {
 // TODO: make part of AST
 case class Num(value: Long | Double) extends Value
 
+object Num {
+  def apply(i: Int): Num = Num(i.toLong)
+}
+
 sealed abstract class Bool extends Value {
   def value: Boolean
 }
