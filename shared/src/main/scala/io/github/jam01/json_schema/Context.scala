@@ -4,7 +4,7 @@ import scala.collection.{immutable, mutable}
 
 case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.Seq -- need to make a factory-type of class
                    reg: collection.Map[Uri, Schema],
-                   mode: Mode = Mode.Assertion,
+                   mode: Mode = Mode.Annotation,
                    struct: OutputStructure = OutputStructure.Detailed,
                    ffast: Boolean = false,
                    allowAnnot: Seq[String] = Nil) {
@@ -87,7 +87,7 @@ object OutputStructure {
 
   val Verbose: OutputStructure = new OutputStructure:
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
-      ???
+      Detailed.compose(path, units, ctx)
     }
 }
 

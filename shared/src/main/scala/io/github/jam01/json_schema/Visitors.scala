@@ -22,7 +22,7 @@ class CompositeArrVisitor[-T, +J](protected val delArrVis: ArrVisitor[T, J]*) ex
     new CompositeVisitor(delArrVis.map(_.subVisitor)*)
 
   override def visitValue(v: Seq[T], index: Int): Unit =
-    delArrVis.view.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+    delArrVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
 
   override def visitEnd(index: Int): Seq[J] = delArrVis.map(_.visitEnd(index))
 }
@@ -32,13 +32,13 @@ class CompositeObjVisitor[-T, +J](protected val delObjVis: ObjVisitor[T, J]*) ex
     new CompositeVisitor(delObjVis.map(_.visitKey(index))*)
 
   override def visitKeyValue(v: Any): Unit =
-    delObjVis.view.lazyZip(v.asInstanceOf[Seq[?]]).foreach((v, o) => v.visitKeyValue(o))
+    delObjVis.lazyZip(v.asInstanceOf[Seq[?]]).foreach((v, o) => v.visitKeyValue(o))
 
   override def subVisitor: Visitor[?, ?] =
     new CompositeVisitor(delObjVis.map(_.subVisitor)*)
 
   override def visitValue(v: Seq[T], index: Int): Unit =
-    delObjVis.view.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+    delObjVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
 
   override def visitEnd(index: Int): Seq[J] = delObjVis.map(_.visitEnd(index))
 }
@@ -68,7 +68,7 @@ class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVis
   override def subVisitor: Visitor[?, ?] = new CompositeVisitor(delArrVis.map(_.subVisitor)*)
 
   override def visitValue(v: Seq[T], index: Int): Unit =
-    delArrVis.view.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+    delArrVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
 
   override def visitEnd(index: Int): J = reducer(delArrVis.map(_.visitEnd(index)))
 }
@@ -79,12 +79,12 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
     new CompositeVisitor(delObjVis.map(_.visitKey(index))*)
 
   override def visitKeyValue(v: Any): Unit =
-    delObjVis.view.lazyZip(v.asInstanceOf[Seq[?]]).foreach((v, o) => v.visitKeyValue(o))
+    delObjVis.lazyZip(v.asInstanceOf[Seq[?]]).foreach((v, o) => v.visitKeyValue(o))
 
   override def subVisitor: Visitor[?, ?] = new CompositeVisitor(delObjVis.map(_.subVisitor)*)
 
   override def visitValue(v: Seq[T], index: Int): Unit =
-    delObjVis.view.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+    delObjVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
 
   override def visitEnd(index: Int): J = reducer(delObjVis.map(_.visitEnd(index)))
 }

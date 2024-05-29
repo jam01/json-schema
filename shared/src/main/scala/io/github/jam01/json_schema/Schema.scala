@@ -86,7 +86,7 @@ case class Obj(value: LinkedHashMap[String, Value]) extends Value
 
 object Obj {
   def apply[V](item: (String, V),
-               items: (String, Value)*)(implicit conv: V => Value): Obj = {
+               items: (String, Value)*)(using conv: V => Value): Obj = {
     val map = LinkedHashMap[String, Value]()
     map.put(item._1, conv(item._2))
     for (i <- items) map.put(i._1, i._2)

@@ -130,7 +130,7 @@ class Validation(schema: ObjectSchema,
       else new ArrVisitor[Unit, collection.Seq[OutputUnit]] { // TODO: make object
         override def subVisitor: Visitor[?, ?] = NoOpVisitor
         override def visitValue(v: Unit, index: Int): Unit = ()
-        override def visitEnd(index: Int): collection.Seq[OutputUnit] = Seq.empty
+        override def visitEnd(index: Int): collection.Seq[OutputUnit] = Nil
       }
 
     new ArrVisitor[Any, collection.Seq[OutputUnit]] {
@@ -171,7 +171,7 @@ class Validation(schema: ObjectSchema,
         override def visitKeyValue(v: Any): Unit = ()
         override def subVisitor: Visitor[?, ?] = NoOpVisitor
         override def visitValue(v: Unit, index: Int): Unit = ()
-        override def visitEnd(index: Int): collection.Seq[OutputUnit] = Seq.empty
+        override def visitEnd(index: Int): collection.Seq[OutputUnit] = Nil
       }
 
 

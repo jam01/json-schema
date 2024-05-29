@@ -2,7 +2,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.vocab.Core
 import upickle.core.Visitor.MapReader
-import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
+import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 object SchemaValidator {
   def of(sch: Schema,
@@ -10,64 +10,41 @@ object SchemaValidator {
          path: JsonPointer = JsonPointer(),
          dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
     sch match
-      case bs: BooleanSchema => BooleanSchemaValidator.of(bs)
+      case bs: BooleanSchema => BooleanSchemaValidator.of(bs, ctx, path)
       case os: ObjectSchema => ObjectSchemaValidator.of(os, ctx, path, dynParent)
   }
 }
 
 object BooleanSchemaValidator {
-  val True: BooleanSchemaValidator = new BooleanSchemaValidator(true) {
-    private val TrueArrValidator = new BooleanArrValidator(true) {
-      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.True
-    }
-
-    private val TrueObjValidator = new BooleanObjValidator(true) {
-      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.True
-      override def visitKey(index: Int): Visitor[?, ?] = BooleanSchemaValidator.True
-    }
-
-    override def visitArray(length: Int, index: Int): ArrVisitor[OutputUnit, OutputUnit] = TrueArrValidator
-    override def visitObject(length: Int, index: Int): ObjVisitor[OutputUnit, OutputUnit] = TrueObjValidator
-  }
-
-  val False: BooleanSchemaValidator = new BooleanSchemaValidator(false) {
-    private val FalseArrVisitor = new BooleanArrValidator(false) {
-      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.False
-    }
-
-    private val FalseObjVisitor = new BooleanObjValidator(false) {
-      override def subVisitor: Visitor[?, ?] = BooleanSchemaValidator.False
-      override def visitKey(index: Int): Visitor[?, ?] = BooleanSchemaValidator.False
-    }
-
-    override def visitArray(length: Int, index: Int): ArrVisitor[OutputUnit, OutputUnit] = FalseArrVisitor
-    override def visitObject(length: Int, index: Int): ObjVisitor[OutputUnit, OutputUnit] = FalseObjVisitor
-  }
-
-  def of(bsch: BooleanSchema): BooleanSchemaValidator =
+  def of(bsch: BooleanSchema, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer()): BooleanSchemaValidator =
     bsch match
-      case TrueSchema => True
-      case FalseSchema => False
+      case TrueSchema => new BooleanSchemaValidator(true, ctx, path)
+      case FalseSchema => new BooleanSchemaValidator(false, ctx, path)
 }
 
-private abstract class BooleanSchemaValidator(bool: Boolean) extends JsonVisitor[OutputUnit, OutputUnit] {
-  override def visitNull(index: Int): OutputUnit = OutputUnit(bool)
-  override def visitFalse(index: Int): OutputUnit = OutputUnit(bool)
-  override def visitTrue(index: Int): OutputUnit = OutputUnit(bool)
-  override def visitFloat64(d: Double, index: Int): OutputUnit = OutputUnit(bool)
-  override def visitInt64(i: Long, index: Int): OutputUnit = OutputUnit(bool)
-  override def visitString(s: CharSequence, index: Int): OutputUnit = OutputUnit(bool)
+final class BooleanSchemaValidator(bool: Boolean, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer()) extends JsonVisitor[OutputUnit, OutputUnit] {
+  override def visitNull(index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
+  override def visitFalse(index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
+  override def visitTrue(index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
+  override def visitFloat64(d: Double, index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
+  override def visitInt64(i: Long, index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
+  override def visitString(s: CharSequence, index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
+  override def visitArray(length: Int, index: Int): ArrVisitor[OutputUnit, OutputUnit] = new BooleanArrValidator(bool, ctx, path)
+  override def visitObject(length: Int, index: Int): ObjVisitor[OutputUnit, OutputUnit] = new BooleanObjValidator(bool, ctx, path)
 }
 
-private abstract class BooleanObjValidator(bool: Boolean) extends ObjVisitor[OutputUnit, OutputUnit] {
+final class BooleanArrValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends ArrVisitor[Any, OutputUnit] {
+  override def subVisitor: Visitor[?, ?] = NoOpVisitor
+  override def visitValue(v: Any, index: Int): Unit = ()
+  override def visitEnd(index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
+}
+
+final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends ObjVisitor[Any, OutputUnit] {
+  override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
   override def visitKeyValue(v: Any): Unit = ()
-  override def visitValue(v: OutputUnit, index: Int): Unit = ()
-  override def visitEnd(index: Int): OutputUnit = OutputUnit(bool)
-}
-
-private abstract class BooleanArrValidator(bool: Boolean) extends ArrVisitor[OutputUnit, OutputUnit] {
-  override def visitValue(v: OutputUnit, index: Int): Unit = ()
-  override def visitEnd(index: Int): OutputUnit = OutputUnit(bool)
+  override def subVisitor: Visitor[?, ?] = NoOpVisitor
+  override def visitValue(v: Any, index: Int): Unit = ()
+  override def visitEnd(index: Int): OutputUnit = OutputUnit(bool, Some(path), None, Some(ctx.currentLoc))
 }
 
 object ObjectSchemaValidator {

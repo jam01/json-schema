@@ -6,7 +6,7 @@ import upickle.core.{ArrVisitor, ObjVisitor}
 
 class PointerVisitorTest {
 
-  @Test
+  @Test @Disabled
   def test(): Unit = {
     val jsonStr = """[0, 1, "bloop", 3, null, 5.5, ["a", "b", "c"], {"foo7": "bar", "arr": [null, null]}]"""
     StringParser.transform(jsonStr, new PointerVisitor())

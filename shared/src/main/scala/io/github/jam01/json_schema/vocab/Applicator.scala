@@ -48,18 +48,8 @@ class Applicator(schema: ObjectSchema,
         unitOf(res, Contains, "Array does not contain given elements") // TODO: include if failed bc min/max
       }
     })
-  private val addlPropsVis: Option[ObjVisitor[OutputUnit, OutputUnit]] = schema.getSchemaOpt(AdditionalProperties)
+  private val addlPropsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(AdditionalProperties)
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(AdditionalProperties), Some(this)))
-    .map(schValidator => new ObjVisitor[OutputUnit, OutputUnit] {
-      private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
-      private var subsch = true
-
-      override def visitKey(index: Int): Visitor[?, ?] = throw new UnsupportedOperationException("Should not be invoked")
-      override def visitKeyValue(v: Any): Unit = throw new UnsupportedOperationException("Should not be invoked")
-      override def subVisitor: Visitor[?, ?] = schValidator
-      override def visitValue(u: OutputUnit, index: Int): Unit = addUnit(units, u)
-      override def visitEnd(index: Int): OutputUnit = and(AdditionalProperties, units)
-    })
   private val properties: Option[collection.Map[String, Schema]] = schema.getSchemaObjectOpt(Properties)
   private val patternProperties: Option[collection.Map[Regex, Schema]] = schema.getSchemaObjectOpt(PatternProperties)
     .map(obj => obj.map(entry => (new Regex(entry._1).unanchored, entry._2)))
@@ -253,15 +243,15 @@ class Applicator(schema: ObjectSchema,
         val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
         units.sizeHint(units.size + 2)
 
-        prefixItemsVisitor.foreach(pv => addUnit(units, pv.visitEnd(index)))
-        itemsVis.foreach(iv => addUnit(units, iv.visitEnd(index)))
+        prefixItemsVisitor.foreach(b => addUnit(units, b.visitEnd(index)))
+        itemsVis.foreach(v => addUnit(units, v.visitEnd(index)))
         units
       }
     }
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Any, collection.Seq[OutputUnit]] = {
-    val propsVisited = mutable.ArrayBuffer.empty[String] // properties visited
+    val propsVisited = mutable.ArrayBuffer[String]() // properties visited
 
     val insVisitors: mutable.ArrayBuffer[ObjVisitor[?, OutputUnit]] = new mutable.ArrayBuffer(6)
     notVis.foreach(vis => insVisitors.addOne(new MapObjContext(vis.visitObject(length, true, index), unit => not(unit))))
@@ -283,17 +273,14 @@ class Applicator(schema: ObjectSchema,
         }))
       })
 
-    val depSchsObjViss: Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]] =
-      depSchsViss.map(viss => viss.map(entry => (entry._1,
-        MapObjContext(entry._2.visitObject(length, true, index), b => (entry._1, b)))))
-    depSchsObjViss.foreach(viss =>
-      insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq*), k_units => {
-        val apply = k_units.filter((k, unit) => propsVisited.contains(k))
-        unitOf(apply.forall((k, u) => u.valid), DependentSchemas, "Some schema(s) did not successfully apply")
-      })))
+    depSchsViss.map(viss => viss.map(k_vis =>
+        (k_vis._1, MapObjContext(k_vis._2.visitObject(length, true, index), b => (k_vis._1, b))))) // Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]]
+      .foreach(viss =>
+        insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq *), k_units => { // Vis[Seq[Nothing], OUnit]
+          and(DependentSchemas, k_units.filter((k, _) => propsVisited.contains(k)).map((_, u) => u))
+        })))
 
     val insVisitor: ObjVisitor[Seq[Nothing], collection.Seq[OutputUnit]] = new CompositeObjVisitor(insVisitors.toSeq*)
-
     var childVisitor: ObjVisitor[?, ?] = null // to be assigned based on child
 
     new ObjVisitor[Any, collection.Seq[OutputUnit]] {
@@ -303,39 +290,52 @@ class Applicator(schema: ObjectSchema,
       // returns subVisitor based on currentKey
       val propsVisitor: Option[ObjVisitor[OutputUnit, OutputUnit]] = properties.map(m => new ObjVisitor[OutputUnit, OutputUnit] {
         private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
-        private var subsch = true
+        private val annot: mutable.Buffer[Value] = new ArrayBuffer()
 
         override def visitKey(index: Int): Visitor[?, ?] = throw new UnsupportedOperationException("Should not be invoked")
         override def visitKeyValue(v: Any): Unit = throw new UnsupportedOperationException("Should not be invoked")
         override def subVisitor: Visitor[?, ?] = SchemaValidator.of(m(currentKey), ctx, path.appended(Properties, currentKey), Some(Applicator.this))
-        override def visitValue(u: OutputUnit, index: Int): Unit = addUnit(units, u)
-        override def visitEnd(index: Int): OutputUnit = and(PrefixItems, units)
+        override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.valid) annot.addOne(Str(currentKey))}
+        override def visitEnd(index: Int): OutputUnit = and(Properties, units, Some(Arr.from(annot)))
       })
 
       private var matchedPatternSchs: Seq[(String, Schema)] = Nil // to be assigned based on key visited
       // returns subVisitor based on assigned matchedPatternSchs
       val patternPropsVisitor: Option[ObjVisitor[Seq[OutputUnit], OutputUnit]] = patternProperties.map(m => new ObjVisitor[Seq[OutputUnit], OutputUnit] {
         private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
+        private val annot: mutable.Buffer[Value] = new ArrayBuffer()
 
         override def visitKey(index: Int): Visitor[?, ?] = throw new UnsupportedOperationException("Should not be invoked")
         override def visitKeyValue(v: Any): Unit = throw new UnsupportedOperationException("Should not be invoked")
         override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map(pattSch =>
           SchemaValidator.of(pattSch._2, ctx, path.appended(PatternProperties, pattSch._1), Some(Applicator.this)))*)
-        override def visitValue(mult: Seq[OutputUnit], index: Int): Unit = mult.foreach(u => addUnit(units, u))
-        override def visitEnd(index: Int): OutputUnit = and(PatternProperties, units)
+        override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { addUnit(units, u); if (u.valid) annot.addOne(Str(currentKey))})
+        override def visitEnd(index: Int): OutputUnit = and(PatternProperties, units, Some(annot))
+      })
+
+      val addlPropsObjVis: Option[ObjVisitor[OutputUnit, OutputUnit]] = addlPropsVis.map(schValidator => new ObjVisitor[OutputUnit, OutputUnit] {
+        private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
+        private val annot: mutable.Buffer[Value] = new ArrayBuffer()
+
+        override def visitKey(index: Int): Visitor[?, ?] = throw new UnsupportedOperationException("Should not be invoked")
+        override def visitKeyValue(v: Any): Unit = throw new UnsupportedOperationException("Should not be invoked")
+        override def subVisitor: Visitor[?, ?] = schValidator
+        override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.valid) annot.addOne(Str(currentKey)) }
+        override def visitEnd(index: Int): OutputUnit = and(AdditionalProperties, units, Some(annot))
       })
 
       override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
-        def expectedMsg = "expected string"
+        def expectedMsg = "Expected string"
 
         override def visitString(s: CharSequence, index1: Int): Any = {
           currentKey = s.toString
           if (propNymVis.nonEmpty) propNamesValid = propNamesValid && propNymVis.get.visitString(s, index1).valid
           propsVisited.addOne(currentKey)
           matchedPatternSchs = patternProperties.map(m => m
-            .withFilter(entry => entry._1.matches(currentKey))
-            .map(entry => (entry._1.toString(), entry._2))
-            .toSeq).getOrElse(Nil)
+              .withFilter(rgx_sch => rgx_sch._1.matches(currentKey))
+              .map(rgx_sch => (rgx_sch._1.toString(), rgx_sch._2))
+              .toSeq)
+            .getOrElse(Nil)
 
           insVisitor.visitKey(index).visitString(s, index1)
         }
@@ -350,7 +350,7 @@ class Applicator(schema: ObjectSchema,
         var isAddl = true // if not in properties or matched patterns
         if (properties.nonEmpty && properties.get.contains(currentKey)) { isAddl = false; childVisitors.addOne(propsVisitor.get) }
         if (matchedPatternSchs.nonEmpty) { isAddl = false; childVisitors.addOne(patternPropsVisitor.get) }
-        if (isAddl) addlPropsVis.foreach(vis => childVisitors.addOne(vis))
+        if (isAddl) addlPropsObjVis.foreach(vis => childVisitors.addOne(vis))
 
         childVisitor =
           if (childVisitors.length == 1) childVisitors.head
@@ -364,19 +364,19 @@ class Applicator(schema: ObjectSchema,
         val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
         units.sizeHint(units.size + 4)
 
-        propsVisitor.foreach(pv => addUnit(units, pv.visitEnd(index)))
-        patternPropsVisitor.foreach(iv => addUnit(units, iv.visitEnd(index)))
-        addlPropsVis.foreach(iv => addUnit(units, iv.visitEnd(index)))
+        propsVisitor.foreach(v => addUnit(units, v.visitEnd(index)))
+        patternPropsVisitor.foreach(v => addUnit(units, v.visitEnd(index)))
+        addlPropsObjVis.foreach(v => addUnit(units, v.visitEnd(index)))
         addUnit(units, unitOf(propNamesValid, PropertyNames, ""))
         units
       }
     }
   }
 
-  /* helper methods */ // TODO: what if isVerbose?
+  /* helper methods */
   private def and(kw: String, units: collection.Seq[OutputUnit], ann: Option[Value] = None): OutputUnit = {
     val (annots, errs) = units.partition(_.valid)
-    unitOf(errs.isEmpty, kw, None, errs, None, annots)
+    unitOf(errs.isEmpty, kw, None, errs, ann, annots)
   }
 
   private def allOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
@@ -407,21 +407,21 @@ class Applicator(schema: ObjectSchema,
 }
 
 object Applicator {
-  private val PrefixItems = "prefixItems"
-  private val Items = "items"
-  private val MaxContains = "maxContains"
-  private val MinContains = "minContains"
-  private val Contains = "contains"
-  private val AdditionalProperties = "additionalProperties"
-  private val Properties = "properties"
-  private val PatternProperties = "patternProperties"
-  private val DependentSchemas = "dependentSchemas"
-  private val PropertyNames = "propertyNames"
-  private val If = "if"
-  private val Then = "then"
-  private val Else = "else"
-  private val Not = "not"
-  private val AllOf = "allOf"
-  private val AnyOf = "anyOf"
-  private val OneOf = "oneOf"
+  val PrefixItems = "prefixItems"
+  val Items = "items"
+  val MaxContains = "maxContains"
+  val MinContains = "minContains"
+  val Contains = "contains"
+  val AdditionalProperties = "additionalProperties"
+  val Properties = "properties"
+  val PatternProperties = "patternProperties"
+  val DependentSchemas = "dependentSchemas"
+  val PropertyNames = "propertyNames"
+  val If = "if"
+  val Then = "then"
+  val Else = "else"
+  val Not = "not"
+  val AllOf = "allOf"
+  val AnyOf = "anyOf"
+  val OneOf = "oneOf"
 }

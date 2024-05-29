@@ -26,7 +26,6 @@ object TestSuiteTest {
     "patternProperties.json",
     "refRemote.json",
     "unevaluatedItems.json",
-    "unevaluatedProperties.json",
     "vocabulary.json")
 
   val Registry: mutable.Map[Uri, Schema] = {

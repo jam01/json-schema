@@ -9,6 +9,11 @@ final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
 
   def appended(refToks: String*): JsonPointer = JsonPointer(refTokens.appendedAll(refToks))
 
+  def isRelative(other: JsonPointer): Boolean = {
+    if (other.refTokens.size < refTokens.size) false
+    else refTokens.lazyZip(other.refTokens).forall((pstr, ostr) => pstr == ostr)
+  }
+
   override def toString: String = {
     refTokens.iterator
       .map(_.replace("~", "~0")

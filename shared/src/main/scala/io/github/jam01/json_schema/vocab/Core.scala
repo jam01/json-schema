@@ -85,6 +85,6 @@ class Core(schema: ObjectSchema,
 }
 
 object Core {
-  private val _Ref = "$ref"
-  private val _DynRef = "$dynamicRef"
+  val _Ref = "$ref"
+  val _DynRef = "$dynamicRef"
 }
