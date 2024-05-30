@@ -13,9 +13,9 @@ import scala.collection.mutable
  * @param dynParent dynamic scope parent validator
  */
 abstract class BaseValidator(val schema: ObjectSchema,
-                             val ctx: Context = Context.Empty,
-                             val path: JsonPointer = JsonPointer(),
-                             val dynParent: Option[BaseValidator] = None) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
+                             val ctx: Context,
+                             val path: JsonPointer,
+                             val dynParent: Option[BaseValidator]) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
   // TODO: should these be in Context instead?
   def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
     if (isValid) OutputUnit(true, path.appended(kw), None, ctx.currentLoc)

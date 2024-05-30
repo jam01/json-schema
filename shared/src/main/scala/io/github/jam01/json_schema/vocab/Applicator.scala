@@ -32,20 +32,20 @@ class Applicator(schema: ObjectSchema,
     .map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
       private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
       private var nextIdx = 0
-      private var matched = 0
+      private val matched: mutable.ArrayBuffer[Num] = new ArrayBuffer()
 
       override def subVisitor: Visitor[?, ?] = schValidator
-      override def visitValue(u: OutputUnit, index: Int): Unit = { if (u.vvalid) matched = matched + 1; nextIdx += 1 }
+      override def visitValue(u: OutputUnit, index: Int): Unit = { if (u.vvalid) matched.addOne(Num(nextIdx)); nextIdx += 1 }
       override def visitEnd(index: Int): OutputUnit = { // TODO: break up contains into contains, min/max
-        var res = matched > 0
+        var res = matched.nonEmpty
         if (minContains.nonEmpty) {
           if (minContains.get == 0) res = true
-          else res = res && (matched >= minContains.get)
+          else res = res && (matched.size >= minContains.get)
         }
         if (maxContains.nonEmpty) {
-          res = res && (matched <= maxContains.get)
+          res = res && (matched.size <= maxContains.get)
         }
-        unitOf(res, Contains, "Array does not contain given elements") // TODO: include if failed bc min/max
+        unitOf(res, Contains, Some("Array does not contain given elements"), Nil, Some(Arr.from(matched)), Nil) // TODO: include if failed bc min/max
       }
     })
   private val addlPropsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(AdditionalProperties)
@@ -190,20 +190,9 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     contains.foreach(vis => insVisitors.addOne(vis)) // Vis[OUnit, OUnit]
-    ifVis.foreach(vis =>
-      if (thenVis.isEmpty && elseVis.isEmpty) ()
-      else {
-        val viss: mutable.ArrayBuffer[ArrVisitor[Nothing, OutputUnit]] = new mutable.ArrayBuffer(3)
-        viss.addOne(vis.visitArray(length, index))
-        if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitArray(length, index))
-        if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitArray(length, index))
-
-        insVisitors.addOne(new MapArrContext(new CompositeArrVisitor(viss.toSeq*), units => { // Vis[Seq[Nothing], OUnit]
-          if_then_else(units.head,
-            thenVis.map(_ => units(1)),
-            elseVis.map(_ => if (thenVis.isEmpty) units(1) else units(2)))
-        }))
-      })
+    ifVis.foreach(v => insVisitors.addOne(v.visitArray(length, index)))
+    thenVis.foreach(v => insVisitors.addOne(v.visitArray(length, index)))
+    elseVis.foreach(v => insVisitors.addOne(v.visitArray(length, index)))
 
     val insVisitor: ArrVisitor[Seq[Nothing], Seq[OutputUnit]] = new CompositeArrVisitor(insVisitors.toSeq*)
     var childVisitor: ArrVisitor[?, ?] = null // to be assigned based on child
@@ -214,11 +203,12 @@ class Applicator(schema: ObjectSchema,
       // returns subVisitor based on child index
       val prefixItemsVisitor: Option[ArrVisitor[?, OutputUnit]] = prefixItems.map(arr => new ArrVisitor[OutputUnit, OutputUnit] {
         private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
+        private var idx = -1
 
         override def subVisitor: Visitor[?, ?] =
           SchemaValidator.of(arr(nextIdx), ctx, path.appended(PrefixItems, nextIdx.toString), Some(Applicator.this))
-        override def visitValue(u: OutputUnit, index: Int): Unit = addUnit(units, u)
-        override def visitEnd(index: Int): OutputUnit = and(PrefixItems, units, Some(Num(nextIdx - 1)))
+        override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.vvalid) idx = nextIdx }
+        override def visitEnd(index: Int): OutputUnit = and(PrefixItems, units, Some(Num(idx)))
       })
 
       override def subVisitor: Visitor[?, ?] = {
@@ -240,11 +230,27 @@ class Applicator(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
-        units.sizeHint(units.size + 2)
+        val insUnits = insVisitor.visitEnd(index)
+        var iff: OutputUnit = null
+        var thenn: OutputUnit = null
+        var els: OutputUnit = null
+        val units: mutable.ArrayBuffer[OutputUnit] = new mutable.ArrayBuffer(insUnits.size + 5)
+        insUnits.foreach(u => {
+          if (u.kwLoc.refTokens.last == If) iff = u
+          else if (u.kwLoc.refTokens.last == Then) thenn = u
+          else if (u.kwLoc.refTokens.last == Else) els = u
+          else addUnit(units, u)
+        })
 
         prefixItemsVisitor.foreach(b => addUnit(units, b.visitEnd(index)))
         itemsVis.foreach(v => addUnit(units, v.visitEnd(index)))
+
+        ifVis.foreach(_ => {
+          val u = iff; addUnit(units, OutputUnit.info(u))
+          if (u.vvalid) thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
+          else elseVis.foreach(_ => addUnit(units, els))            // are not set
+        })
+
         units
       }
     }
@@ -429,5 +435,4 @@ object Applicator {
   val AllOf = "allOf"
   val AnyOf = "anyOf"
   val OneOf = "oneOf"
-  private val Conditional = Seq(If, Then, Else)
 }

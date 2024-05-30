@@ -244,7 +244,7 @@ object Validation {
         case l2: Long => d1 <= l2
         case d2: Double => d1 <= d2
   }
-  private def gteq(n1: Long | Double, n2: Long | Double) = {
+  def gteq(n1: Long | Double, n2: Long | Double) = {
     n1 match
       case l1: Long => n2 match
         case l2: Long => l1 >= l2

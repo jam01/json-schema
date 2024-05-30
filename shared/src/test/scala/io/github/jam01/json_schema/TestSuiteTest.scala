@@ -22,7 +22,6 @@ object TestSuiteTest {
   val NotSupported: Seq[String] = Seq("content.json",
     "infinite-loop-detection.json",
     "refRemote.json",
-    "unevaluatedItems.json",
     "vocabulary.json")
 
   val Registry: mutable.Map[Uri, Schema] = {
