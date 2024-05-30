@@ -2,6 +2,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.vocab.Core
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 /**
@@ -18,6 +19,15 @@ abstract class BaseValidator(val schema: ObjectSchema,
                              val ctx: Context,
                              val path: JsonPointer,
                              val dynParent: Option[BaseValidator]) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
+  @tailrec private def countRefs(i: Int): Int = {
+    if (dynParent.isEmpty) i
+    else dynParent.get.countRefs(i + 1)
+  }
+  // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
+  // a more sophisticated solution would detect the circular $ref statically and/or $ref and $dynamicRef by checking for
+  // repeated sequence of schemas in the validator hierarchy
+  if (countRefs(0) > 32) throw new IllegalStateException("depth limit exceeded")
+
   // TODO: should these be in Context instead?
   def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
     val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
