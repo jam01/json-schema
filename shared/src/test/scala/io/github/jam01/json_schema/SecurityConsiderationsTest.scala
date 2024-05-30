@@ -1,6 +1,6 @@
 package io.github.jam01.json_schema
 
-import org.junit.jupiter.api.Assertions.{assertFalse, assertThrows, assertTrue}
+import org.junit.jupiter.api.Assertions.{assertThrows, assertTrue}
 import org.junit.jupiter.api.{Disabled, Test}
 
 import scala.collection.mutable

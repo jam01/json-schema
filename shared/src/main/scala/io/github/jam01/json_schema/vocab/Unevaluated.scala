@@ -143,4 +143,6 @@ object Unevaluated {
     Applicator.PrefixItems,
     Applicator.Contains,
     UnevaluatedItems)
+  
+  val Keys: Seq[String] = Seq(UnevaluatedItems, UnevaluatedProperties)
 }

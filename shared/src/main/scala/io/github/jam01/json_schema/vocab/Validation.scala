@@ -274,4 +274,8 @@ object Validation {
   private val UniqueItems = "uniqueItems"
   private val Required = "required"
   private val DepRequired = "dependentRequired"
+  
+  val Keys: Seq[String] = Seq(Tyype, Const, Enuum, MultipleOf, Maximum, Minimum, ExclusiveMax, ExclusiveMin, MaxLength,
+    MinLength, MaxItems, MinItems, MaxContains, MinContains, MaxProperties, MinProperties, Pattern, UniqueItems,
+    Required, DepRequired)
 }

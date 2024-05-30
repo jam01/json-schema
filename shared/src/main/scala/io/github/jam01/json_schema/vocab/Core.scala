@@ -87,4 +87,6 @@ class Core(schema: ObjectSchema,
 object Core {
   val _Ref = "$ref"
   val _DynRef = "$dynamicRef"
+  
+  val Keys: Seq[String] = Seq(_Ref, _DynRef)
 }

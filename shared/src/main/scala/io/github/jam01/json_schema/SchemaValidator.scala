@@ -4,6 +4,8 @@ import io.github.jam01.json_schema.vocab.Core
 import upickle.core.Visitor.MapReader
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
+import scala.collection.mutable
+
 object SchemaValidator {
   def of(sch: Schema,
          ctx: Context = Context.Empty,
@@ -51,13 +53,15 @@ object ObjectSchemaValidator {
   def of(schema: ObjectSchema, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer(),
          dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
 
-    // TODO: selective vocabs 
+    val vocabs = new mutable.ArrayBuffer[JsonVisitor[Nothing, collection.Seq[OutputUnit]]](4)
+    if (vocab.Core.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Core(schema, ctx, path, dynParent)) // Vis[Seq[Nothing], Seq[OUnit]]
+    if (vocab.Applicator.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Applicator(schema, ctx, path, dynParent)) // Vis[Any, Seq[OUnit]]
+    if (vocab.Validation.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Validation(schema, ctx, path, dynParent)) // Vis[Nothing, Seq[OUnit]]
+    if (vocab.Unevaluated.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Unevaluated(schema, ctx, path, dynParent))
+
     val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
       new PeekCompositeVisitor(u => ctx.add(u), () => ctx.clear(), // registers/clears sibling annotations
-        vocab.Core(schema, ctx, path, dynParent), // Vis[Seq[Nothing], Seq[OUnit]]
-        vocab.Applicator(schema, ctx, path, dynParent), // Vis[Any, Seq[OUnit]]
-        vocab.Validation(schema, ctx, path, dynParent), // Vis[Nothing, Seq[OUnit]]
-        vocab.Unevaluated(schema, ctx, path, dynParent)
+        vocabs.toSeq*
       )
 
     new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {

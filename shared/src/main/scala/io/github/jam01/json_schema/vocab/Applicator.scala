@@ -435,4 +435,7 @@ object Applicator {
   val AllOf = "allOf"
   val AnyOf = "anyOf"
   val OneOf = "oneOf"
+
+  val Keys: Seq[String] = Seq(PrefixItems, Items, MaxContains, MinContains, Contains, AdditionalProperties, Properties,
+    PatternProperties, DependentSchemas, PropertyNames, Properties, If, Then, Else, Not, AllOf, AnyOf, OneOf)
 }
