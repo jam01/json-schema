@@ -1,5 +1,7 @@
 package io.github.jam01.json_schema
 
+import io.github.jam01.json_schema.vocab.Core
+
 import scala.collection.mutable
 
 /**
@@ -18,17 +20,19 @@ abstract class BaseValidator(val schema: ObjectSchema,
                              val dynParent: Option[BaseValidator]) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
   // TODO: should these be in Context instead?
   def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
-    if (isValid) OutputUnit(true, path.appended(kw), None, ctx.currentLoc)
-    else OutputUnit(false, path.appended(kw), None, ctx.currentLoc, Some(err))
+    val abs = if (hasRef) Some(schema.getLocation.resolve(appendedFrag(schema.getLocation, s"/$kw"))) else None
+    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.currentLoc)
+    else OutputUnit(false, path.appended(kw), abs, ctx.currentLoc, Some(err))
   }
-  
+
   def unitOf(isValid: Boolean, kw: String,
              err: Option[String], errs: collection.Seq[OutputUnit],
              annot: Option[Value], annots: collection.Seq[OutputUnit]): OutputUnit = {
-    if (isValid) OutputUnit(true, path.appended(kw), None, ctx.currentLoc,
+    val abs = if (hasRef) Some(schema.getLocation.resolve(appendedFrag(schema.getLocation, s"/$kw"))) else None
+    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.currentLoc,
       annotation = if (ctx.isVerbose || ctx.mode == Mode.Annotation) annot else None,
       annotations = if (ctx.isVerbose) errs.appendedAll(annots) else if (ctx.mode == Mode.Annotation) annots.filter(a => a.hasAnnotations) else Nil)
-    else OutputUnit(false, path.appended(kw), None, ctx.currentLoc, err, errs)
+    else OutputUnit(false, path.appended(kw), abs, ctx.currentLoc, err, errs)
   }
   
   def addUnit(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {
@@ -36,5 +40,15 @@ abstract class BaseValidator(val schema: ObjectSchema,
       if (ctx.isVerbose || (ctx.mode == Mode.Annotation && unit.hasAnnotations)) units.addOne(unit)
       units
     } else units.addOne(unit)
+  }
+
+  private def hasRef: Boolean = {
+    path.refTokens.exists(s => Core._Ref == s || Core._DynRef == s)
+  }
+
+  private def appendedFrag(u: Uri, frag: String): String = {
+    val rfrag = java.net.URI(null, null, null, frag).getRawFragment //
+    if (u.uri.getFragment eq null) "#" + rfrag
+    else "#" + JsonPointer(u.uri.getRawFragment).appended(JsonPointer(rfrag))
   }
 }

@@ -9,7 +9,20 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     getString("$id")
   }
 
-  def getBase: Uri = {
+  def getLocation: Uri = {
+    val effbase = parent.map(_.getBase).getOrElse(docbase)
+    val parentRel = parent.map(p => p.getLocation).map(u => u.resolve(appendedFrag(u, prel.get)))
+    val r = getId.map(id => effbase.resolve(id)).getOrElse(parentRel.getOrElse(effbase))
+    r
+  }
+
+  private def appendedFrag(u: Uri, frag: String): String = {
+    val rfrag = java.net.URI(null, null, null, frag).getRawFragment // 
+    if (u.uri.getFragment eq null) "#" + rfrag
+    else "#" + JsonPointer(u.uri.getRawFragment).appended(JsonPointer(rfrag))
+  }
+
+  def getBase: Uri = { // TODO: make sure to remove suffix #
     val effbase = parent.map(_.getBase).getOrElse(docbase)
     getId.map(id => effbase.resolve(id)).getOrElse(effbase)
   }
@@ -198,8 +211,8 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   override def schBy0(ptr: JsonPointer): Schema = {
     var i = 0
     var res: Value = this
-    val it = ptr.refTokens.iterator; it.next() // skip first empty string token // TODO: consider a ROOT Ptr
-    for (key <- it) { // TODO: unescape?
+    val it = ptr.refTokens.iterator; it.next() // skip first empty string token
+    for (key <- it) {
       res = res match
         case ObjectSchema(obj, _, _, _) => getOrThrow(obj, key, refError(ptr, i))
         case Obj(value) => getOrThrow(value, key, refError(ptr, i))

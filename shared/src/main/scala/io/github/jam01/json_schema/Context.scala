@@ -18,10 +18,10 @@ case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.
   def getSch(s: Uri): Option[Schema] = {
     val ptr = s.toString.lastIndexOf("#/")
     if (ptr == -1)
-      reg.get(s).orElse(reg.get(Uri.of(s.toString, true)))
+      reg.get(s).orElse(reg.get(new Uri(s.uri, true)))
     else
       reg.get(Uri.of(s.toString.substring(0, ptr)))
-        .map(sch => sch.schBy(JsonPointer(s.toString.substring(ptr + 1))))
+        .map(sch => sch.schBy(JsonPointer(s.uri.getFragment)))
   }
 
   def getDynSchOrThrow(loc: Uri, current: BaseValidator): Schema =
@@ -42,7 +42,7 @@ case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.
       head = head.dynParent.get
     }
 
-    val anchor = "#" + loc.uri.getRawFragment
+    val anchor = "#" + loc.uri.getFragment
     dynScope.reverseIterator
       .map(osch => osch.getBase.resolve(anchor, true))
       .find(dref => reg.contains(dref))

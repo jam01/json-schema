@@ -16,7 +16,7 @@ import upickle.core.{Transformer, Visitor}
  */
 sealed class OutputUnit(val valid: Boolean,
                         val kwLoc: JsonPointer,
-                        val absKwLoc: Option[JsonPointer],
+                        val absKwLoc: Option[Uri],
                         val insLoc: JsonPointer,
                         val error: Option[String] = None,
                         val errors: collection.Seq[OutputUnit] = Nil,
@@ -31,7 +31,7 @@ sealed class OutputUnit(val valid: Boolean,
 
 final class InfoUnit(_valid: Boolean,
                           _kwLoc: JsonPointer,
-                          _absKwLoc: Option[JsonPointer],
+                          _absKwLoc: Option[Uri],
                           _insLoc: JsonPointer,
                           _error: Option[String] = None,
                           _errors: collection.Seq[OutputUnit] = Nil,

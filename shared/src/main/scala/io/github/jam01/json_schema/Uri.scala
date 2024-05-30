@@ -5,10 +5,10 @@ import io.github.jam01.json_schema.Uri.conformUri
 import java.net.URI
 
 final case class Uri(uri: URI, isDyn: Boolean = false) {
-  // TODO: consider tracking fragment 
+  // TODO: consider tracking fragment
   private lazy val str = conformUri(uri.toString)
 
-  def resolve(ref: String, resIsDyn: Boolean = false): Uri = {
+  def resolve(ref: String, resIsDyn: Boolean = isDyn): Uri = {
     Uri.resolve(uri, ref, resIsDyn)
   }
 
@@ -41,10 +41,10 @@ object Uri {
   private def resolve(base: URI, ref: String, isDyn: Boolean): Uri =
     new Uri(resolve(base, ref), isDyn)
 
-  private def resolve(base: URI, ref: String): URI = {
-    val refURI = java.net.URI(ref)
+  private def resolve(base: URI, ref: String): URI = { // assumes string is correctly encoded
+    val refURI = java.net.URI(ref) // this constructor will decode any escaped chars
     if (refURI.isAbsolute) refURI
-    else if (base.toString.startsWith("urn:")) java.net.URI(base.toString + ref)
+    else if ("urn" == base.getScheme && ref.startsWith("#")) java.net.URI(base.getScheme, base.getSchemeSpecificPart, refURI.getFragment)
     else base.resolve(refURI)
   }
 }
