@@ -20,10 +20,7 @@ class TestSuiteTest {
 
 object TestSuiteTest {
   val NotSupported: Seq[String] = Seq("content.json",
-    "default.json",
-    "id.json",
     "infinite-loop-detection.json",
-    "patternProperties.json",
     "refRemote.json",
     "unevaluatedItems.json",
     "vocabulary.json")
