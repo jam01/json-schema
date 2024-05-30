@@ -53,8 +53,8 @@ class VisitorDecoderTest {
 
   @Test
   def deep_json(): Unit = {
-    val jsonStr1 = """[{"n":""" * 64 + "[]" + "}]" * 64
-    val jsonStr2 = """{"n":[""" * 64 + "{}" + "]}" * 64
+    val jsonStr1 = """[{"n":""" * 16 + "[]" + "}]" * 16
+    val jsonStr2 = """{"n":[""" * 16 + "{}" + "]}" * 16
     val ex1 = assertThrows(classOf[JsonReaderException], () => readFromString(jsonStr1)(noOp))
     val ex2 = assertThrows(classOf[JsonReaderException], () => readFromString(jsonStr2)(noOp))
 
