@@ -18,10 +18,10 @@ case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.
   def getSch(s: Uri): Option[Schema] = {
     val ptr = s.toString.lastIndexOf("#/")
     if (ptr == -1)
-      reg.get(s).orElse(reg.get(new Uri(s.uri, true)))
+      reg.get(s).orElse(reg.get(s.asDyn))
     else
-      reg.get(Uri.of(s.toString.substring(0, ptr)))
-        .map(sch => sch.schBy(JsonPointer(s.uri.getFragment)))
+      reg.get(s.withoutFragment)
+        .map(sch => sch.schBy(JsonPointer(s.uri.getFragment))) // using decoded fragment as map values would be unencoded
   }
 
   def getDynSchOrThrow(loc: Uri, current: BaseValidator): Schema =
@@ -30,10 +30,10 @@ case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.
       case None => throw new IllegalArgumentException(s"Unavailable schema $loc")
 
   def getDynSch(loc: Uri, current: BaseValidator): Option[Schema] = {
-    if (loc.toString.contains("#/")) return getSch(Uri.of(loc.toString, false))
+    if (loc.toString.contains("#/")) return getSch(loc.asStatic)
 
     val sch0 = getSch(loc)
-    if (sch0.isEmpty) return getSch(Uri.of(loc.toString, false)) // trying w/o dynamic
+    if (sch0.isEmpty) return getSch(loc.asStatic) // trying w/o dynamic
 
     val dynScope = mutable.ArrayBuffer(current.schema)
     var head = current
@@ -42,9 +42,8 @@ case class Context(insloc: mutable.Stack[String], // TODO: consider making coll.
       head = head.dynParent.get
     }
 
-    val anchor = "#" + loc.uri.getFragment
     dynScope.reverseIterator
-      .map(osch => osch.getBase.resolve(anchor, true))
+      .map(osch => osch.base.withFragment(loc.uri.getFragment, true))
       .find(dref => reg.contains(dref))
       .flatMap(dref => reg.get(dref))
   }

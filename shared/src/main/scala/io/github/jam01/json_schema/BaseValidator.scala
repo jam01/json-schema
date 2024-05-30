@@ -20,7 +20,7 @@ abstract class BaseValidator(val schema: ObjectSchema,
                              val dynParent: Option[BaseValidator]) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
   // TODO: should these be in Context instead?
   def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
-    val abs = if (hasRef) Some(schema.getLocation.resolve(appendedFrag(schema.getLocation, s"/$kw"))) else None
+    val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
     if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.currentLoc)
     else OutputUnit(false, path.appended(kw), abs, ctx.currentLoc, Some(err))
   }
@@ -28,7 +28,7 @@ abstract class BaseValidator(val schema: ObjectSchema,
   def unitOf(isValid: Boolean, kw: String,
              err: Option[String], errs: collection.Seq[OutputUnit],
              annot: Option[Value], annots: collection.Seq[OutputUnit]): OutputUnit = {
-    val abs = if (hasRef) Some(schema.getLocation.resolve(appendedFrag(schema.getLocation, s"/$kw"))) else None
+    val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
     if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.currentLoc,
       annotation = if (ctx.isVerbose || ctx.mode == Mode.Annotation) annot else None,
       annotations = if (ctx.isVerbose) errs.appendedAll(annots) else if (ctx.mode == Mode.Annotation) annots.filter(a => a.hasAnnotations) else Nil)
@@ -44,11 +44,5 @@ abstract class BaseValidator(val schema: ObjectSchema,
 
   private def hasRef: Boolean = {
     path.refTokens.exists(s => Core._Ref == s || Core._DynRef == s)
-  }
-
-  private def appendedFrag(u: Uri, frag: String): String = {
-    val rfrag = java.net.URI(null, null, null, frag).getRawFragment //
-    if (u.uri.getFragment eq null) "#" + rfrag
-    else "#" + JsonPointer(u.uri.getRawFragment).appended(JsonPointer(rfrag))
   }
 }

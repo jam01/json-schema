@@ -9,30 +9,22 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     getString("$id")
   }
 
-  def getLocation: Uri = {
-    val effbase = parent.map(_.getBase).getOrElse(docbase)
-    val parentRel = parent.map(p => p.getLocation).map(u => u.resolve(appendedFrag(u, prel.get)))
-    val r = getId.map(id => effbase.resolve(id)).getOrElse(parentRel.getOrElse(effbase))
-    r
+  lazy val location: Uri = {
+    val parentRel = parent.map(p => p.location).map(u => u.appendedFragment(prel.get))
+    getId.map(id => base.resolve(id)).getOrElse(parentRel.getOrElse(base))
   }
 
-  private def appendedFrag(u: Uri, frag: String): String = {
-    val rfrag = java.net.URI(null, null, null, frag).getRawFragment // 
-    if (u.uri.getFragment eq null) "#" + rfrag
-    else "#" + JsonPointer(u.uri.getRawFragment).appended(JsonPointer(rfrag))
-  }
-
-  def getBase: Uri = { // TODO: make sure to remove suffix #
-    val effbase = parent.map(_.getBase).getOrElse(docbase)
+  lazy val base: Uri = {
+    val effbase = parent.map(_.base).getOrElse(docbase)
     getId.map(id => effbase.resolve(id)).getOrElse(effbase)
   }
 
   def getRef: Option[Uri] = {
-    getString("$ref").map(ref => getBase.resolve(ref))
+    getString("$ref").map(ref => base.resolve(ref))
   }
 
   def getDynRef: Option[Uri] = {
-    getString("$dynamicRef").map(dynref => getBase.resolve(dynref, true))
+    getString("$dynamicRef").map(dynref => base.resolve(dynref, true))
   }
 
   def get(k: String): Option[Value] = {
@@ -236,7 +228,6 @@ object ObjSchema {
     else ret.get
   }
 
-  // TODO: check it fragment exists if not add it
   private def refError(ptr: JsonPointer, idx: Int): Exception =
     new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
 }

@@ -4,12 +4,39 @@ import io.github.jam01.json_schema.Uri.conformUri
 
 import java.net.URI
 
-final case class Uri(uri: URI, isDyn: Boolean = false) {
+final class Uri(val uri: URI, val isDyn: Boolean = false) {
   // TODO: consider tracking fragment
   private lazy val str = conformUri(uri.toString)
 
   def resolve(ref: String, resIsDyn: Boolean = isDyn): Uri = {
     Uri.resolve(uri, ref, resIsDyn)
+  }
+
+  def appendedFragment(frag: String): Uri = {
+    val rfrag = java.net.URI(null, null, null, frag).getRawFragment
+    if (uri.getRawFragment eq null) Uri.of(str + "#" + rfrag, isDyn)
+    else Uri.of(withoutFragment.toString + "#" + uri.getRawFragment + rfrag, isDyn)
+  }
+
+  def withFragment(frag: String, resIsDyn: Boolean = isDyn): Uri = {
+    val rfrag = java.net.URI(null, null, null, frag).getRawFragment
+    if (uri.getRawFragment eq null) Uri.of(str + "#" + rfrag, resIsDyn)
+    else Uri.of(withoutFragment.toString + "#" + rfrag, resIsDyn)
+  }
+
+  def withoutFragment: Uri = {
+    if (uri.getRawFragment == null) this
+    else Uri.of(str.substring(0, str.indexOf('#')), isDyn)
+  }
+
+  def asDyn: Uri = {
+    if (isDyn) this
+    else new Uri(uri, true)
+  }
+
+  def asStatic: Uri = {
+    if (!isDyn) this
+    else new Uri(uri, false)
   }
 
   override def toString: String = str

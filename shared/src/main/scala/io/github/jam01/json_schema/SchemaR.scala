@@ -25,8 +25,7 @@ class SchemaR private(docbase: Uri,
     val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
     var key: String = "?"
     val sch: ObjectSchema = ObjectSchema(lhm, docbase, parent, prel)
-    if (parent.isEmpty)
-      reg.addOne(docbase, sch)
+    if (parent.isEmpty) reg.addOne(docbase, sch)
 
     override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
 
@@ -79,8 +78,8 @@ class SchemaR private(docbase: Uri,
 
     override def visitEnd(index: Int): ObjectSchema = {
       if (parent.isEmpty) {
-        ids.foreach { case (id, sch) => reg.addOne(sch.getBase.resolve(id), sch) }
-        anchors.foreach { case (anchor, isDyn, sch) => reg.addOne(Uri.of(sch.getBase.toString + "#" + anchor, isDyn), sch) }
+        ids.foreach { case (id, sch) => reg.addOne(sch.base.resolve(id), sch) }
+        anchors.foreach { case (anchor, isDyn, sch) => reg.addOne(sch.base.withFragment(anchor, isDyn), sch) }
       }
       sch
     }
