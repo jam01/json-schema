@@ -3,6 +3,7 @@ package io.github.jam01.json_schema
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
+import ujson.StringRenderer
 
 import java.nio.file.{Files, Path, Paths}
 import java.util.*
@@ -14,13 +15,13 @@ class TestSuiteTest {
   @MethodSource(value = Array("args_provider"))
   def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema, ctx: Context): Unit = {
     val res = data.transform(SchemaValidator.of(sch, ctx = ctx))
+    //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
 }
 
 object TestSuiteTest {
   val NotSupported: Seq[String] = Seq("content.json",
-    "infinite-loop-detection.json",
     "refRemote.json",
     "vocabulary.json")
 

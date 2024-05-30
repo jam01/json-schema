@@ -131,8 +131,7 @@ object Unevaluated {
     Core._DynRef,
     Applicator.If,
     Applicator.Then,
-    Applicator.Else
-  )
+    Applicator.Else)
 
   private val PropertiesAnnotations = Seq(Applicator.Properties,
     Applicator.PatternProperties,

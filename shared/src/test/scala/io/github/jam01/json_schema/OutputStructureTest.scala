@@ -27,7 +27,7 @@ class OutputStructureTest {
       .transform(PointerDelegate(ctx, ObjectSchemaValidator.of(osch, ctx)))
 
     val res =  OutputUnitW.transform(r, StringRenderer()).toString
-    println(res)
+    //println(res)
     JSONAssert.assertEquals(resourceAsString("output/main.json"), res, true)
   }
 }
