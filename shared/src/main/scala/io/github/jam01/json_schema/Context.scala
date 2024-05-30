@@ -68,7 +68,7 @@ sealed abstract class OutputStructure {
 object OutputStructure {
   val Flag: OutputStructure = new OutputStructure:
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
-      OutputUnit(units.map(_.valid).forall(identity))
+      ???
     }
 
   val Basic: OutputStructure = new OutputStructure:
@@ -78,11 +78,11 @@ object OutputStructure {
 
   val Detailed: OutputStructure = new OutputStructure:
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
-      val (annots, errs) = units.partition(_.valid)
+      val (annots, errs) = units.partition(_.vvalid)
       if (errs.nonEmpty)
-        OutputUnit(false, Some(path), None, Some(ctx.currentLoc), errors = errs)
+        OutputUnit(false, path, None, ctx.currentLoc, errors = errs)
       else
-        OutputUnit(true, Some(path), None, Some(ctx.currentLoc), annotations = annots)
+        OutputUnit(true, path, None, ctx.currentLoc, annotations = annots)
     }
 
   val Verbose: OutputStructure = new OutputStructure:

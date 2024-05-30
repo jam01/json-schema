@@ -20,7 +20,7 @@ class SchemaMapperTest {
     Assertions.assertEquals(FalseSchema, sch)
   }
 
-  @Test @Disabled("throwing StackOverflowError on eq test for some reason")
+  @Test
   def main(): Unit = {
     val jsonStr = """{
                     |  "type": "object",

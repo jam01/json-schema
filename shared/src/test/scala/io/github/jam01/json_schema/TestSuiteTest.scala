@@ -14,7 +14,7 @@ class TestSuiteTest {
   @MethodSource(value = Array("args_provider"))
   def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema, ctx: Context): Unit = {
     val res = data.transform(SchemaValidator.of(sch, ctx = ctx))
-    Assertions.assertEquals(valid, res.valid, path + ": " + desc + ": " + tdesc)
+    Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
 }
 

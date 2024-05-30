@@ -35,7 +35,7 @@ class Applicator(schema: ObjectSchema,
       private var matched = 0
 
       override def subVisitor: Visitor[?, ?] = schValidator
-      override def visitValue(u: OutputUnit, index: Int): Unit = { if (u.valid) matched = matched + 1; nextIdx += 1 }
+      override def visitValue(u: OutputUnit, index: Int): Unit = { if (u.vvalid) matched = matched + 1; nextIdx += 1 }
       override def visitEnd(index: Int): OutputUnit = { // TODO: break up contains into contains, min/max
         var res = matched > 0
         if (minContains.nonEmpty) {
@@ -83,8 +83,8 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(v => addUnit(units, v.visitNull(index)))
     oneOfVis.foreach(v => addUnit(units, v.visitNull(index)))
     ifVis.foreach(iv => {
-      val u = iv.visitNull(index)//; addUnit(units, u)
-      if (u.valid) thenVis.foreach(v => addUnit(units, v.visitNull(index)))
+      val u = iv.visitNull(index); addUnit(units, OutputUnit.info(u))
+      if (u.vvalid) thenVis.foreach(v => addUnit(units, v.visitNull(index)))
       else elseVis.map(v => addUnit(units, v.visitNull(index)))
     })
     units
@@ -98,8 +98,8 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(v => addUnit(units, v.visitFalse(index)))
     oneOfVis.foreach(v => addUnit(units, v.visitFalse(index)))
     ifVis.foreach(iv => {
-      val u = iv.visitFalse(index)//; addUnit(units, u)
-      if (u.valid) thenVis.foreach(v => addUnit(units, v.visitFalse(index)))
+      val u = iv.visitFalse(index); addUnit(units, OutputUnit.info(u))
+      if (u.vvalid) thenVis.foreach(v => addUnit(units, v.visitFalse(index)))
       else elseVis.map(v => addUnit(units, v.visitFalse(index)))
     })
     units
@@ -113,8 +113,8 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(v => addUnit(units, v.visitTrue(index)))
     oneOfVis.foreach(v => addUnit(units, v.visitTrue(index)))
     ifVis.foreach(iv => {
-      val u = iv.visitTrue(index)//; addUnit(units, u)
-      if (u.valid) thenVis.foreach(v => addUnit(units, v.visitTrue(index)))
+      val u = iv.visitTrue(index); addUnit(units, OutputUnit.info(u))
+      if (u.vvalid) thenVis.foreach(v => addUnit(units, v.visitTrue(index)))
       else elseVis.map(v => addUnit(units, v.visitTrue(index)))
     })
     units
@@ -128,8 +128,8 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
     oneOfVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
     ifVis.foreach(iv => {
-      val u = iv.visitInt64(l, index)//; addUnit(units, u)
-      if (u.valid) thenVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
+      val u = iv.visitInt64(l, index); addUnit(units, OutputUnit.info(u))
+      if (u.vvalid) thenVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
       else elseVis.map(v => addUnit(units, v.visitInt64(l, index)))
     })
     units
@@ -143,8 +143,8 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
     oneOfVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
     ifVis.foreach(iv => {
-      val u = iv.visitFloat64(d, index)//; addUnit(units, u)
-      if (u.valid) thenVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
+      val u = iv.visitFloat64(d, index); addUnit(units, OutputUnit.info(u))
+      if (u.vvalid) thenVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
       else elseVis.map(v => addUnit(units, v.visitFloat64(d, index)))
     })
     units
@@ -158,8 +158,8 @@ class Applicator(schema: ObjectSchema,
     anyOfVis.foreach(v => addUnit(units, v.visitString(s, index)))
     oneOfVis.foreach(v => addUnit(units, v.visitString(s, index)))
     ifVis.foreach(v => {
-      val u = v.visitString(s, index)//; addUnit(units, u)
-      if (u.valid) thenVis.foreach(v => addUnit(units, v.visitString(s, index)))
+      val u = v.visitString(s, index); addUnit(units, OutputUnit.info(u))
+      if (u.vvalid) thenVis.foreach(v => addUnit(units, v.visitString(s, index)))
       else elseVis.map(v => addUnit(units, v.visitString(s, index)))
     })
     units
@@ -258,20 +258,9 @@ class Applicator(schema: ObjectSchema,
     allOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     oneOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
-    ifVis.foreach(vis =>
-      if (thenVis.isEmpty && elseVis.isEmpty) ()
-      else {
-        val viss: mutable.ArrayBuffer[ObjVisitor[Nothing, OutputUnit]] = new mutable.ArrayBuffer(3)
-        viss.addOne(vis.visitObject(length, true, index))
-        if (thenVis.nonEmpty) viss.addOne(thenVis.get.visitObject(length, true, index))
-        if (elseVis.nonEmpty) viss.addOne(elseVis.get.visitObject(length, true, index))
-
-        insVisitors.addOne(new MapObjContext(new CompositeObjVisitor(viss.toSeq*), units => { // Vis[Seq[Nothing], OUnit]
-          if_then_else(units.head,
-            thenVis.map(_ => units(1)),
-            elseVis.map(_ => if (thenVis.isEmpty) units(1) else units(2)))
-        }))
-      })
+    ifVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
+    thenVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
+    elseVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
 
     depSchsViss.map(viss => viss.map(k_vis =>
         (k_vis._1, MapObjContext(k_vis._2.visitObject(length, true, index), b => (k_vis._1, b))))) // Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]]
@@ -280,7 +269,7 @@ class Applicator(schema: ObjectSchema,
           and(DependentSchemas, k_units.filter((k, _) => propsVisited.contains(k)).map((_, u) => u))
         })))
 
-    val insVisitor: ObjVisitor[Seq[Nothing], collection.Seq[OutputUnit]] = new CompositeObjVisitor(insVisitors.toSeq*)
+    val insVisitor: CompositeObjVisitor[Nothing, OutputUnit] = new CompositeObjVisitor(insVisitors.toSeq*) // ObjVisitor[Seq[Nothing], Seq[OutputUnit]]
     var childVisitor: ObjVisitor[?, ?] = null // to be assigned based on child
 
     new ObjVisitor[Any, collection.Seq[OutputUnit]] {
@@ -295,7 +284,7 @@ class Applicator(schema: ObjectSchema,
         override def visitKey(index: Int): Visitor[?, ?] = throw new UnsupportedOperationException("Should not be invoked")
         override def visitKeyValue(v: Any): Unit = throw new UnsupportedOperationException("Should not be invoked")
         override def subVisitor: Visitor[?, ?] = SchemaValidator.of(m(currentKey), ctx, path.appended(Properties, currentKey), Some(Applicator.this))
-        override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.valid) annot.addOne(Str(currentKey))}
+        override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.vvalid) annot.addOne(Str(currentKey))}
         override def visitEnd(index: Int): OutputUnit = and(Properties, units, Some(Arr.from(annot)))
       })
 
@@ -309,8 +298,8 @@ class Applicator(schema: ObjectSchema,
         override def visitKeyValue(v: Any): Unit = throw new UnsupportedOperationException("Should not be invoked")
         override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map(pattSch =>
           SchemaValidator.of(pattSch._2, ctx, path.appended(PatternProperties, pattSch._1), Some(Applicator.this)))*)
-        override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { addUnit(units, u); if (u.valid) annot.addOne(Str(currentKey))})
-        override def visitEnd(index: Int): OutputUnit = and(PatternProperties, units, Some(annot))
+        override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { addUnit(units, u); if (u.vvalid) annot.addOne(Str(currentKey))})
+        override def visitEnd(index: Int): OutputUnit = and(PatternProperties, units, Some(Arr.from(annot)))
       })
 
       val addlPropsObjVis: Option[ObjVisitor[OutputUnit, OutputUnit]] = addlPropsVis.map(schValidator => new ObjVisitor[OutputUnit, OutputUnit] {
@@ -320,8 +309,8 @@ class Applicator(schema: ObjectSchema,
         override def visitKey(index: Int): Visitor[?, ?] = throw new UnsupportedOperationException("Should not be invoked")
         override def visitKeyValue(v: Any): Unit = throw new UnsupportedOperationException("Should not be invoked")
         override def subVisitor: Visitor[?, ?] = schValidator
-        override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.valid) annot.addOne(Str(currentKey)) }
-        override def visitEnd(index: Int): OutputUnit = and(AdditionalProperties, units, Some(annot))
+        override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.vvalid) annot.addOne(Str(currentKey)) }
+        override def visitEnd(index: Int): OutputUnit = and(AdditionalProperties, units, Some(Arr.from(annot)))
       })
 
       override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
@@ -329,7 +318,7 @@ class Applicator(schema: ObjectSchema,
 
         override def visitString(s: CharSequence, index1: Int): Any = {
           currentKey = s.toString
-          if (propNymVis.nonEmpty) propNamesValid = propNamesValid && propNymVis.get.visitString(s, index1).valid
+          if (propNymVis.nonEmpty) propNamesValid = propNamesValid && propNymVis.get.visitString(s, index1).vvalid
           propsVisited.addOne(currentKey)
           matchedPatternSchs = patternProperties.map(m => m
               .withFilter(rgx_sch => rgx_sch._1.matches(currentKey))
@@ -345,7 +334,7 @@ class Applicator(schema: ObjectSchema,
 
       override def subVisitor: Visitor[?, ?] = {
         val childVisitors: mutable.ArrayBuffer[ObjVisitor[Nothing, OutputUnit]] = mutable.ArrayBuffer.from(insVisitors)
-        childVisitors.sizeHint(childVisitors.size + 3)
+        childVisitors.sizeHint(childVisitors.size + 6)
 
         var isAddl = true // if not in properties or matched patterns
         if (properties.nonEmpty && properties.get.contains(currentKey)) { isAddl = false; childVisitors.addOne(propsVisitor.get) }
@@ -361,13 +350,29 @@ class Applicator(schema: ObjectSchema,
       override def visitValue(v: Any, index: Int): Unit = childVisitor.narrow.visitValue(v, index)
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val units: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
-        units.sizeHint(units.size + 4)
+        val insUnits = insVisitor.visitEnd(index)
+        var iff: OutputUnit = null
+        var thenn: OutputUnit = null
+        var els: OutputUnit = null
+        val units: mutable.ArrayBuffer[OutputUnit] = new mutable.ArrayBuffer(insUnits.size + 7)
+        insUnits.foreach(u => {
+            if (u.kwLoc.refTokens.last == If) iff = u
+            else if (u.kwLoc.refTokens.last == Then) thenn = u
+            else if (u.kwLoc.refTokens.last == Else) els = u
+            else addUnit(units, u)
+          })
 
         propsVisitor.foreach(v => addUnit(units, v.visitEnd(index)))
         patternPropsVisitor.foreach(v => addUnit(units, v.visitEnd(index)))
         addlPropsObjVis.foreach(v => addUnit(units, v.visitEnd(index)))
         addUnit(units, unitOf(propNamesValid, PropertyNames, ""))
+
+        ifVis.foreach(_ => {
+          val u = iff; addUnit(units, OutputUnit.info(u))
+          if (u.vvalid) thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
+          else elseVis.foreach(_ => addUnit(units, els))            // are not set
+        })
+
         units
       }
     }
@@ -375,33 +380,33 @@ class Applicator(schema: ObjectSchema,
 
   /* helper methods */
   private def and(kw: String, units: collection.Seq[OutputUnit], ann: Option[Value] = None): OutputUnit = {
-    val (annots, errs) = units.partition(_.valid)
+    val (annots, errs) = units.partition(_.vvalid)
     unitOf(errs.isEmpty, kw, None, errs, ann, annots)
   }
 
   private def allOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
-    val (annots, errs) = units.partition(_.valid)
+    val (annots, errs) = units.partition(_.vvalid)
     unitOf(errs.isEmpty, kw, None, errs, None, annots)
   }
 
   private def oneOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
-    val (annots, errs) = units.partition(_.valid)
+    val (annots, errs) = units.partition(_.vvalid)
     unitOf(annots.size == 1, kw, None, errs, None, annots)
   }
 
   private def anyOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
-    val (annots, errs) = units.partition(_.valid)
+    val (annots, errs) = units.partition(_.vvalid)
     unitOf(annots.nonEmpty, kw, None, errs, None, annots)
   }
 
   private def if_then_else(iff: OutputUnit, thenn: Option[OutputUnit], els: Option[OutputUnit]): OutputUnit = {
-    if (iff.valid && thenn.nonEmpty) thenn.get
-    else if (!iff.valid && els.nonEmpty) els.get
+    if (iff.vvalid && thenn.nonEmpty) thenn.get
+    else if (!iff.vvalid && els.nonEmpty) els.get
     else throw new IllegalArgumentException("Should not happen")
   }
 
   private def not(n: OutputUnit): OutputUnit = {
-    if (n.valid) unitOf(false, Not, None, Nil, None, n.annotations)
+    if (n.vvalid) unitOf(false, Not, None, Nil, None, n.annotations)
     else unitOf(true, Not, None, n.errors, None, Nil)
   }
 }
@@ -424,4 +429,5 @@ object Applicator {
   val AllOf = "allOf"
   val AnyOf = "anyOf"
   val OneOf = "oneOf"
+  private val Conditional = Seq(If, Then, Else)
 }

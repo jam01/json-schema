@@ -5,30 +5,44 @@ import upickle.core.{Transformer, Visitor}
 /**
  * JSON Schema validation output unit
  *
- * @param valid indicates overall validation success or failure
- * @param kwLoc relative location of the validating keyword that follows the validation path
- * @param absKwLoc absolute, dereferenced location of the validating keyword
- * @param insLoc location of the JSON value evaluated within the instance
- * @param error produced by a failed validation
- * @param errors produced by a failed validation
- * @param annotation produced by a successful validation
+ * @param valid       indicates overall validation success or failure
+ * @param kwLoc       relative location of the validating keyword that follows the validation path
+ * @param absKwLoc    absolute, dereferenced location of the validating keyword
+ * @param insLoc      location of the JSON value evaluated within the instance
+ * @param error       produced by a failed validation
+ * @param errors      produced by a failed validation
+ * @param annotation  produced by a successful validation
  * @param annotations produced by a successful validation
  */
-final case class OutputUnit(valid: Boolean,
-                      kwLoc: Option[JsonPointer] = None,
-                      absKwLoc: Option[JsonPointer] = None,
-                      insLoc: Option[JsonPointer] = None,
-                      error: Option[String] = None,
-                      errors: collection.Seq[OutputUnit] = Nil,
-                      annotation: Option[Value] = None, // TODO: should allow schema? 
-                      annotations: collection.Seq[OutputUnit] = Nil) { // TODO: consider T | Null
-  
-  def hasAnnotations: Boolean = annotation.nonEmpty || 
+sealed class OutputUnit(val valid: Boolean,
+                        val kwLoc: JsonPointer,
+                        val absKwLoc: Option[JsonPointer],
+                        val insLoc: JsonPointer,
+                        val error: Option[String] = None,
+                        val errors: collection.Seq[OutputUnit] = Nil,
+                        val annotation: Option[Value] = None, // TODO: should allow schema?
+                        val annotations: collection.Seq[OutputUnit] = Nil) { // TODO: consider T | Null
+
+  def hasAnnotations: Boolean = annotation.nonEmpty ||
     (annotations.nonEmpty && annotations.forall(u => u.hasAnnotations))
+
+  def vvalid: Boolean = valid
 }
 
+final class InfoUnit(_valid: Boolean,
+                          _kwLoc: JsonPointer,
+                          _absKwLoc: Option[JsonPointer],
+                          _insLoc: JsonPointer,
+                          _error: Option[String] = None,
+                          _errors: collection.Seq[OutputUnit] = Nil,
+                          _annotation: Option[Value] = None,
+                          _annotations: collection.Seq[OutputUnit] = Nil) extends OutputUnit(_valid, _kwLoc, _absKwLoc, _insLoc, _error, _errors, _annotation, _annotations) {
+  override val vvalid: Boolean = true
+}
 
 object OutputUnit {
+  def info(u: OutputUnit): OutputUnit = InfoUnit(u.valid, u.kwLoc, u.absKwLoc, u.insLoc,
+    u.error, u.errors, u.annotation, u.annotations)
 }
 
 object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
@@ -37,20 +51,20 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
     ov.visitKeyValue(ov.visitKey(-1).visitString("valid", -1))
     ov.visitValue(if (j.valid) ov.subVisitor.visitTrue(-1) else ov.subVisitor.visitFalse(-1), -1)
 
-    j.kwLoc.foreach(kw => {
-      ov.visitKeyValue(ov.visitKey(-1).visitString("keywordLocation", -1))
-      ov.visitValue(ov.subVisitor.visitString(kw.toString, -1), -1)      
-    })
+    //    j.kwLoc.foreach(kw => {
+    ov.visitKeyValue(ov.visitKey(-1).visitString("keywordLocation", -1))
+    ov.visitValue(ov.subVisitor.visitString(j.kwLoc.toString, -1), -1)
+    //    })
 
     j.absKwLoc.foreach(kw => {
       ov.visitKeyValue(ov.visitKey(-1).visitString("absoluteKeywordLocation", -1))
       ov.visitValue(ov.subVisitor.visitString(kw.toString, -1), -1)
     })
 
-    j.insLoc.foreach(iloc => {
-      ov.visitKeyValue(ov.visitKey(-1).visitString("instanceLocation", -1))
-      ov.visitValue(ov.subVisitor.visitString(iloc.toString, -1), -1)      
-    })
+    //    j.insLoc.foreach(iloc => {
+    ov.visitKeyValue(ov.visitKey(-1).visitString("instanceLocation", -1))
+    ov.visitValue(ov.subVisitor.visitString(j.insLoc.toString, -1), -1)
+    //    })
 
     j.error.foreach(err => {
       ov.visitKeyValue(ov.visitKey(-1).visitString("error", -1))

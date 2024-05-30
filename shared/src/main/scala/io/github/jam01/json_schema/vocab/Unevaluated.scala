@@ -36,32 +36,21 @@ class Unevaluated(schema: ObjectSchema,
       }
       override def visitKeyValue(v: Any): Unit = ()
       override def subVisitor: Visitor[?, ?] = SchemaValidator.of(sch, ctx, path.appended(UnevaluatedProperties, currentKey), Some(Unevaluated.this))
-      override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.valid) annot.addOne(Str(currentKey))}
+      override def visitValue(u: OutputUnit, index: Int): Unit = { addUnit(units, u); if (u.vvalid) annot.addOne(Str(currentKey))}
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evaluated: collection.Seq[String] =
-          ctx.annots.withFilter(ann => PropertiesAnnotations.contains(ann.kwLoc.get.refTokens.last) && ann.annotation.nonEmpty)
-            .flatMap(ann => ann.annotation.get.arr.map(v => v.str))
-            .appendedAll(
-              ctx.annots.withFilter(ann => { // properties evaluated from inplace applicators
-                  val other = ann.kwLoc.get
-                  path.isRelative(other) && InPlaceAppl.contains(other.refTokens(path.refTokens.size))
-                })
-                .flatMap(ann => ann.annotations.flatMap(ann0 => ann0.annotations))
-                .withFilter(ann => PropertiesAnnotations.contains(ann.kwLoc.get.refTokens.last) && ann.annotation.nonEmpty)
-                .flatMap(ann => ann.annotation.get.arr.map(v => v.str)))
-            .appendedAll(
-              ctx.annots.withFilter(ann => { // properties evaluated from inplace applicators
-                  val other = ann.kwLoc.get
-                  path.isRelative(other) && RefAppl.contains(other.refTokens(path.refTokens.size))
-                })
-                .flatMap(ann => ann.annotations)
-                .withFilter(ann => PropertiesAnnotations.contains(ann.kwLoc.get.refTokens.last) && ann.annotation.nonEmpty)
-                .flatMap(ann => ann.annotation.get.arr.map(v => v.str)))
-
-
-        Seq(and(UnevaluatedProperties, units.filterNot(u => evaluated.contains(u.kwLoc.get.refTokens.last)), Some(annot)))
+        val evaluated = getAnnotations(ctx.annots.filter(ann => path.isRelative(ann.kwLoc)))
+        Seq(and(UnevaluatedProperties, units.filterNot(u => evaluated.contains(u.kwLoc.refTokens.last)), Some(Arr.from(annot))))
       }
     })
+
+  private def getAnnotations(units: collection.Seq[OutputUnit]): collection.Seq[String] = { // warning: this depends on units being on the right "branch"
+    units.withFilter(ann => PropertiesAnnotations.contains(ann.kwLoc.refTokens.last) && ann.annotation.nonEmpty)
+      .flatMap(ann => ann.annotation.get.arr.map(v => v.str))
+      .appendedAll(units.withFilter(ann => SecondAppl.contains(ann.kwLoc.refTokens.last))
+          .flatMap(ann => ann.annotations.flatMap(ann0 => getAnnotations(ann0.annotations))))
+      .appendedAll(units.withFilter(ann => DirectAppl.contains(ann.kwLoc.refTokens.last))
+          .flatMap(ann => getAnnotations(ann.annotations)))
+  }
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = Nil
   override def visitFalse(index: Int): collection.Seq[OutputUnit] = Nil
@@ -87,19 +76,9 @@ class Unevaluated(schema: ObjectSchema,
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = Nil
     })
 
-//    val childVisitor: ObjVisitor[?, ?] = propsVis.getOrElse(NoOpVisitor.visitObject(length, true, index))
-//    override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
-//    override def visitKeyValue(v: Any): Unit = ()
-//    override def subVisitor: Visitor[?, ?] = childVisitor.subVisitor
-//    override def visitValue(v: Any, index: Int): Unit = childVisitor.narrow.visitValue(v, index)
-//    override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-//      Nil
-//    }
-//  }
-
   /* helper methods */
   private def and(kw: String, units: collection.Seq[OutputUnit], ann: Option[Value] = None): OutputUnit = {
-    val (annots, errs) = units.partition(_.valid)
+    val (annots, errs) = units.partition(_.vvalid)
     unitOf(errs.isEmpty, kw, None, errs, ann, annots)
   }
 }
@@ -108,12 +87,19 @@ object Unevaluated {
   val UnevaluatedItems = "unevaluatedItems"
   val UnevaluatedProperties = "unevaluatedProperties"
 
-  private val InPlaceAppl = Seq(Applicator.AllOf,
+  private val SecondAppl = Seq(Applicator.AllOf,
     Applicator.AnyOf,
     Applicator.OneOf,
-    Applicator.Not)
+    Applicator.Not,
+    Applicator.DependentSchemas)
 
-  private val RefAppl = Seq(Core._Ref, Core._DynRef)
+  private val DirectAppl = Seq(
+    Core._Ref, 
+    Core._DynRef,
+    Applicator.If,
+    Applicator.Then,
+    Applicator.Else
+  )
 
   private val PropertiesAnnotations = Seq(Applicator.Properties,
     Applicator.PatternProperties,
