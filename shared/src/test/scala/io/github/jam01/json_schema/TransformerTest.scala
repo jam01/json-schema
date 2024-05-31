@@ -3,6 +3,8 @@ package io.github.jam01.json_schema
 import org.junit.jupiter.api.Test
 import upickle.core.NoOpVisitor
 
+import scala.language.implicitConversions
+
 class TransformerTest {
   val arr: Arr =
     Arr(0, 1, "bloop",

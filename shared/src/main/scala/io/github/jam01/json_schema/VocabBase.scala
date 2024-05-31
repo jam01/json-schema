@@ -14,10 +14,10 @@ import scala.collection.mutable
  * @param path      the path followed to the given schema
  * @param dynParent dynamic scope parent validator
  */
-abstract class BaseValidator(val schema: ObjectSchema,
-                             val ctx: Context,
-                             val path: JsonPointer,
-                             val dynParent: Option[BaseValidator]) extends JsonVisitor[?, collection.Seq[OutputUnit]] {
+abstract class VocabBase(val schema: ObjectSchema,
+                         val ctx: Context,
+                         val path: JsonPointer,
+                         val dynParent: Option[VocabBase]) extends Vocab[?] {
   private lazy val countRefs: Int = {
     if (dynParent.isEmpty) 0
     else dynParent.get.countRefs + 1
@@ -38,14 +38,14 @@ abstract class BaseValidator(val schema: ObjectSchema,
              annot: Option[Value], annots: collection.Seq[OutputUnit]): OutputUnit = {
     val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
     if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.currentLoc,
-      annotation = if (ctx.isVerbose || ctx.mode == Mode.Annotation) annot else None,
-      annotations = if (ctx.isVerbose) errs.appendedAll(annots) else if (ctx.mode == Mode.Annotation) annots.filter(a => a.hasAnnotations) else Nil)
+      annotation = if (ctx.isVerbose || ctx.config.mode == Mode.Annotation) annot else None,
+      annotations = if (ctx.isVerbose) errs.appendedAll(annots) else if (ctx.config.mode == Mode.Annotation) annots.filter(a => a.hasAnnotations) else Nil)
     else OutputUnit(false, path.appended(kw), abs, ctx.currentLoc, err, errs)
   }
   
   def addUnit(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {
     if (unit.vvalid) {
-      if (ctx.isVerbose || (ctx.mode == Mode.Annotation && unit.hasAnnotations)) units.addOne(unit)
+      if (ctx.isVerbose || (ctx.config.mode == Mode.Annotation && unit.hasAnnotations)) units.addOne(unit)
       units
     } else units.addOne(unit)
   }
@@ -54,3 +54,5 @@ abstract class BaseValidator(val schema: ObjectSchema,
     path.refTokens.exists(s => Core._Ref == s || Core._DynRef == s)
   }
 }
+
+trait VocabBaseFactory extends VocabFactory[VocabBase, VocabBase]

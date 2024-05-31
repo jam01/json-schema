@@ -3,7 +3,8 @@ package io.github.jam01.json_schema
 import upickle.core.Visitor.Delegate
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-// TODO: can pass the Stack directly
+import scala.collection.mutable
+
 /**
  * A delegating visitor that keeps track of the current node visited as a JSON Pointer.
  *
@@ -13,19 +14,19 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
  * @param delegate the visitor to fwd nodes
  * @param ctx the validation context, in order to mutate the <code>insloc</code>
  */
-class PointerDelegate[T, V](ctx: Context, delegate: Visitor[T, V]) extends Delegate[T, V](delegate) {
+class PointerDelegate[T, V](tracker: Tracker, delegate: Visitor[T, V]) extends Delegate[T, V](delegate) {
   override def visitArray(length: Int, index: Int): ArrVisitor[T, V] = new ArrVisitor[T, V] {
     val arrVis: ArrVisitor[T, V] = delegate.visitArray(length, index)
     private var nextIdx = 0
 
     override def subVisitor: Visitor[?, ?] = {
-      ctx.insloc.push(String.valueOf(nextIdx))
-      new PointerDelegate(ctx, arrVis.subVisitor)
+      tracker.push(String.valueOf(nextIdx))
+      new PointerDelegate(tracker, arrVis.subVisitor)
     }
 
     override def visitValue(v: T, index: Int): Unit = {
       arrVis.visitValue(v, index)
-      ctx.insloc.pop
+      tracker.pop
       nextIdx += 1
     }
 
@@ -39,17 +40,23 @@ class PointerDelegate[T, V](ctx: Context, delegate: Visitor[T, V]) extends Deleg
       override def expectedMsg: String = "expected string"
 
       override def visitString(s: CharSequence, index: Int): Any = {
-        ctx.insloc.push(s.toString)
+        tracker.push(s.toString)
         objVis.visitKey(index).visitString(s, index)
       }
     }
 
     override def visitKeyValue(v: Any): Unit = objVis.visitKeyValue(v)
 
-    override def subVisitor: Visitor[?, ?] = new PointerDelegate(ctx, objVis.subVisitor)
+    override def subVisitor: Visitor[?, ?] = new PointerDelegate(tracker, objVis.subVisitor)
 
-    override def visitValue(v: T, index: Int): Unit = { objVis.visitValue(v, index); ctx.insloc.pop }
+    override def visitValue(v: T, index: Int): Unit = { objVis.visitValue(v, index); tracker.pop }
 
     override def visitEnd(index: Int): V = { objVis.visitEnd(index) }
   }
+}
+
+trait Tracker {
+  def push(ref: String): Unit
+  def pop: String
+  def pointer: JsonPointer
 }

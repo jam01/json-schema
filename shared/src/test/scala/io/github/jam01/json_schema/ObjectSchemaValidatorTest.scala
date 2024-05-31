@@ -1,21 +1,23 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjectSchemaValidatorTest.*
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.{assertFalse, assertTrue}
+import org.junit.jupiter.api.Test
+import upickle.core.Visitor
 
 import scala.collection.mutable
+import scala.language.implicitConversions
 
 class ObjectSchemaValidatorTest {
   @Test
   def valid_str(): Unit = {
-    val unit = ObjectSchemaValidator.of(StrSch).visitString("valid", -1)
+    val unit = mkValidator(StrSch).visitString("valid", -1)
     assertTrue(unit.vvalid)
   }
 
   @Test
   def invalid_str(): Unit = { // string too long
-    val unit = ObjectSchemaValidator.of(StrSch).visitString("12345678901234567", -1)
+    val unit = mkValidator(StrSch).visitString("12345678901234567", -1)
     assertFalse(unit.vvalid)
   }
 
@@ -23,7 +25,7 @@ class ObjectSchemaValidatorTest {
   def valid_arr(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(ArrSch))
+      .transform(mkValidator(ArrSch))
     assertTrue(r.vvalid)
   }
 
@@ -31,7 +33,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_length(): Unit = { // arr too long
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3", "valid4", "invalid5"]""")
-      .transform(ObjectSchemaValidator.of(ArrSch))
+      .transform(mkValidator(ArrSch))
     assertFalse(r.vvalid)
   }
 
@@ -39,7 +41,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_items(): Unit = { // 2nd string too long
     val r = ujson.Readable
       .fromString("""["valid", "12345678901234567", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(ArrSch))
+      .transform(mkValidator(ArrSch))
     assertFalse(r.vvalid)
   }
 
@@ -47,7 +49,7 @@ class ObjectSchemaValidatorTest {
   def valid_nest_arr_items(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", ["valid", "valid2", "valid3"], "valid3"]""")
-      .transform(ObjectSchemaValidator.of(ArrSchNest0))
+      .transform(mkValidator(ArrSchNest0))
     assertTrue(r.vvalid)
   }
 
@@ -55,7 +57,7 @@ class ObjectSchemaValidatorTest {
   def invalid_nest_arr_items(): Unit = { // nested arr fails items validation, its 2nd string too long
     val r = ujson.Readable
       .fromString("""["valid", ["valid", "12345678901234567", "valid3"], "valid3"]""")
-      .transform(ObjectSchemaValidator.of(ArrSchNest1))
+      .transform(mkValidator(ArrSchNest1))
     assertFalse(r.vvalid)
   }
 
@@ -63,7 +65,7 @@ class ObjectSchemaValidatorTest {
   def valid_arr_ref(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(ArrRefSch, Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> RefSch0))))
+      .transform(mkValidator(ArrRefSch, SimpleContext(Map(Uri.of("mem://test/str") -> RefSch0))))
     assertTrue(r.vvalid)
   }
 
@@ -71,7 +73,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_ref(): Unit = { // base schema dictates arr, but $ref dictates string
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(ObjectSchemaValidator.of(ArrRefSch, Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> RefSch1))))
+      .transform(mkValidator(ArrRefSch, SimpleContext(Map(Uri.of("mem://test/str") -> RefSch1))))
     assertFalse(r.vvalid)
   }
 
@@ -79,7 +81,7 @@ class ObjectSchemaValidatorTest {
   def valid_obj(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(ObjectSchemaValidator.of(ObjSch))
+      .transform(mkValidator(ObjSch))
     assertTrue(r.vvalid)
   }
 
@@ -87,7 +89,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_required(): Unit = { // foo prop required
     val r = ujson.Readable
       .fromString("""{"nfoo": "bar"}""")
-      .transform(ObjectSchemaValidator.of(ObjSch))
+      .transform(mkValidator(ObjSch))
     assertFalse(r.vvalid)
   }
 
@@ -95,7 +97,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_props(): Unit = { // foo prop must be string
     val r = ujson.Readable
       .fromString("""{"foo": null}""")
-      .transform(ObjectSchemaValidator.of(ObjSch))
+      .transform(mkValidator(ObjSch))
     assertFalse(r.vvalid)
   }
 
@@ -103,7 +105,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_length(): Unit = { // obj too long
     val r = ujson.Readable
       .fromString("""{"foo": "null", "arr": [], "null": null}""")
-      .transform(ObjectSchemaValidator.of(ObjSch))
+      .transform(mkValidator(ObjSch))
     assertFalse(r.vvalid)
   }
 
@@ -111,7 +113,7 @@ class ObjectSchemaValidatorTest {
   def valid_nest_obj_props(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar"}}""")
-      .transform(ObjectSchemaValidator.of(ObjSch))
+      .transform(mkValidator(ObjSch))
     assertTrue(r.vvalid)
   }
 
@@ -119,7 +121,7 @@ class ObjectSchemaValidatorTest {
   def invalid_nest_obj_props(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "null", "obj": {"nesfoo": "nesbar", "null": null}}""")
-      .transform(ObjectSchemaValidator.of(ObjSch))
+      .transform(mkValidator(ObjSch))
     assertFalse(r.vvalid)
   }
 
@@ -127,7 +129,7 @@ class ObjectSchemaValidatorTest {
   def valid_obj_ref(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "bar", "null": null}""")
-      .transform(ObjectSchemaValidator.of(ObjRefSch0, Context(mutable.Stack(""), Map(Uri.of("mem://test/nullreq") -> RefSch2))))
+      .transform(mkValidator(ObjRefSch0, SimpleContext(Map(Uri.of("mem://test/nullreq") -> RefSch2))))
     assertTrue(r.vvalid)
   }
 
@@ -135,12 +137,17 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_ref(): Unit = { // base schema dictates obj, but $ref dictates string
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(ObjectSchemaValidator.of(ObjRefSch1, Context(mutable.Stack(""), Map(Uri.of("mem://test/str") -> RefSch3))))
+      .transform(mkValidator(ObjRefSch1, SimpleContext(Map(Uri.of("mem://test/str") -> RefSch3))))
     assertFalse(r.vvalid)
   }
 }
 
 object ObjectSchemaValidatorTest {
+  def mkValidator(osch: ObjectSchema, ctx: Context = SimpleContext.Empty,
+                  path: JsonPointer = JsonPointer.Root, dynParent: Option[VocabBase] = None): Visitor[?, OutputUnit] = {
+    SchemaValidator.of(osch, ctx, path, dynParent)
+  }
+  
   val TestUri: Uri = Uri.of("mem://test")
   val StrSch: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
     "type" -> Str("string"),

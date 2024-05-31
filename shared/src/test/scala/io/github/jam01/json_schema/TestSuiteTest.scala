@@ -14,15 +14,14 @@ class TestSuiteTest {
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
   def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema, ctx: Context): Unit = {
-    val res = data.transform(SchemaValidator.of(sch, ctx = ctx))
+    val res = data.transform(SchemaValidator.of(sch, ctx, JsonPointer.Root, None))
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
 }
 
 object TestSuiteTest {
-  val NotSupported: Seq[String] = Seq("content.json",
-    "refRemote.json",
+  val NotSupported: Seq[String] = Seq("refRemote.json",
     "vocabulary.json")
 
   val Registry: mutable.Map[Uri, Schema] = {
@@ -75,7 +74,7 @@ object TestSuiteTest {
           test.obj.get("data").get,
           test.obj.get("valid").get.bool,
           testcase.obj.get("schema").get.transform(SchemaR(Uri.of("urn:uuid:" + UUID.randomUUID().toString), reg = reg)),
-          Context(mutable.Stack(""), reg)))
+          SimpleContext(reg)))
       }
     }
 

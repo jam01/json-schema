@@ -7,10 +7,11 @@ import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class Unevaluated(schema: ObjectSchema,
-                  ctx: Context,
-                  path: JsonPointer,
-                  dynParent: Option[BaseValidator]) extends BaseValidator(schema, ctx, path, dynParent) {
+private class Unevaluated(schema: ObjectSchema,
+                          ctx: Context,
+                          path: JsonPointer,
+                          dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
+
   private val itemsVis: Option[ArrVisitor[OutputUnit, collection.Seq[OutputUnit]]] = schema.getSchemaOpt(UnevaluatedItems)
     .map(sch => new ArrVisitor[OutputUnit, collection.Seq[OutputUnit]] {
       private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
@@ -27,10 +28,10 @@ class Unevaluated(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.annots.filter(ann => path.isRelative(ann.kwLoc)), Applicator.Items)
-        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.annots.filter(ann => path.isRelative(ann.kwLoc)), Applicator.PrefixItems)
-        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.annots.filter(ann => path.isRelative(ann.kwLoc)), Applicator.Contains)
-        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.annots.filter(ann => path.isRelative(ann.kwLoc)), UnevaluatedItems)
+        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), Applicator.Items)
+        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), Applicator.PrefixItems)
+        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), Applicator.Contains)
+        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), UnevaluatedItems)
 
         val saa = units.filterNot(u => {
           evalItems.contains(True) || evalUneval.contains(True) || evalPrefixItems.exists(n => Validation.gteq(n.num, u.kwLoc.refTokens.last.toLong))
@@ -64,7 +65,7 @@ class Unevaluated(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evaluated = getPropsAnnotations(ctx.annots.filter(ann => path.isRelative(ann.kwLoc)))
+        val evaluated = getPropsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)))
         Seq(and(UnevaluatedProperties, units.filterNot(u => evaluated.contains(u.kwLoc.refTokens.last)), Some(Arr.from(annot))))
       }
     })
@@ -116,7 +117,7 @@ class Unevaluated(schema: ObjectSchema,
   }
 }
 
-object Unevaluated {
+object Unevaluated extends VocabBaseFactory {
   val UnevaluatedItems = "unevaluatedItems"
   val UnevaluatedProperties = "unevaluatedProperties"
 
@@ -145,4 +146,13 @@ object Unevaluated {
     UnevaluatedItems)
   
   val Keys: Seq[String] = Seq(UnevaluatedItems, UnevaluatedProperties)
+
+  override def uri: String = "https://json-schema.org/draft/2020-12/vocab/unevaluated"
+
+  override def from(schema: ObjectSchema,
+                    ctx: Context,
+                    path: JsonPointer,
+                    dynParent: Option[VocabBase]): Unevaluated = new Unevaluated(schema, ctx, path, dynParent)
+
+  override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

@@ -7,10 +7,10 @@ import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class Core(schema: ObjectSchema,
-           ctx: Context = Context.Empty,
-           path: JsonPointer = JsonPointer(),
-           dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
+private class Core(schema: ObjectSchema,
+                   ctx: Context,
+                   path: JsonPointer,
+                   dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val _refVis: Option[Visitor[?, OutputUnit]] = schema.getRef
     .map(s => ctx.getSchOrThrow(s))
@@ -84,9 +84,17 @@ class Core(schema: ObjectSchema,
   }
 }
 
-object Core {
+object Core extends VocabBaseFactory {
   val _Ref = "$ref"
   val _DynRef = "$dynamicRef"
-  
   val Keys: Seq[String] = Seq(_Ref, _DynRef)
+
+  override def uri: String = "https://json-schema.org/draft/2020-12/vocab/core"
+
+  override def from(schema: ObjectSchema,
+                    ctx: Context,
+                    path: JsonPointer,
+                    dynParent: Option[VocabBase]): Core = new Core(schema, ctx, path, dynParent)
+
+  override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

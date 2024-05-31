@@ -1,6 +1,6 @@
 package io.github.jam01.json_schema.vocab
 
-import io.github.jam01.json_schema._
+import io.github.jam01.json_schema.*
 import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import java.time.format.DateTimeParseException
@@ -8,9 +8,9 @@ import java.time.{Duration, LocalDate, OffsetDateTime}
 import java.util.UUID
 
 class Format(schema: ObjectSchema,
-             ctx: Context = Context.Empty,
-             path: JsonPointer = JsonPointer(),
-             dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
+             ctx: Context,
+             path: JsonPointer,
+             dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val format: Option[String] = schema.getString("format")
 

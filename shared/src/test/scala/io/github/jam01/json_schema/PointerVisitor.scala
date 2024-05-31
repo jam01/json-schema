@@ -10,11 +10,11 @@ class PointerVisitor(insloc: mutable.Stack[String] = mutable.Stack("")) extends 
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Unit, Unit] = new ObjVisitor[Unit, Unit] {
-    override def visitKey(index: Int): Visitor[_, _] = StringVisitor
+    override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
 
     override def visitKeyValue(v: Any): Unit = insloc.push(v.asInstanceOf[String])
 
-    override def subVisitor: Visitor[_, _] = new PointerVisitor(insloc)
+    override def subVisitor: Visitor[?, ?] = new PointerVisitor(insloc)
 
     override def visitValue(v: Unit, index: Int): Unit = insloc.pop
 
@@ -25,7 +25,7 @@ class PointerVisitor(insloc: mutable.Stack[String] = mutable.Stack("")) extends 
     private var count: Int = 0
     insloc.push("0")
 
-    override def subVisitor: Visitor[_, _] = new PointerVisitor(insloc)
+    override def subVisitor: Visitor[?, ?] = new PointerVisitor(insloc)
 
     override def visitValue(v: Unit, index: Int): Unit = {
       insloc.pop

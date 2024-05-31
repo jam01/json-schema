@@ -4,7 +4,7 @@ import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visit
 
 import scala.collection.mutable
 
-class SchemaR private(docbase: Uri,
+final class SchemaR private(docbase: Uri,
               reg: mutable.Map[Uri, Schema] = mutable.Map(),
               ids: mutable.Buffer[(String, ObjectSchema)] = mutable.ArrayBuffer.empty,
               anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = mutable.ArrayBuffer.empty,
@@ -24,7 +24,7 @@ class SchemaR private(docbase: Uri,
   override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Value, Schema] = new ObjVisitor[Value, ObjectSchema] {
     val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
     var key: String = "?"
-    val sch: ObjectSchema = ObjectSchema(lhm, docbase, parent, prel)
+    val sch: ObjectSchema = new ObjectSchema(lhm, docbase, parent, prel)
     if (parent.isEmpty) reg.addOne(docbase, sch)
 
     override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
@@ -42,7 +42,7 @@ class SchemaR private(docbase: Uri,
         override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Schema, Obj] =
           new CollectObjVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) {
             override def subVisitor: Visitor[?, ?] = {
-              vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$k") // setting prel using CollectObjVisitor fields
+              vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$_key") // setting prel using CollectObjVisitor fields
               super.subVisitor
             }
           }
@@ -56,7 +56,7 @@ class SchemaR private(docbase: Uri,
             private var nextIdx = 0
 
             override def subVisitor: Visitor[?, ?] = {
-              vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$nextIdx") // setting prel using CollectArrVisitor fields
+              vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$nextIdx")
               super.subVisitor
             }
 
@@ -93,5 +93,6 @@ object SchemaR {
    * @param docbase the initial base for the schema
    * @param reg     the schema registry to populate when traversing schemas
    */
-  def apply(docbase: Uri, reg: mutable.Map[Uri, Schema] = mutable.Map()): SchemaR = new SchemaR(docbase, reg)
+  def apply(docbase: Uri = Uri.random, 
+            reg: mutable.Map[Uri, Schema] = mutable.Map()): SchemaR = new SchemaR(docbase, reg)
 }

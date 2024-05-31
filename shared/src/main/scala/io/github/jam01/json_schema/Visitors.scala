@@ -44,37 +44,37 @@ class CompositeObjVisitor[-T, +J](protected val delObjVis: ObjVisitor[T, J]*) ex
 }
 
 
-class CompositeVisitorReducer[-T, +J](reducer: Seq[J] => J, delegates: Visitor[T, J]*) extends JsonVisitor[Seq[T], J] {
-  override def visitNull(index: Int): J = reducer(delegates.map(_.visitNull(index)))
+// TODO: make these able to return anything (could be used for DependentSchemas)
+class FlatCompositeVisitor[-T, +J](flatten: Seq[J] => J, delegates: Visitor[T, J]*) extends JsonVisitor[Seq[T], J] {
+  override def visitNull(index: Int): J = flatten(delegates.map(_.visitNull(index)))
 
-  override def visitFalse(index: Int): J = reducer(delegates.map(_.visitFalse(index)))
+  override def visitFalse(index: Int): J = flatten(delegates.map(_.visitFalse(index)))
 
-  override def visitTrue(index: Int): J = reducer(delegates.map(_.visitTrue(index)))
+  override def visitTrue(index: Int): J = flatten(delegates.map(_.visitTrue(index)))
 
-  override def visitInt64(i: Long, index: Int): J = reducer(delegates.map(_.visitInt64(i, index)))
+  override def visitInt64(i: Long, index: Int): J = flatten(delegates.map(_.visitInt64(i, index)))
 
-  override def visitFloat64(d: Double, index: Int): J = reducer(delegates.map(_.visitFloat64(d, index)))
+  override def visitFloat64(d: Double, index: Int): J = flatten(delegates.map(_.visitFloat64(d, index)))
 
-  override def visitString(s: CharSequence, index: Int): J = reducer(delegates.map(_.visitString(s, index)))
+  override def visitString(s: CharSequence, index: Int): J = flatten(delegates.map(_.visitString(s, index)))
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], J] =
-    new CompositeArrVisitorReducer[T, J](reducer, delegates.map(_.visitArray(length, index))*)
+    new FlatCompositeArrVisitor[T, J](flatten, delegates.map(_.visitArray(length, index))*)
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], J] =
-    new CompositeObjVisitorReducer[T, J](reducer, delegates.map(_.visitObject(length, true, index))*)
+    new FlatCompositeObjVisitor[T, J](flatten, delegates.map(_.visitObject(length, true, index))*)
 }
 
-class CompositeArrVisitorReducer[-T, +J](reducer: Seq[J] => J, delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], J] {
+class FlatCompositeArrVisitor[-T, +J](flatten: Seq[J] => J, protected val delArrVis: ArrVisitor[T, J]*) extends ArrVisitor[Seq[T], J] {
   override def subVisitor: Visitor[?, ?] = new CompositeVisitor(delArrVis.map(_.subVisitor)*)
 
   override def visitValue(v: Seq[T], index: Int): Unit =
     delArrVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
 
-  override def visitEnd(index: Int): J = reducer(delArrVis.map(_.visitEnd(index)))
+  override def visitEnd(index: Int): J = flatten(delArrVis.map(_.visitEnd(index)))
 }
 
-class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVisitor[T, J]*) extends ObjVisitor[Seq[T], J] {
-
+class FlatCompositeObjVisitor[-T, +J](flatten: Seq[J] => J, protected val delObjVis: ObjVisitor[T, J]*) extends ObjVisitor[Seq[T], J] {
   override def visitKey(index: Int): Visitor[?, ?] =
     new CompositeVisitor(delObjVis.map(_.visitKey(index))*)
 
@@ -86,7 +86,7 @@ class CompositeObjVisitorReducer[-T, +J](reducer: Seq[J] => J, delObjVis: ObjVis
   override def visitValue(v: Seq[T], index: Int): Unit =
     delObjVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
 
-  override def visitEnd(index: Int): J = reducer(delObjVis.map(_.visitEnd(index)))
+  override def visitEnd(index: Int): J = flatten(delObjVis.map(_.visitEnd(index)))
 }
 
 
@@ -102,18 +102,18 @@ object LiteralVisitor extends JsonVisitor[Value, Value] {
 }
 
 class CollectObjVisitor(protected val vis: Visitor[Value, Value]) extends ObjVisitor[Value, Obj] {
-  val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
-  var k: String = "?"
+  private val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
+  protected var _key: String = "?"
 
   override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
-  override def visitKeyValue(v: Any): Unit = k = v.asInstanceOf[String]
+  override def visitKeyValue(v: Any): Unit = _key = v.asInstanceOf[String]
   override def subVisitor: Visitor[?, ?] = vis
-  override def visitValue(v: Value, index: Int): Unit = lhm.addOne(k, v)
+  override def visitValue(v: Value, index: Int): Unit = lhm.addOne(_key, v)
   override def visitEnd(index: Int): Obj = Obj(lhm)
 }
 
 class CollectArrVisitor(protected val vis: Visitor[Value, Value]) extends ArrVisitor[Value, Arr] {
-  val arr: mutable.ArrayBuffer[Value] = mutable.ArrayBuffer()
+  private val arr: mutable.ArrayBuffer[Value] = mutable.ArrayBuffer()
 
   override def subVisitor: Visitor[?, ?] = vis
   override def visitValue(v: Value, index: Int): Unit = arr.append(v)
@@ -121,14 +121,14 @@ class CollectArrVisitor(protected val vis: Visitor[Value, Value]) extends ArrVis
 }
 
 
-object StringVisitor extends SimpleVisitor[Nothing, String] {
-  def expectedMsg = "expected string"
+object StringVisitor extends SimpleVisitor[Any, String] {
+  def expectedMsg = "Expected string"
 
   override def visitString(s: CharSequence, index: Int): String = s.toString
 }
 
 
-class PeekCompositeVisitor[-T, +J](peek: J => J, eff: () => Unit, delegates: Visitor[T, J]*)
+private[json_schema] final class PeekCompositeVisitor[-T, +J](peek: J => J, eff: () => Unit, delegates: Visitor[T, J]*)
   extends JsonVisitor[Seq[T], Seq[J]] {
   def visitNull(index: Int): Seq[J] = {
     val u = delegates.map(d => peek(d.visitNull(index))); eff.apply(); u }

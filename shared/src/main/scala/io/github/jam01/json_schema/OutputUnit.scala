@@ -51,20 +51,16 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
     ov.visitKeyValue(ov.visitKey(-1).visitString("valid", -1))
     ov.visitValue(if (j.valid) ov.subVisitor.visitTrue(-1) else ov.subVisitor.visitFalse(-1), -1)
 
-    //    j.kwLoc.foreach(kw => {
     ov.visitKeyValue(ov.visitKey(-1).visitString("keywordLocation", -1))
     ov.visitValue(ov.subVisitor.visitString(j.kwLoc.toString, -1), -1)
-    //    })
 
     j.absKwLoc.foreach(kw => {
       ov.visitKeyValue(ov.visitKey(-1).visitString("absoluteKeywordLocation", -1))
       ov.visitValue(ov.subVisitor.visitString(kw.toString, -1), -1)
     })
 
-    //    j.insLoc.foreach(iloc => {
     ov.visitKeyValue(ov.visitKey(-1).visitString("instanceLocation", -1))
     ov.visitValue(ov.subVisitor.visitString(j.insLoc.toString, -1), -1)
-    //    })
 
     j.error.foreach(err => {
       ov.visitKeyValue(ov.visitKey(-1).visitString("error", -1))

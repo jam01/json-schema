@@ -4,27 +4,27 @@ import io.github.jam01.json_schema.vocab.Core
 import upickle.core.Visitor.MapReader
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
-import scala.collection.mutable
-
 object SchemaValidator {
-  def of(sch: Schema,
-         ctx: Context = Context.Empty,
-         path: JsonPointer = JsonPointer(),
-         dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
+  def of(sch: Schema, ctx: Context, path: JsonPointer, dynParent: Option[VocabBase]): Visitor[?, OutputUnit] = {
     sch match
-      case bs: BooleanSchema => BooleanSchemaValidator.of(bs, ctx, path)
-      case os: ObjectSchema => ObjectSchemaValidator.of(os, ctx, path, dynParent)
+      case BooleanSchema(bool) => new BooleanSchemaValidator(bool, ctx, path)
+      case osch: ObjectSchema =>
+        // Vis[Seq[Nothing], Seq[OUnit]]; Vis[Any, Seq[OUnit]]; Vis[Nothing, Seq[OUnit]]; Vis[Nothing, Seq[OutputUnit]]
+        val vocabs = Seq(vocab.Core, vocab.Applicator, vocab.Validation, vocab.Unevaluated)
+          .filter(v => v.appliesTo(osch))
+          .map(v => v.from(osch, ctx, path, dynParent))
+
+        val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
+          new PeekCompositeVisitor(u => ctx.add(u), () => ctx.clear(), vocabs*) // registers/clears sibling annotations
+
+        new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
+          override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit =
+            ctx.config.struct.compose(path, v.flatten, ctx)
+        }
   }
 }
 
-object BooleanSchemaValidator {
-  def of(bsch: BooleanSchema, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer()): BooleanSchemaValidator =
-    bsch match
-      case TrueSchema => new BooleanSchemaValidator(true, ctx, path)
-      case FalseSchema => new BooleanSchemaValidator(false, ctx, path)
-}
-
-final class BooleanSchemaValidator(bool: Boolean, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer()) extends JsonVisitor[OutputUnit, OutputUnit] {
+final class BooleanSchemaValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends JsonVisitor[OutputUnit, OutputUnit] {
   override def visitNull(index: Int): OutputUnit = OutputUnit(bool, path, None, ctx.currentLoc)
   override def visitFalse(index: Int): OutputUnit = OutputUnit(bool, path, None, ctx.currentLoc)
   override def visitTrue(index: Int): OutputUnit = OutputUnit(bool, path, None, ctx.currentLoc)
@@ -47,26 +47,4 @@ final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) 
   override def subVisitor: Visitor[?, ?] = NoOpVisitor
   override def visitValue(v: Any, index: Int): Unit = ()
   override def visitEnd(index: Int): OutputUnit = OutputUnit(bool, path, None, ctx.currentLoc)
-}
-
-object ObjectSchemaValidator {
-  def of(schema: ObjectSchema, ctx: Context = Context.Empty, path: JsonPointer = JsonPointer(),
-         dynParent: Option[BaseValidator] = None): Visitor[?, OutputUnit] = {
-
-    val vocabs = new mutable.ArrayBuffer[JsonVisitor[Nothing, collection.Seq[OutputUnit]]](4)
-    if (vocab.Core.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Core(schema, ctx, path, dynParent)) // Vis[Seq[Nothing], Seq[OUnit]]
-    if (vocab.Applicator.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Applicator(schema, ctx, path, dynParent)) // Vis[Any, Seq[OUnit]]
-    if (vocab.Validation.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Validation(schema, ctx, path, dynParent)) // Vis[Nothing, Seq[OUnit]]
-    if (vocab.Unevaluated.Keys.exists(schema.value.contains)) vocabs.addOne(vocab.Unevaluated(schema, ctx, path, dynParent))
-
-    val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
-      new PeekCompositeVisitor(u => ctx.add(u), () => ctx.clear(), // registers/clears sibling annotations
-        vocabs.toSeq*
-      )
-
-    new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
-      override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit =
-        ctx.struct.compose(path, v.flatten, ctx)
-    }
-  }
 }

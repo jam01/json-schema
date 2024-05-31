@@ -9,10 +9,10 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
 
-class Validation(schema: ObjectSchema,
-                 ctx: Context = Context.Empty,
-                 path: JsonPointer = JsonPointer(),
-                 dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
+private class Validation(schema: ObjectSchema,
+                         ctx: Context,
+                         path: JsonPointer,
+                         dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val tyype: collection.Seq[String] = schema.getAsStringArray(Tyype)
   private val const: Option[Value] = schema.get(Const)
@@ -122,7 +122,7 @@ class Validation(schema: ObjectSchema,
           const.foreach(c => addUnit(units, unitOf(c == jsVal, Const, "Array does not match expected constant")))
           enuum.foreach(e => addUnit(units, unitOf(e.contains(jsVal), Enuum, "Array not found in enumeration")))
           uniqueItems.foreach(b => {
-            val set = new mutable.HashSet[Value](jsVal.arr.size, 1)
+            val set = new mutable.HashSet[Value](jsVal.arr.size, 1) // TODO: should be able to do this without actual Set 
             addUnit(units, unitOf(jsVal.arr.forall(e => set.add(e)), UniqueItems, "Values in array are not unique"))
           })
           units
@@ -211,7 +211,7 @@ class Validation(schema: ObjectSchema,
   }
 }
 
-object Validation {
+object Validation extends VocabBaseFactory {
   private def asBigDec(num: Long | Double) = {
     num match
       case l: Long => BigDecimal.valueOf(l)
@@ -278,4 +278,13 @@ object Validation {
   val Keys: Seq[String] = Seq(Tyype, Const, Enuum, MultipleOf, Maximum, Minimum, ExclusiveMax, ExclusiveMin, MaxLength,
     MinLength, MaxItems, MinItems, MaxContains, MinContains, MaxProperties, MinProperties, Pattern, UniqueItems,
     Required, DepRequired)
+
+  override def uri: String = "https://json-schema.org/draft/2020-12/vocab/validation"
+
+  override def from(schema: ObjectSchema,
+                    ctx: Context,
+                    path: JsonPointer,
+                    dynParent: Option[VocabBase]): Validation = new Validation(schema, ctx, path, dynParent)
+
+  override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

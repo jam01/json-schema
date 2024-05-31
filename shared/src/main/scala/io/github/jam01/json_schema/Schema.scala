@@ -162,6 +162,12 @@ sealed abstract class BooleanSchema extends Schema {
   }
 }
 
+object BooleanSchema {
+  def apply(value: Boolean): BooleanSchema = if (value) TrueSchema else FalseSchema
+
+  def unapply(bool: BooleanSchema): Some[Boolean] = Some(bool.value)
+}
+
 case object TrueSchema extends BooleanSchema {
   def value = true
 }
@@ -174,23 +180,22 @@ case object FalseSchema extends BooleanSchema {
 // https://users.scala-lang.org/t/refactoring-class-hierarchy-into-adt/6997
 // https://contributors.scala-lang.org/t/pre-sip-sealed-enumerating-allowed-sub-types/3768
 // https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
-case class ObjectSchema(value: LinkedHashMap[String, Value],
-                              protected val docbase: Uri,
-                              protected val parent: Option[ObjectSchema] = None,
-                              protected val prel: Option[String] = None) extends ObjSchema with Schema {
-                              /* relative pointer from parent */
+final class ObjectSchema private[json_schema](val value: LinkedHashMap[String, Value],
+                        protected val docbase: Uri,
+                        protected val parent: Option[ObjectSchema] = None,
+                        protected val prel: Option[String] = None) extends ObjSchema with Schema {
+                        /* relative pointer from parent */
 
   // equals and hashCode ignores parent in order to avoid circular references
-  // (parent schema's children will reference the parent)
+  // (schema's children will reference it back)
   // this is ok since the structure is still validated, including the exact parent-child traversal
   // this is only an issue if SchemaR and/or manual object creation incorrectly set parents
   override def equals(obj: Any): Boolean = {
     obj match
-      case ObjectSchema(value0, docbase0, _, prel0) =>
-        value == value0 &&
-          docbase == docbase0 &&
-          prel0 == prel &&
-          this.canEqual(obj)
+      case osch: ObjectSchema =>
+        value == osch.value &&
+          docbase == osch.docbase &&
+          prel == osch.prel
       case _ => false
   }
 
@@ -202,5 +207,13 @@ case class ObjectSchema(value: LinkedHashMap[String, Value],
     MurmurHash3.finalizeHash(h, 3)
   }
 
-  override def toString: String = value.toString()
+  override def toString: String = location.toString
+}
+
+object ObjectSchema {
+  def empty(docbase: Uri = Uri.random): ObjectSchema = new ObjectSchema(LinkedHashMap(), docbase)
+
+  def unapply(arg: ObjectSchema): Some[LinkedHashMap[String, Value]] = {
+    Some(arg.value)
+  }
 }

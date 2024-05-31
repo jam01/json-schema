@@ -21,7 +21,7 @@ final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
 }
 
 object JsonPointer {
-  val Empty: JsonPointer = JsonPointer()
+  val Root: JsonPointer = JsonPointer()
   
   def apply(s: String): JsonPointer = { // assumes string is already decoded (usually through URI's func)
     JsonPointer(s.split("/", -1)

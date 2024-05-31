@@ -5,6 +5,8 @@ import io.github.jam01.json_schema.{Arr, Obj}
 import org.junit.jupiter.api.Test
 import org.skyscreamer.jsonassert.JSONAssert
 
+import scala.language.implicitConversions
+
 class VisitorEncoderTest {
   val arr: Arr =
     Arr(0, 1, "bloop",

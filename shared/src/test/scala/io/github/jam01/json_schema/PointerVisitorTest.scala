@@ -4,6 +4,9 @@ import org.junit.jupiter.api.{Assertions, Disabled, Test}
 import ujson.StringParser
 import upickle.core.{ArrVisitor, ObjVisitor}
 
+import scala.collection.mutable
+import scala.language.implicitConversions
+
 class PointerVisitorTest {
 
   @Test @Disabled
@@ -15,7 +18,7 @@ class PointerVisitorTest {
   @Test
   def main(): Unit = {
     val jsonStr = """[0, 1, "bloop", 3, null, 5.5, ["a", "b", "c"], {"foo7": "bar", "arr": [null, null]}]"""
-    val ctx = Context.Empty
+    val ctx = SimpleContext(Map.empty, Config.Default)
 
     val res = StringParser.transform(jsonStr, new PointerDelegate(ctx, new CtxPointerVisitor(ctx)))
     Assertions.assertEquals(

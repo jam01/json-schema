@@ -206,7 +206,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     val it = ptr.refTokens.iterator; it.next() // skip first empty string token
     for (key <- it) {
       res = res match
-        case ObjectSchema(obj, _, _, _) => getOrThrow(obj, key, refError(ptr, i))
+        case ObjectSchema(value) => getOrThrow(value, key, refError(ptr, i)) 
         case Obj(value) => getOrThrow(value, key, refError(ptr, i))
         case Arr(value) =>
           val i = key.toInt;

@@ -57,22 +57,22 @@ class SchemaMapperTest {
       "minProperties" -> Num(1L),
       "required" -> Arr(Str("foo"))), uri)
 
-    val arrsch: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    val arrsch: ObjectSchema = new ObjectSchema(LinkedHashMapFactory(
       "type" -> Str("array"),
       "maxItems" -> Num(4L),
       "minItems" -> Num(2L)), uri, Some(osch), Some("/properties/arr"))
 
-    arrsch.value.addOne("items" -> ObjectSchema(LinkedHashMapFactory(
+    arrsch.value.addOne("items" -> new ObjectSchema(LinkedHashMapFactory(
       "type" -> Str("number")), uri, Some(arrsch), Some("/items")))
 
     osch.value.addOne("properties" -> Obj(
-      "foo" -> ObjectSchema(LinkedHashMapFactory(
+      "foo" -> new ObjectSchema(LinkedHashMapFactory(
         "type" -> Str("string"),
         "pattern" -> Str(".*"),
         "maxLength" -> Num(16L),
         "minLength" -> Num(3L)), uri, Some(osch), Some("/properties/foo")),
       "arr" -> arrsch,
-      "obj" -> ObjectSchema(LinkedHashMapFactory(
+      "obj" -> new ObjectSchema(LinkedHashMapFactory(
         "type" -> Str("object"),
         "maxProperties" -> Num(1L)), uri, Some(osch), Some("/properties/obj"))
     ))

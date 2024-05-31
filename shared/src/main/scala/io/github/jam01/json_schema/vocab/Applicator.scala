@@ -9,10 +9,10 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
 
-class Applicator(schema: ObjectSchema,
-                 ctx: Context = Context.Empty,
-                 path: JsonPointer = JsonPointer(),
-                 dynParent: Option[BaseValidator] = None) extends BaseValidator(schema, ctx, path, dynParent) {
+private class Applicator(schema: ObjectSchema,
+                         ctx: Context,
+                         path: JsonPointer,
+                         dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val prefixItems: Option[collection.Seq[Schema]] = schema.getSchemaArrayOpt(PrefixItems)
   private val itemsVis: Option[ArrVisitor[OutputUnit, OutputUnit]] = schema.getSchemaOpt(Items)
@@ -65,13 +65,13 @@ class Applicator(schema: ObjectSchema,
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(Else), Some(this)))
   private val allOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt(AllOf)
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended(AllOf, schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => allOf(AllOf, units), schViss.toSeq*))
+    .map(schViss => new FlatCompositeVisitor(units => allOf(AllOf, units), schViss.toSeq*))
   private val oneOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt(OneOf)
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended(OneOf, schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => oneOf(OneOf, units), schViss.toSeq*))
+    .map(schViss => new FlatCompositeVisitor(units => oneOf(OneOf, units), schViss.toSeq*))
   private val anyOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt(AnyOf)
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended(AnyOf, schidx._2.toString), Some(this))))
-    .map(schViss => new CompositeVisitorReducer(units => anyOf(AnyOf, units), schViss.toSeq*))
+    .map(schViss => new FlatCompositeVisitor(units => anyOf(AnyOf, units), schViss.toSeq*))
   private val notVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(Not)
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(Not), Some(this)))
 
@@ -417,7 +417,7 @@ class Applicator(schema: ObjectSchema,
   }
 }
 
-object Applicator {
+object Applicator extends VocabBaseFactory {
   val PrefixItems = "prefixItems"
   val Items = "items"
   val MaxContains = "maxContains"
@@ -438,4 +438,13 @@ object Applicator {
 
   val Keys: Seq[String] = Seq(PrefixItems, Items, MaxContains, MinContains, Contains, AdditionalProperties, Properties,
     PatternProperties, DependentSchemas, PropertyNames, Properties, If, Then, Else, Not, AllOf, AnyOf, OneOf)
+
+  override def uri: String = "https://json-schema.org/draft/2020-12/vocab/applicator"
+  
+  override def from(schema: ObjectSchema,
+                    ctx: Context,
+                    path: JsonPointer,
+                    dynParent: Option[VocabBase]): Applicator = new Applicator(schema, ctx, path, dynParent)
+
+  override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

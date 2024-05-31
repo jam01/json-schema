@@ -3,8 +3,9 @@ package io.github.jam01.json_schema
 import io.github.jam01.json_schema.Uri.conformUri
 
 import java.net.URI
+import java.util.UUID
 
-final class Uri(val uri: URI, val isDyn: Boolean = false) {
+final case class Uri(uri: URI, isDyn: Boolean = false) {
   // TODO: consider tracking fragment
   private lazy val str = conformUri(uri.toString)
 
@@ -73,5 +74,9 @@ object Uri {
     if (refURI.isAbsolute) refURI
     else if ("urn" == base.getScheme && ref.startsWith("#")) java.net.URI(base.getScheme, base.getSchemeSpecificPart, refURI.getFragment)
     else base.resolve(refURI)
+  }
+  
+  def random: Uri = {
+    Uri.of("urn:uuid:" + UUID.randomUUID().toString)
   }
 }

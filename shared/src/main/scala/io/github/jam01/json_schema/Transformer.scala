@@ -14,10 +14,10 @@ object Transformer extends upickle.core.Transformer[Value] {
       case Arr(arr) => val ctx = v.visitArray(arr.size, -1).narrow
         for (item <- arr) ctx.visitValue(transform(item, ctx.subVisitor), -1)
         ctx.visitEnd(-1)
-      case Obj(obj) => transformObj(obj, v)
+      case Obj(map) => transformObj(map, v)
       case sch: Schema => sch match
-        case bsch: BooleanSchema => if (bsch.value) v.visitTrue(-1) else v.visitFalse(-1)
-        case ObjectSchema(obj, _, _, _) => transformObj(obj, v)
+        case BooleanSchema(bool) => if (bool) v.visitTrue(-1) else v.visitFalse(-1)
+        case ObjectSchema(map) => transformObj(map, v)
   }
 
   private def transformObj[T](obj: LinkedHashMap[String, Value], v: Visitor[?, T]) = {

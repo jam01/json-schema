@@ -1,7 +1,7 @@
 package io.github.jam01.json_schema
 
 import org.junit.jupiter.api.Assertions.{assertThrows, assertTrue}
-import org.junit.jupiter.api.{Disabled, Test}
+import org.junit.jupiter.api.Test
 
 import scala.collection.mutable
 
@@ -20,7 +20,7 @@ class SecurityConsiderationsTest {
         |}""".stripMargin).transform(SchemaR(Uri.of("mem://test"), reg))
 
     val ex1 = assertThrows(classOf[IllegalStateException],
-      () => Transformer.transform(Null, SchemaValidator.of(sch, Context(mutable.Stack(""), reg))))
+      () => Transformer.transform(Null, SchemaValidator.of(sch, SimpleContext(reg), JsonPointer.Root, None)))
 
     assertTrue(ex1.getMessage.contains("depth limit exceeded"))
   }
