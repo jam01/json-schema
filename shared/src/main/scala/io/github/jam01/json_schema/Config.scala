@@ -1,7 +1,8 @@
 package io.github.jam01.json_schema
 
 
-case class Config(mode: Mode = Mode.Annotation,
+case class Config(dialect: Dialect = Dialect._2020_12,
+                  mode: Mode = Mode.Annotation,
                   struct: OutputStructure = OutputStructure.Detailed,
                   ffast: Boolean = false,
                   allowAnnot: Seq[String] = Nil) {
@@ -43,4 +44,11 @@ object OutputStructure {
 
 enum Mode {
   case Assertion, Annotation
+}
+
+case class Dialect(uri: Uri, vocabularies: Seq[VocabFactory[?]])
+
+object Dialect {
+  val _2020_12: Dialect  = Dialect(Uri.of("https://json-schema.org/draft/2020-12/schema"), 
+    Seq(vocab.Core, vocab.Applicator, vocab.Validation, vocab.Unevaluated))
 }

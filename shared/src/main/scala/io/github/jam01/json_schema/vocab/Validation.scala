@@ -9,10 +9,10 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
 
-private class Validation(schema: ObjectSchema,
+class Validation private(schema: ObjectSchema,
                          ctx: Context,
                          path: JsonPointer,
-                         dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
+                         dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val tyype: collection.Seq[String] = schema.getAsStringArray(Tyype)
   private val const: Option[Value] = schema.get(Const)
@@ -284,7 +284,7 @@ object Validation extends VocabBaseFactory {
   override def from(schema: ObjectSchema,
                     ctx: Context,
                     path: JsonPointer,
-                    dynParent: Option[VocabBase]): Validation = new Validation(schema, ctx, path, dynParent)
+                    dynParent: Option[Vocab[?]]): Validation = new Validation(schema, ctx, path, dynParent)
 
   override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

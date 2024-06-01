@@ -8,12 +8,12 @@ trait Context {
   def currentLoc: JsonPointer
 
   def getSch(s: Uri): Option[Schema]
-  def getDynSch(loc: Uri, current: VocabBase): Option[Schema]
+  def getDynSch(loc: Uri, current: Vocab[?]): Option[Schema]
   def getSchOrThrow(s: Uri): Schema =
     getSch(s) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"Unavailable schema $s")
-  def getDynSchOrThrow(loc: Uri, current: VocabBase): Schema =
+  def getDynSchOrThrow(loc: Uri, current: Vocab[?]): Schema =
     getDynSch(loc, current) match
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"Unavailable schema $loc")
@@ -49,7 +49,7 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
         .map(sch => sch.schBy(JsonPointer(s.uri.getFragment))) // using decoded fragment as map values would be unencoded
   }
 
-  def getDynSch(loc: Uri, current: VocabBase): Option[Schema] = {
+  def getDynSch(loc: Uri, current: Vocab[?]): Option[Schema] = {
     if (loc.toString.contains("#/")) return getSch(loc.asStatic)
 
     val sch0 = getSch(loc)

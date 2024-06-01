@@ -14,15 +14,16 @@ import scala.collection.mutable
  * @param path      the path followed to the given schema
  * @param dynParent dynamic scope parent validator
  */
-abstract class VocabBase(val schema: ObjectSchema,
+abstract class VocabBase(schema: ObjectSchema,
                          val ctx: Context,
                          val path: JsonPointer,
-                         val dynParent: Option[VocabBase]) extends Vocab[?] {
-  private lazy val countRefs: Int = {
-    if (dynParent.isEmpty) 0
-    else dynParent.get.countRefs + 1
+                         dynParent: Option[Vocab[?]]) extends Vocab[Nothing](schema, dynParent) {
+  private var countRefs = 0
+  private var head: Vocab[?] = this
+  while (head.dynParent.nonEmpty) {
+    countRefs += 1
+    head = head.dynParent.get
   }
-
   // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
   if (countRefs > 32) throw new IllegalStateException("depth limit exceeded")
 
@@ -55,4 +56,4 @@ abstract class VocabBase(val schema: ObjectSchema,
   }
 }
 
-trait VocabBaseFactory extends VocabFactory[VocabBase, VocabBase]
+trait VocabBaseFactory extends VocabFactory[VocabBase]

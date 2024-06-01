@@ -31,6 +31,12 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     value.get(k)
   }
 
+  def getMetaSchema: Option[Uri] = getString("$schema").map(s => Uri.of(s))
+  def getVocabularies: Map[String, Boolean] =
+    value.get("$vocabulary") match
+      case None => Map.empty
+      case Some(value) => value.obj.map((k, v) => (k, v.bool))
+
   /**
    * Optionally returns the boolean associated with the given key
    *

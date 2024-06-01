@@ -7,7 +7,7 @@ import java.time.format.DateTimeParseException
 import java.time.{Duration, LocalDate, OffsetDateTime}
 import java.util.UUID
 
-class Format(schema: ObjectSchema,
+abstract class Format(schema: ObjectSchema,
              ctx: Context,
              path: JsonPointer,
              dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {

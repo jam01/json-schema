@@ -9,8 +9,7 @@ object SchemaValidator {
     sch match
       case BooleanSchema(bool) => new BooleanSchemaValidator(bool, ctx, path)
       case osch: ObjectSchema =>
-        // Vis[Seq[Nothing], Seq[OUnit]]; Vis[Any, Seq[OUnit]]; Vis[Nothing, Seq[OUnit]]; Vis[Nothing, Seq[OutputUnit]]
-        val vocabs = Seq(vocab.Core, vocab.Applicator, vocab.Validation, vocab.Unevaluated)
+        val vocabs = ctx.config.dialect.vocabularies
           .filter(v => v.appliesTo(osch))
           .map(v => v.from(osch, ctx, path, dynParent))
 

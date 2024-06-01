@@ -9,10 +9,10 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
 
-private class Applicator(schema: ObjectSchema,
+class Applicator private(schema: ObjectSchema,
                          ctx: Context,
                          path: JsonPointer,
-                         dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
+                         dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val prefixItems: Option[collection.Seq[Schema]] = schema.getSchemaArrayOpt(PrefixItems)
   private val itemsVis: Option[ArrVisitor[OutputUnit, OutputUnit]] = schema.getSchemaOpt(Items)
@@ -444,7 +444,7 @@ object Applicator extends VocabBaseFactory {
   override def from(schema: ObjectSchema,
                     ctx: Context,
                     path: JsonPointer,
-                    dynParent: Option[VocabBase]): Applicator = new Applicator(schema, ctx, path, dynParent)
+                    dynParent: Option[Vocab[?]]): Applicator = new Applicator(schema, ctx, path, dynParent)
 
   override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

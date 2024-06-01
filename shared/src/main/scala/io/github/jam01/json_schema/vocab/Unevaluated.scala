@@ -7,10 +7,10 @@ import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-private class Unevaluated(schema: ObjectSchema,
+class Unevaluated private(schema: ObjectSchema,
                           ctx: Context,
                           path: JsonPointer,
-                          dynParent: Option[VocabBase]) extends VocabBase(schema, ctx, path, dynParent) {
+                          dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val itemsVis: Option[ArrVisitor[OutputUnit, collection.Seq[OutputUnit]]] = schema.getSchemaOpt(UnevaluatedItems)
     .map(sch => new ArrVisitor[OutputUnit, collection.Seq[OutputUnit]] {
@@ -152,7 +152,7 @@ object Unevaluated extends VocabBaseFactory {
   override def from(schema: ObjectSchema,
                     ctx: Context,
                     path: JsonPointer,
-                    dynParent: Option[VocabBase]): Unevaluated = new Unevaluated(schema, ctx, path, dynParent)
+                    dynParent: Option[Vocab[?]]): Unevaluated = new Unevaluated(schema, ctx, path, dynParent)
 
   override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

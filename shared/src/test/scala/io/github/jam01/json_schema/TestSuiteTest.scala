@@ -1,5 +1,7 @@
 package io.github.jam01.json_schema
 
+import io.github.jam01.json_schema
+import io.github.jam01.json_schema.TestSuiteTest.Registry
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
@@ -13,16 +15,17 @@ import scala.util.Using
 class TestSuiteTest {
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
-  def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema, ctx: Context): Unit = {
-    val res = data.transform(SchemaValidator.of(sch, ctx, JsonPointer.Root, None))
+  def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema): Unit = {
+
+    val dial = json_schema.tryDialect(sch, TestSuiteTest.Registry).getOrElse(Dialect._2020_12)
+    val res = data.transform(json_schema.validator(sch, Registry, Config(dial)))
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
 }
 
 object TestSuiteTest {
-  val NotSupported: Seq[String] = Seq("refRemote.json",
-    "vocabulary.json")
+  val NotSupported: Seq[String] = Seq("refRemote.json")
 
   val Registry: mutable.Map[Uri, Schema] = {
     val res = mutable.Map[Uri, Schema]()
@@ -66,15 +69,13 @@ object TestSuiteTest {
 
     suite.foreach { testcase =>
       testcase.obj.get("tests").get.arr.foreach { test =>
-        val reg = Registry
         args.add(Arguments.of(
           resource("test-suite/tests/draft2020-12/").relativize(path).toString,
           testcase.obj.get("description").get.str,
           test.obj.get("description").get.str,
           test.obj.get("data").get,
           test.obj.get("valid").get.bool,
-          testcase.obj.get("schema").get.transform(SchemaR(Uri.of("urn:uuid:" + UUID.randomUUID().toString), reg = reg)),
-          SimpleContext(reg)))
+          testcase.obj.get("schema").get.transform(SchemaR(reg = Registry))))
       }
     }
 
