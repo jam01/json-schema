@@ -50,5 +50,5 @@ case class Dialect(uri: Uri, vocabularies: Seq[VocabFactory[?]])
 
 object Dialect {
   val _2020_12: Dialect  = Dialect(Uri.of("https://json-schema.org/draft/2020-12/schema"), 
-    Seq(vocab.Core, vocab.Applicator, vocab.Validation, vocab.Unevaluated))
+    Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated))
 }

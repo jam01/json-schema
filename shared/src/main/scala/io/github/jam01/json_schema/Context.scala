@@ -18,9 +18,9 @@ trait Context {
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"Unavailable schema $loc")
 
-  def internal: collection.Seq[OutputUnit]
-  def add(u: collection.Seq[OutputUnit]): collection.Seq[OutputUnit]
-  def clear(): Unit
+  def internal(dynpath: JsonPointer): collection.Seq[OutputUnit]
+  def add(dynpath: JsonPointer, units: collection.Seq[OutputUnit]): collection.Seq[OutputUnit]
+  def clear(dynpath: JsonPointer): Unit
 }
 
 case class SimpleContext(private val reg: collection.Map[Uri, Schema],
@@ -33,9 +33,9 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
     _pointer = JsonPointer(insloc.reverseIterator.toSeq)
   }
   override def pop: String = {
-    val s = insloc.pop
+    val ref = insloc.pop
     _pointer = JsonPointer(insloc.reverseIterator.toSeq)
-    s
+    ref
   }
   override def currentLoc: JsonPointer = _pointer
   override def pointer: JsonPointer = _pointer
@@ -68,10 +68,17 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
       .flatMap(dref => reg.get(dref))
   }
 
-  private val annots: mutable.Buffer[OutputUnit] = mutable.ArrayBuffer()
-  override def internal: collection.Seq[OutputUnit] = annots
-  def add(u: collection.Seq[OutputUnit]): collection.Seq[OutputUnit] = { annots.addAll(u); u }
-  def clear(): Unit = annots.clear()
+  private val int: mutable.Map[JsonPointer, mutable.Buffer[OutputUnit]] = mutable.Map()
+  override def internal(dynpath: JsonPointer): collection.Seq[OutputUnit] = int.getOrElse(dynpath, Nil)
+  def add(dynpath: JsonPointer, units: collection.Seq[OutputUnit]): collection.Seq[OutputUnit] = {
+    if (units.isEmpty) return units
+
+    val appended = int.getOrElse(dynpath, mutable.ArrayBuffer()).addAll(units)
+    int.put(dynpath, appended)
+    units
+  }
+
+  def clear(dynpath: JsonPointer): Unit = int.remove(dynpath)
 }
 
 object SimpleContext {

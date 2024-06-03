@@ -28,10 +28,10 @@ class Unevaluated private(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), Applicator.Items)
-        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), Applicator.PrefixItems)
-        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), Applicator.Contains)
-        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)), UnevaluatedItems)
+        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), Applicator.Items)
+        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), Applicator.PrefixItems)
+        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), Applicator.Contains)
+        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), UnevaluatedItems)
 
         val saa = units.filterNot(u => {
           evalItems.contains(True) || evalUneval.contains(True) || evalPrefixItems.exists(n => Validation.gteq(n.num, u.kwLoc.refTokens.last.toLong))
@@ -65,7 +65,7 @@ class Unevaluated private(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evaluated = getPropsAnnotations(ctx.internal.filter(ann => path.isRelative(ann.kwLoc)))
+        val evaluated = getPropsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)))
         Seq(and(UnevaluatedProperties, units.filterNot(u => evaluated.contains(u.kwLoc.refTokens.last)), Some(Arr.from(annot))))
       }
     })

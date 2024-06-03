@@ -33,7 +33,7 @@ class OutputStructureTest {
 }
 
 object OutputStructureTest {
-  val refBase = Uri.of("mem://ref")
+  val refBase: Uri = Uri.of("mem://ref")
   val RefSch3: ObjectSchema = ObjectSchema(LinkedHashMapFactory("type" -> Str("string")), refBase)
   RefSch3.value.addOne("items" -> new ObjectSchema(LinkedHashMapFactory("type" -> "number", "minimum" -> 5), refBase, Some(RefSch3), Some("/items")))
 

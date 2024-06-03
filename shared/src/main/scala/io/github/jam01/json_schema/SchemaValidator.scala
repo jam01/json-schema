@@ -1,6 +1,5 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.json_schema.vocab.Core
 import upickle.core.Visitor.MapReader
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
@@ -14,7 +13,7 @@ object SchemaValidator {
           .map(v => v.from(osch, ctx, path, dynParent))
 
         val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
-          new PeekCompositeVisitor(u => ctx.add(u), () => ctx.clear(), vocabs*) // registers/clears sibling annotations
+          new PeekCompositeVisitor(u => ctx.add(path, u), () => ctx.clear(path), vocabs*) // registers/clears sibling annotations
 
         new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
           override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit =
