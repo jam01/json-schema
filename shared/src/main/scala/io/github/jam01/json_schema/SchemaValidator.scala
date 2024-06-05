@@ -13,12 +13,12 @@ object SchemaValidator {
           .map(v => v.from(osch, ctx, path, dynParent))
 
         val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
-          new TapCompositeVisitor(units => ctx.observeResults(path, units), vocabs*)
+          new TapCompositeVisitor(units => ctx.onVocabResults(path, units), vocabs*)
 
         new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
           override def mapNonNullsFunction(unitss: Seq[collection.Seq[OutputUnit]]): OutputUnit =
             val res = ctx.config.output.compose(path, unitss.flatten, ctx)
-            ctx.observeScopeEnd(path, res)
+            ctx.onScopeEnd(path, res)
             res
         }
   }

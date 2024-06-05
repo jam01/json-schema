@@ -107,7 +107,7 @@ trait Context {
    * @param schLocation of the schema where the units were produced
    * @param units that were produced
    */
-  def observeResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit
+  def onVocabResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit
 
   /**
    * Notify of output units that were found to be invalid.
@@ -117,12 +117,12 @@ trait Context {
    *
    * For example, an <i>Applicator</i> vocabulary implementation might always compute <i>if</i>,<i>then</i> and
    * <i>else</i> as the instance is being visited, in order to assert which results should be included in the result or
-   * discarded. But if the validation for their subschemas called [[observeResults]], then the discarded branch result
+   * discarded. But if the validation for their subschemas called [[onVocabResults]], then the discarded branch result
    * must be invalidated.
    *
    * @param invalid units
    */
-  def observeInvalidated(invalid: collection.Seq[OutputUnit]): Unit
+  def onInvalidated(invalid: collection.Seq[OutputUnit]): Unit
 
   /**
    * Signal the end of a schema scope.
@@ -130,7 +130,7 @@ trait Context {
    * @param schLocation the location of ending schema scope
    * @param result of the validation
    */
-  def observeScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit // should be internal?
+  def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit // should be internal?
 }
 
 case class SimpleContext(private val reg: collection.Map[Uri, Schema],
@@ -189,7 +189,7 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
   override def getDependenciesFor(schLocation: JsonPointer): collection.Seq[OutputUnit] =
     dependencies.getOrElse(schLocation, Nil)
 
-  override def observeResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit = {
+  override def onVocabResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit = {
     if (dependents.isEmpty || units.isEmpty) return
 
     // this checks if any unit satisfies dependants and registers the dependency
@@ -200,10 +200,10 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
         .foreach(u => addDependencyFor(dependent, u)))                     // registering dependency
 
     // this discards registered dependencies that are found to be relative to an error
-    if (dependencies.nonEmpty) observeInvalidated(units.filter(u => !u.vvalid))
+    if (dependencies.nonEmpty) onInvalidated(units.filter(u => !u.vvalid))
   }
 
-  override def observeInvalidated(invalid: collection.Seq[OutputUnit]): Unit = {
+  override def onInvalidated(invalid: collection.Seq[OutputUnit]): Unit = {
     dependencies.values.foreach(deps => {
       deps.filterInPlace(dep => !invalid.exists(i => i.kwLoc.isRelative(dep.kwLoc)))
     })
@@ -213,11 +213,11 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
     dependencies.getOrElseUpdate(path, mutable.ArrayBuffer()).addOne(unit)
   }
 
-  override def observeScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit = {
+  override def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit = {
     dependents.remove(schLocation)
     dependencies.remove(schLocation)
 
-    if (!result.vvalid) observeInvalidated(Seq(result))
+    if (!result.vvalid) onInvalidated(Seq(result))
   }
 }
 

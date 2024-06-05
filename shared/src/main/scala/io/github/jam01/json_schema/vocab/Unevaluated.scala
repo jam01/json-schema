@@ -44,13 +44,13 @@ final class Unevaluated private(schema: ObjectSchema,
         val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(path), Applicator.Contains)
         val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(path), UnevaluatedItems)
 
-        val (applied, void) = units.partition(u => !{
+        val (applied, invalid) = units.partition(u => !{
           evalItems.contains(True) || evalUneval.contains(True)
             || evalPrefixItems.exists(n => Validation.gteq(n.num, u.kwLoc.refTokens.last.toLong))
             || evalContains.exists(is => is.arr.contains(Num(u.kwLoc.refTokens.last.toInt)))
         })
 
-        ctx.observeInvalidated(void)
+        ctx.onInvalidated(invalid)
         Seq(and(UnevaluatedItems, applied, Some(True)))
       }
     })
@@ -80,7 +80,7 @@ final class Unevaluated private(schema: ObjectSchema,
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
         val evaluated = getPropsAnnotations(ctx.getDependenciesFor(path))
         val (applied, invalid) = units.partition(u => !evaluated.contains(u.kwLoc.refTokens.last)) // should check ins location instead?
-        ctx.observeInvalidated(invalid)
+        ctx.onInvalidated(invalid)
         Seq(and(UnevaluatedProperties, applied, Some(Arr.from(annot))))
       }
     })

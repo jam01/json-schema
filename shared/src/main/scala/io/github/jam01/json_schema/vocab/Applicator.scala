@@ -248,12 +248,12 @@ final class Applicator private(schema: ObjectSchema,
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
           if (u.vvalid) {
-            if (elseVis.nonEmpty) ctx.observeInvalidated(Seq(els))
-            thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
+            if (elseVis.nonEmpty) ctx.onInvalidated(Seq(els))
+            thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els are note set
           } else {
-            if (thenVis.nonEmpty) ctx.observeInvalidated(Seq(thenn))
+            if (thenVis.nonEmpty) ctx.onInvalidated(Seq(thenn))
             elseVis.foreach(_ => addUnit(units, els))
-          }            // are not set
+          }
         })
 
         units
@@ -277,8 +277,8 @@ final class Applicator private(schema: ObjectSchema,
         (k_vis._1, MapObjContext(k_vis._2.visitObject(length, true, index), b => (k_vis._1, b))))) // Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]]
       .foreach(viss =>
         insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq *), k_units => { // Vis[Seq[Nothing], OUnit]
-          val (applied, void) = k_units.partition((k, _) => propsVisited.contains(k))
-          ctx.observeInvalidated(void.map((_, u) => u))
+          val (applied, invalid) = k_units.partition((k, _) => propsVisited.contains(k))
+          ctx.onInvalidated(invalid.map((_, u) => u))
           and(DependentSchemas, applied.map((_, u) => u))
         })))
 
@@ -383,12 +383,12 @@ final class Applicator private(schema: ObjectSchema,
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
           if (u.vvalid) {
-            if (elseVis.nonEmpty) ctx.observeInvalidated(Seq(els))
-            thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
+            if (elseVis.nonEmpty) ctx.onInvalidated(Seq(els))
+            thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els are not set
           } else {
-            if (thenVis.nonEmpty) ctx.observeInvalidated(Seq(thenn))
+            if (thenVis.nonEmpty) ctx.onInvalidated(Seq(thenn))
             elseVis.foreach(_ => addUnit(units, els))
-          }            // are not set
+          }
         })
 
         units
