@@ -4,7 +4,7 @@ import org.junit.jupiter.api.{Assertions, Disabled, Test}
 import ujson.StringParser
 
 class SchemaMapperTest {
-  val uri: Uri = Uri.of("(test)")
+  val uri: Uri = Uri("(test)")
 
   @Test
   def _true(): Unit = {

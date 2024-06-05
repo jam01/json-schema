@@ -22,7 +22,7 @@ class CompositeArrVisitor[-T, +J](protected val delArrVis: ArrVisitor[T, J]*) ex
     new CompositeVisitor(delArrVis.map(_.subVisitor)*)
 
   override def visitValue(v: Seq[T], index: Int): Unit =
-    delArrVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+    delArrVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index)) // perf: extra LazyZip2 object overhead
 
   override def visitEnd(index: Int): Seq[J] = delArrVis.map(_.visitEnd(index))
 }

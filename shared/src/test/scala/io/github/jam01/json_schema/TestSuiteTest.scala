@@ -35,7 +35,7 @@ object TestSuiteTest {
       remotes.filter(Files.isRegularFile(_))
         .forEach(p => {
           //println(p.toString)
-          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri.of("file:" + p.toString), reg = res))
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri("file:" + p.toString), reg = res))
         })
     }
 
@@ -44,7 +44,7 @@ object TestSuiteTest {
       meta.filter(Files.isRegularFile(_))
         .forEach(p => {
           //println(p.toString)
-          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri.of("file:" + p.toString), reg = res))
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri("file:" + p.toString), reg = res))
         })
     }
 

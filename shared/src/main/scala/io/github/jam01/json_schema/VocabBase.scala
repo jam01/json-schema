@@ -30,18 +30,18 @@ abstract class VocabBase(schema: ObjectSchema,
   // TODO: should these be in Context instead?
   def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
     val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
-    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.currentLoc)
-    else OutputUnit(false, path.appended(kw), abs, ctx.currentLoc, Some(err))
+    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.instanceLoc)
+    else OutputUnit(false, path.appended(kw), abs, ctx.instanceLoc, Some(err))
   }
 
   def unitOf(isValid: Boolean, kw: String,
              err: Option[String], errs: collection.Seq[OutputUnit],
              annot: Option[Value], annots: collection.Seq[OutputUnit]): OutputUnit = {
     val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
-    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.currentLoc,
+    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.instanceLoc,
       annotation = if (ctx.isVerbose || ctx.config.mode == Mode.Annotation) annot else None,
       annotations = if (ctx.isVerbose) errs.appendedAll(annots) else if (ctx.config.mode == Mode.Annotation) annots.filter(a => a.hasAnnotations) else Nil)
-    else OutputUnit(false, path.appended(kw), abs, ctx.currentLoc, err, errs)
+    else OutputUnit(false, path.appended(kw), abs, ctx.instanceLoc, err, errs)
   }
   
   def addUnit(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {

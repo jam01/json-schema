@@ -1,7 +1,7 @@
 package io.github.jam01.json_schema
 
 /**
- * Reusable validation configuration
+ * Reusable validation configuration.
  *
  * @param dialect to interpret the schema being applied
  * @param output structure to return by validator visitor
@@ -10,7 +10,7 @@ package io.github.jam01.json_schema
  */
 case class Config(dialect: Dialect = Dialect._2020_12,
                   mode: Mode = Mode.Annotation,
-                  output: OutputStructure = OutputStructure.Detailed,
+                  output: OutputFormat = OutputFormat.Detailed,
                   ffast: Boolean = false,
                   keepAnnotations: Seq[String] = Nil) {
 }
@@ -19,31 +19,34 @@ object Config {
   val Default: Config = Config()
 }
 
-sealed abstract class OutputStructure {
+/**
+ * JSON Schema validation output format
+ */
+sealed abstract class OutputFormat {
   def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit
 }
 
-object OutputStructure {
-  val Flag: OutputStructure = new OutputStructure:
+object OutputFormat {
+  val Flag: OutputFormat = new OutputFormat:
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
       ???
     }
 
-  val Basic: OutputStructure = new OutputStructure:
+  val Basic: OutputFormat = new OutputFormat:
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
       ???
     }
 
-  val Detailed: OutputStructure = new OutputStructure:
+  val Detailed: OutputFormat = new OutputFormat:
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
       val (annots, errs) = units.partition(_.vvalid)
       if (errs.nonEmpty)
-        OutputUnit(false, path, None, ctx.currentLoc, errors = errs)
+        OutputUnit(false, path, None, ctx.instanceLoc, errors = errs)
       else
-        OutputUnit(true, path, None, ctx.currentLoc, annotations = annots)
+        OutputUnit(true, path, None, ctx.instanceLoc, annotations = annots)
     }
 
-  val Verbose: OutputStructure = new OutputStructure:
+  val Verbose: OutputFormat = new OutputFormat:
     override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
       Detailed.compose(path, units, ctx)
     }
@@ -66,6 +69,6 @@ object Dialect {
    * A [[Dialect]] implementing the <a href=https://json-schema.org/draft/2020-12/json-schema-core>JSON Schema 2020-12 specification</a>
    * @see <a href=https://json-schema.org/draft/2020-12/schema>JSON Schema 2020-12 meta-schema</a>
    */
-  val _2020_12: Dialect  = Dialect(Uri.of("https://json-schema.org/draft/2020-12/schema"), 
+  val _2020_12: Dialect  = Dialect(Uri("https://json-schema.org/draft/2020-12/schema"),
     Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated))
 }

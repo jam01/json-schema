@@ -17,7 +17,7 @@ class SecurityConsiderationsTest {
         |    "a": { "$ref": "#/$defs/b" },
         |    "b": { "$ref": "#/$defs/a" }
         |  }
-        |}""".stripMargin).transform(SchemaR(Uri.of("mem://test"), reg))
+        |}""".stripMargin).transform(SchemaR(Uri("mem://test"), reg))
 
     val ex1 = assertThrows(classOf[IllegalStateException],
       () => Transformer.transform(Null, SchemaValidator.of(sch, SimpleContext(reg), JsonPointer.Root, None)))

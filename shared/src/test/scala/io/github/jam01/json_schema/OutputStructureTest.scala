@@ -15,7 +15,7 @@ import scala.language.implicitConversions
 class OutputStructureTest {
   @Test
   def main(): Unit = {
-    val base = Uri.of("mem://test")
+    val base = Uri("mem://test")
 
     val osch = ObjectSchema(LinkedHashMapFactory(
       "type" -> "object",
@@ -24,7 +24,7 @@ class OutputStructureTest {
       "items" -> new ObjectSchema(LinkedHashMapFactory("type" -> "number", "maximum" -> 3), base, Some(osch), Some("/items")))
     val r = ujson.Readable
       .fromString("""["", "", 1, 2, 3, "", 4, 5]""")
-      .transform(io.github.jam01.json_schema.validator(osch, schemaRegistry = Map(Uri.of("mem://test/str") -> RefSch3)))
+      .transform(io.github.jam01.json_schema.validator(osch, schemaRegistry = Map(Uri("mem://test/str") -> RefSch3)))
 
     val res =  OutputUnitW.transform(r, StringRenderer()).toString
     //println(res)
@@ -33,7 +33,7 @@ class OutputStructureTest {
 }
 
 object OutputStructureTest {
-  val refBase: Uri = Uri.of("mem://ref")
+  val refBase: Uri = Uri("mem://ref")
   val RefSch3: ObjectSchema = ObjectSchema(LinkedHashMapFactory("type" -> Str("string")), refBase)
   RefSch3.value.addOne("items" -> new ObjectSchema(LinkedHashMapFactory("type" -> "number", "minimum" -> 5), refBase, Some(RefSch3), Some("/items")))
 

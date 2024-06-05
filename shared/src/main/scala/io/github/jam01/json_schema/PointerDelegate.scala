@@ -11,8 +11,8 @@ import scala.collection.mutable
  * For arrays, the child location will be set before fwding the subVisitor invocation. For objects, the entry location
  * will be set before fwding visitKey invocation.
  *
- * @param delegate the visitor to fwd nodes
- * @param ctx the validation context, in order to mutate the <code>insloc</code>
+ * @param delegate the visitor to fwd nodes to
+ * @param tracker the [[Tracker]] to receive reference tokens changes
  */
 class PointerDelegate[T, V](tracker: Tracker, delegate: Visitor[T, V]) extends Delegate[T, V](delegate) {
   override def visitArray(length: Int, index: Int): ArrVisitor[T, V] = new ArrVisitor[T, V] {
@@ -58,5 +58,4 @@ class PointerDelegate[T, V](tracker: Tracker, delegate: Visitor[T, V]) extends D
 trait Tracker {
   def push(ref: String): Unit
   def pop: String
-  def pointer: JsonPointer
 }

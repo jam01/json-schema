@@ -248,10 +248,10 @@ final class Applicator private(schema: ObjectSchema,
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
           if (u.vvalid) {
-            if (elseVis.nonEmpty) ctx.discardRelatives(Seq(els))
+            if (elseVis.nonEmpty) ctx.observeInvalidated(Seq(els))
             thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
           } else {
-            if (thenVis.nonEmpty) ctx.discardRelatives(Seq(thenn))
+            if (thenVis.nonEmpty) ctx.observeInvalidated(Seq(thenn))
             elseVis.foreach(_ => addUnit(units, els))
           }            // are not set
         })
@@ -278,7 +278,7 @@ final class Applicator private(schema: ObjectSchema,
       .foreach(viss =>
         insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq *), k_units => { // Vis[Seq[Nothing], OUnit]
           val (applied, void) = k_units.partition((k, _) => propsVisited.contains(k))
-          ctx.discardRelatives(void.map((_, u) => u))
+          ctx.observeInvalidated(void.map((_, u) => u))
           and(DependentSchemas, applied.map((_, u) => u))
         })))
 
@@ -383,10 +383,10 @@ final class Applicator private(schema: ObjectSchema,
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
           if (u.vvalid) {
-            if (elseVis.nonEmpty) ctx.discardRelatives(Seq(els))
+            if (elseVis.nonEmpty) ctx.observeInvalidated(Seq(els))
             thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
           } else {
-            if (thenVis.nonEmpty) ctx.discardRelatives(Seq(thenn))
+            if (thenVis.nonEmpty) ctx.observeInvalidated(Seq(thenn))
             elseVis.foreach(_ => addUnit(units, els))
           }            // are not set
         })

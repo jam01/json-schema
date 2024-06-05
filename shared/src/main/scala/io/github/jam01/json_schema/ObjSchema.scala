@@ -4,7 +4,8 @@ import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
 
 import scala.collection.{Map, Seq}
 
-private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.scala-lang.org/tour/self-types.html
+// see: https://docs.scala-lang.org/tour/self-types.html
+private[json_schema] trait ObjSchema { this: ObjectSchema =>
   def getId: Option[String] = {
     getString("$id")
   }
@@ -34,7 +35,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     value.get(k)
   }
 
-  def getMetaSchema: Option[Uri] = getString("$schema").map(s => Uri.of(s))
+  def getMetaSchema: Option[Uri] = getString("$schema").map(s => Uri(s))
   def getVocabularies: Map[String, Boolean] =
     value.get("$vocabulary") match
       case None => Map.empty
@@ -218,7 +219,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
         case ObjectSchema(value) => getOrThrow(value, key, refError(ptr, i)) 
         case Obj(value) => getOrThrow(value, key, refError(ptr, i))
         case Arr(value) =>
-          val i = key.toInt;
+          val i = key.toInt
           if (value.length <= i) throw refError(ptr, i)
           value(i)
         case x: Any => throw new IllegalArgumentException(s"unsupported type ${x.getClass.getName}")

@@ -118,7 +118,7 @@ object Arr {
   }
 }
 
-// TODO: make part of AST
+// TODO: make part of ADT
 case class Num(value: Long | Double) extends Value
 
 object Num {
@@ -148,9 +148,9 @@ case object Null extends Value {
 }
 
 sealed trait Schema extends Value {
-  def schBy(ptr: JsonPointer): Schema = {
-    if (ptr.refTokens.length == 1 && ptr.refTokens.head.isEmpty) return this
-    schBy0(ptr)
+  def schBy(subschLocation: JsonPointer): Schema = {
+    if (JsonPointer.Root == subschLocation) return this
+    schBy0(subschLocation)
   }
 
   def schBy0(ptr: JsonPointer): Schema
@@ -190,8 +190,8 @@ case object FalseSchema extends BooleanSchema {
  *
  * @param value the underlying Map of Values
  * @param docbase the base Uri for this schema
- * @param parent optionally the static parent schema
- * @param prel optionally the JSON Pointer relative to the static parent schema
+ * @param parent optionally the lexical parent schema
+ * @param prel optionally the JSON Pointer relative to the lexical parent schema
  */
 final class ObjectSchema private[json_schema](val value: LinkedHashMap[String, Value],
                         protected val docbase: Uri,

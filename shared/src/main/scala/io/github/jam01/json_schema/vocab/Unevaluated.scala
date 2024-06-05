@@ -19,9 +19,9 @@ final class Unevaluated private(schema: ObjectSchema,
     else false
   })
 
-  private final def check(other: JsonPointer, anns: Seq[String]): Boolean = {
+  private def check(other: JsonPointer, anns: Seq[String]): Boolean = {
     anns.contains(other.refTokens.last) &&
-      other.refTokens.drop(path.refTokens.size).count(anns.contains) == 1 // perf: could use an iterator to do drop + count
+      other.refTokens.drop(path.refTokens.size).count(anns.contains) == 1 // perf: use an iterator to do drop + count
   }
 
   private val itemsVis: Option[ArrVisitor[OutputUnit, collection.Seq[OutputUnit]]] = schema.getSchemaOpt(UnevaluatedItems)
@@ -51,7 +51,7 @@ final class Unevaluated private(schema: ObjectSchema,
             || evalContains.exists(is => is.arr.contains(Num(u.kwLoc.refTokens.last.toInt)))
         })
 
-        ctx.discardRelatives(void)
+        ctx.observeInvalidated(void)
         Seq(and(UnevaluatedItems, applied, Some(True)))
       }
     })
@@ -80,19 +80,19 @@ final class Unevaluated private(schema: ObjectSchema,
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
         val evaluated = getPropsAnnotations(ctx.getDependenciesFor(path))
-        val (applied, void) = units.partition(u => !evaluated.contains(u.kwLoc.refTokens.last))
-        ctx.discardRelatives(void)
+        val (applied, invalid) = units.partition(u => !evaluated.contains(u.kwLoc.refTokens.last)) // should check ins location instead?
+        ctx.observeInvalidated(invalid)
         Seq(and(UnevaluatedProperties, applied, Some(Arr.from(annot))))
       }
     })
 
-  private def getPropsAnnotations(units: collection.Seq[OutputUnit]): collection.Seq[String] = { // warning: this depends on units being on the right "branch"
-    units.withFilter(ann => PropertiesAnnotations.contains(ann.kwLoc.refTokens.last) && ann.annotation.nonEmpty)
+  private def getPropsAnnotations(units: collection.Seq[OutputUnit]): collection.Seq[String] = {
+    units.withFilter(ann => PropertiesAnnotations.contains(ann.kwLoc.refTokens.last))
       .flatMap(ann => ann.annotation.get.arr.map(v => v.str))
   }
 
-  private def getItemsAnnotations(units: collection.Seq[OutputUnit], annotName: String): collection.Seq[Value] = { // warning: this depends on units being on the right "branch"
-    units.withFilter(ann => annotName == ann.kwLoc.refTokens.last && ann.annotation.nonEmpty)
+  private def getItemsAnnotations(units: collection.Seq[OutputUnit], annotName: String): collection.Seq[Value] = {
+    units.withFilter(ann => annotName == ann.kwLoc.refTokens.last)
       .map(ann => ann.annotation.get)
   }
 
@@ -128,19 +128,6 @@ final class Unevaluated private(schema: ObjectSchema,
 object Unevaluated extends VocabBaseFactory {
   val UnevaluatedItems = "unevaluatedItems"
   val UnevaluatedProperties = "unevaluatedProperties"
-
-  private val SecondAppl = Seq(Applicator.AllOf,
-    Applicator.AnyOf,
-    Applicator.OneOf,
-    Applicator.Not,
-    Applicator.DependentSchemas)
-
-  private val DirectAppl = Seq(
-    Core._Ref, 
-    Core._DynRef,
-    Applicator.If,
-    Applicator.Then,
-    Applicator.Else)
 
   private val PropertiesAnnotations = Seq(Applicator.Properties,
     Applicator.PatternProperties,

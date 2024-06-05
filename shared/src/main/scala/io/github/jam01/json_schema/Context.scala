@@ -14,14 +14,14 @@ trait Context {
   /**
    * @return whether verbose output is required
    *
-   * @see <a href=""></a>
+   * @see <a href="https://json-schema.org/draft/2020-12/json-schema-core#name-verbose">JSON Schema § Verbose</a>
    */
-  def isVerbose: Boolean = config.output == OutputStructure.Verbose
+  def isVerbose: Boolean = config.output == OutputFormat.Verbose
 
   /**
    * @return the current location being visited within instance under validation
    */
-  def currentLoc: JsonPointer
+  def instanceLoc: JsonPointer
 
   /**
    * Retrieve the referenced schema.
@@ -75,12 +75,12 @@ trait Context {
    * This method will register that some keyword within the schema at the given location is dependent on annotation
    * [[OutputUnit]]s to be identified by the provided predicate function.
    *
-   * For example, the <i>Unevaluated</i> vocabulary would register a dependant providing the schema location where such
-   * keywords are found and a predicate that matches annotations of keywords <i>items</i>, <i>properties</i>,
-   * <i>paternProperties</i>, etc.
+   * For example, an <i>Unevaluated</i> vocabulary implementation would register a dependant providing the schema
+   * location where such keywords are found and a predicate that matches annotations of keywords <i>items</i>,
+   * <i>properties</i>, <i>paternProperties</i>, etc.
    *
    * The predicate is guaranteed to be applied to [[OutputUnit]]s that have an annotation and that are relative to the
-   * given schema location, i.e.: immediately within that location or deeper in subschemas.
+   * given schema location, i.e.: immediately within that schema or deeper in its keyword subschemas.
    *
    * @see <a href="https://github.com/orgs/json-schema-org/discussions/491">Annotations as inter-keyword communication</a>
    * @see <a href="https://github.com/orgs/json-schema-org/discussions/236">Annotation collection</a>
@@ -101,17 +101,28 @@ trait Context {
   /**
    * Publish output units produced for the given schema location.
    *
+   * This method must be called with the results of every vocabulary in order to satisfy annotation dependencies from
+   * other vocabularies in the validation scope.
+   *
    * @param schLocation of the schema where the units were produced
    * @param units that were produced
    */
-  def publish(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit
+  def observeResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit
 
   /**
-   * Discard collected annotation dependencies that are related to the given output units.
+   * Notify of output units that were found to be invalid.
+   *
+   * Validators must call this method with the [[OutputUnit]]s that were computed contingently for unpredictable
+   * validation paths that were then found to not have been taken.
+   *
+   * For example, an <i>Applicator</i> vocabulary implementation might always compute <i>if</i>,<i>then</i> and
+   * <i>else</i> as the instance is being visited, in order to assert which results should be included in the result or
+   * discarded. But if the validation for their subschemas called [[observeResults]], then the discarded branch result
+   * must be invalidated.
    *
    * @param invalid units
    */
-  def discardRelatives(invalid: collection.Seq[OutputUnit]): Unit
+  def observeInvalidated(invalid: collection.Seq[OutputUnit]): Unit
 
   /**
    * Signal the end of a schema scope.
@@ -119,7 +130,7 @@ trait Context {
    * @param schLocation the location of ending schema scope
    * @param result of the validation
    */
-  def endScope(schLocation: JsonPointer, result: OutputUnit): Unit // should be internal?
+  def observeScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit // should be internal?
 }
 
 case class SimpleContext(private val reg: collection.Map[Uri, Schema],
@@ -136,8 +147,7 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
     _pointer = JsonPointer(insloc.reverseIterator.toSeq)
     ref
   }
-  override def currentLoc: JsonPointer = _pointer
-  override def pointer: JsonPointer = _pointer
+  override def instanceLoc: JsonPointer = _pointer
 
   def getSch(schemaUri: Uri): Option[Schema] = {
     val ptr = schemaUri.toString.lastIndexOf("#/")
@@ -145,14 +155,16 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
       reg.get(schemaUri).orElse(reg.get(schemaUri.asDyn))
     else
       reg.get(schemaUri.withoutFragment)
-        .map(sch => sch.schBy(JsonPointer(schemaUri.uri.getFragment))) // using decoded fragment as map values would be unencoded
+        .map(sch => sch.schBy(JsonPointer(schemaUri.getFragment))) // using decoded fragment as map values would be unencoded
   }
 
   def getDynSch(schemaUri: Uri, origin: Vocab[?]): Option[Schema] = {
-    if (schemaUri.toString.contains("#/")) return getSch(schemaUri.asStatic)
+    val frag = schemaUri.getFragment
+    if (frag == null) return None // expecting a fragment
+    if (schemaUri.toString.contains("#/")) return getSch(schemaUri.asNonDyn) // anchor expected, try w/o dynamic
 
     val sch0 = getSch(schemaUri)
-    if (sch0.isEmpty) return getSch(schemaUri.asStatic) // trying w/o dynamic
+    if (sch0.isEmpty) return getSch(schemaUri.asNonDyn) // try w/o dynamic
 
     val dynScope = mutable.ArrayBuffer(origin.schema)
     var head = origin
@@ -162,7 +174,7 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
     }
 
     dynScope.reverseIterator
-      .map(osch => osch.base.withFragment(schemaUri.uri.getFragment, true))
+      .map(osch => osch.base.withFragment(frag, true))
       .find(dref => reg.contains(dref))
       .flatMap(dref => reg.get(dref))
   }
@@ -177,24 +189,21 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
   override def getDependenciesFor(schLocation: JsonPointer): collection.Seq[OutputUnit] =
     dependencies.getOrElse(schLocation, Nil)
 
-  override def publish(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit = {
-    if (units.isEmpty) return
+  override def observeResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit = {
+    if (dependents.isEmpty || units.isEmpty) return
 
     // this checks if any unit satisfies dependants and registers the dependency
     dependents.withFilter((depPath, _) => depPath.isRelative(schLocation)) // filtering filters relative to given path
-      .flatMap((depPath, preds) => preds.map(p => (depPath, p)))        // flattening (path, filters) to (path, filter)
+      .flatMap((depPath, preds) => preds.map(p => (depPath, p)))           // flattening (path, filters) to (path, filter)
       .foreach((dependent, fltr) => units
-        .filter(u => u.vvalid && u.annotation.nonEmpty && fltr(u))      // applying filter to every unit
-        .foreach(u => addDependencyFor(dependent, u)))                  // registering dependency
+        .filter(u => u.vvalid && u.annotation.nonEmpty && fltr(u))         // applying filter to every unit
+        .foreach(u => addDependencyFor(dependent, u)))                     // registering dependency
 
     // this discards registered dependencies that are found to be relative to an error
-    if (dependencies.nonEmpty) {
-      val inv = units.filter(u => !u.vvalid)
-      discardRelatives(inv)
-    }
+    if (dependencies.nonEmpty) observeInvalidated(units.filter(u => !u.vvalid))
   }
 
-  override def discardRelatives(invalid: collection.Seq[OutputUnit]): Unit = {
+  override def observeInvalidated(invalid: collection.Seq[OutputUnit]): Unit = {
     dependencies.values.foreach(deps => {
       deps.filterInPlace(dep => !invalid.exists(i => i.kwLoc.isRelative(dep.kwLoc)))
     })
@@ -204,11 +213,11 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
     dependencies.getOrElseUpdate(path, mutable.ArrayBuffer()).addOne(unit)
   }
 
-  override def endScope(schLocation: JsonPointer, result: OutputUnit): Unit = {
+  override def observeScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit = {
     dependents.remove(schLocation)
     dependencies.remove(schLocation)
 
-    if (!result.vvalid) discardRelatives(Seq(result))
+    if (!result.vvalid) observeInvalidated(Seq(result))
   }
 }
 
