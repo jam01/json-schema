@@ -7,7 +7,7 @@ import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class Core private(schema: ObjectSchema,
+final class Core private(schema: ObjectSchema,
                    ctx: Context,
                    path: JsonPointer,
                    dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {

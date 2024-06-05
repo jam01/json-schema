@@ -8,12 +8,12 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class Unevaluated private(schema: ObjectSchema,
+final class Unevaluated private(schema: ObjectSchema,
                           ctx: Context,
                           path: JsonPointer,
                           dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
 
-  ctx.addDynDependent(path, unit => {
+  ctx.registerDependant(path, unit => {
     if (schema.value.contains(UnevaluatedItems)) check(unit.kwLoc, ItemsAnnotations)
     else if (schema.value.contains(UnevaluatedProperties)) check(unit.kwLoc, PropertiesAnnotations)
     else false
@@ -40,10 +40,10 @@ class Unevaluated private(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), Applicator.Items)
-        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), Applicator.PrefixItems)
-        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), Applicator.Contains)
-        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), UnevaluatedItems)
+        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(path), Applicator.Items)
+        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(path), Applicator.PrefixItems)
+        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(path), Applicator.Contains)
+        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(path), UnevaluatedItems)
 
         val (applied, void) = units.partition(u => !{
           evalItems.contains(True) || evalUneval.contains(True)
@@ -51,7 +51,7 @@ class Unevaluated private(schema: ObjectSchema,
             || evalContains.exists(is => is.arr.contains(Num(u.kwLoc.refTokens.last.toInt)))
         })
 
-        ctx.asInstanceOf[SimpleContext].discardDynComputed(void)
+        ctx.discardRelatives(void)
         Seq(and(UnevaluatedItems, applied, Some(True)))
       }
     })
@@ -79,9 +79,9 @@ class Unevaluated private(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evaluated = getPropsAnnotations(ctx.dependenciesFor(path))
+        val evaluated = getPropsAnnotations(ctx.getDependenciesFor(path))
         val (applied, void) = units.partition(u => !evaluated.contains(u.kwLoc.refTokens.last))
-        ctx.asInstanceOf[SimpleContext].discardDynComputed(void)
+        ctx.discardRelatives(void)
         Seq(and(UnevaluatedProperties, applied, Some(Arr.from(annot))))
       }
     })

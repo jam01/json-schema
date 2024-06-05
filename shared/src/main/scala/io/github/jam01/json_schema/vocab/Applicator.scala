@@ -9,7 +9,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
 
-class Applicator private(schema: ObjectSchema,
+final class Applicator private(schema: ObjectSchema,
                          ctx: Context,
                          path: JsonPointer,
                          dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
@@ -248,10 +248,10 @@ class Applicator private(schema: ObjectSchema,
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
           if (u.vvalid) {
-            if (elseVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(els))
+            if (elseVis.nonEmpty) ctx.discardRelatives(Seq(els))
             thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
           } else {
-            if (thenVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(thenn))
+            if (thenVis.nonEmpty) ctx.discardRelatives(Seq(thenn))
             elseVis.foreach(_ => addUnit(units, els))
           }            // are not set
         })
@@ -278,7 +278,7 @@ class Applicator private(schema: ObjectSchema,
       .foreach(viss =>
         insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq *), k_units => { // Vis[Seq[Nothing], OUnit]
           val (applied, void) = k_units.partition((k, _) => propsVisited.contains(k))
-          ctx.asInstanceOf[SimpleContext].discardDynComputed(void.map((_, u) => u))
+          ctx.discardRelatives(void.map((_, u) => u))
           and(DependentSchemas, applied.map((_, u) => u))
         })))
 
@@ -383,10 +383,10 @@ class Applicator private(schema: ObjectSchema,
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
           if (u.vvalid) {
-            if (elseVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(els))
+            if (elseVis.nonEmpty) ctx.discardRelatives(Seq(els))
             thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
           } else {
-            if (thenVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(thenn))
+            if (thenVis.nonEmpty) ctx.discardRelatives(Seq(thenn))
             elseVis.foreach(_ => addUnit(units, els))
           }            // are not set
         })

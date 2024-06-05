@@ -1,7 +1,17 @@
 package io.github.jam01.json_schema
 
+/**
+ * A JSON Pointer
+ *
+ * Used to identify specific values within a JSON document
+ *
+ * @see <a href=https://json-schema.org/draft/2020-12/json-schema-core#name-fragment-identifiers>JSON Schema § Fragment Identifiers</a>
+ * @see <a href=https://www.rfc-editor.org/rfc/rfc6901.html>JSON Pointer</a>
+ *
+ * @param refTokens reference tokens for this pointer
+ */
 final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
-  if (refTokens.isEmpty) throw new IllegalArgumentException("invalid JSON Pointer")
+  if (refTokens.isEmpty) throw new IllegalArgumentException("Invalid JSON Pointer")
 
   def appended(refToks: String*): JsonPointer = JsonPointer(refTokens.appendedAll(refToks))
 

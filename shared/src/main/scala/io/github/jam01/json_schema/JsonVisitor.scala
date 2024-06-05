@@ -2,6 +2,9 @@ package io.github.jam01.json_schema
 
 import upickle.core.{Abort, ObjVisitor, Visitor}
 
+/**
+ * A [[Visitor]] specialized to work with JSON types. Forwards the not-JSON-related methods to their JSON equivalents.
+ */
 trait JsonVisitor[-T, +J] extends Visitor[T, J] {
   protected def expectedMsg = "Expected null, boolean, number, string, object or array"
 

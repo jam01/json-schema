@@ -5,8 +5,10 @@ import upickle.core.LinkedHashMap
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
 
-/*
- * based on com.lihaoyi:ujson_3:3.3.1 Value.scala
+/**
+ * An ADT representing JSON Schema values
+ *
+ * @see <a href="https://github.com/com-lihaoyi/upickle/blob/3.3.1/ujson/src/ujson/Value.scala">ujson.Value</a>
  */
 sealed trait Value {
   def value: Any
@@ -180,6 +182,17 @@ case object FalseSchema extends BooleanSchema {
 // https://users.scala-lang.org/t/refactoring-class-hierarchy-into-adt/6997
 // https://contributors.scala-lang.org/t/pre-sip-sealed-enumerating-allowed-sub-types/3768
 // https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
+
+/**
+ * A JSON Schema Object
+ *
+ * @see <a href="https://json-schema.org/draft/2020-12/json-schema-core#section-9.1.1">JSON Schema § Initial Base URI</a>
+ *
+ * @param value the underlying Map of Values
+ * @param docbase the base Uri for this schema
+ * @param parent optionally the static parent schema
+ * @param prel optionally the JSON Pointer relative to the static parent schema
+ */
 final class ObjectSchema private[json_schema](val value: LinkedHashMap[String, Value],
                         protected val docbase: Uri,
                         protected val parent: Option[ObjectSchema] = None,

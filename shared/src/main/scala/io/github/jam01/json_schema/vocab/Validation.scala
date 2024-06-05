@@ -9,7 +9,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
 
-class Validation private(schema: ObjectSchema,
+final class Validation private(schema: ObjectSchema,
                          ctx: Context,
                          path: JsonPointer,
                          dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {

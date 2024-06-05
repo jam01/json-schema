@@ -17,8 +17,8 @@ class TestSuiteTest {
   @MethodSource(value = Array("args_provider"))
   def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema): Unit = {
 
-    val dial = json_schema.tryDialect(sch, TestSuiteTest.Registry).getOrElse(Dialect._2020_12)
-    val res = data.transform(json_schema.validator(sch, Registry, Config(dial)))
+    val dial = json_schema.tryDialect(sch, registry = TestSuiteTest.Registry).getOrElse(Dialect._2020_12)
+    val res = data.transform(json_schema.validator(sch, Config(dial), Registry))
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
