@@ -4,7 +4,6 @@ import io.github.jam01.json_schema.*
 import io.github.jam01.json_schema.vocab.Unevaluated.*
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 

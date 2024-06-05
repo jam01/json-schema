@@ -1,15 +1,11 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.OutputStructureTest.*
-import org.junit.jupiter.api.Assertions.{assertFalse, assertTrue}
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.parallel.Resources
 import org.skyscreamer.jsonassert.JSONAssert
 import ujson.StringRenderer
 
 import java.nio.file.{Files, Paths}
-import java.util.UUID
-import scala.collection.mutable
 import scala.language.implicitConversions
 
 class OutputStructureTest {

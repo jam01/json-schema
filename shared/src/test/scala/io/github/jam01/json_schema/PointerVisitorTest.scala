@@ -4,7 +4,6 @@ import org.junit.jupiter.api.{Assertions, Disabled, Test}
 import ujson.StringParser
 import upickle.core.{ArrVisitor, ObjVisitor}
 
-import scala.collection.mutable
 import scala.language.implicitConversions
 
 class PointerVisitorTest {

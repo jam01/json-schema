@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Assertions.{assertFalse, assertTrue}
 import org.junit.jupiter.api.Test
 import upickle.core.Visitor
 
-import scala.collection.mutable
 import scala.language.implicitConversions
 
 class ObjectSchemaValidatorTest {

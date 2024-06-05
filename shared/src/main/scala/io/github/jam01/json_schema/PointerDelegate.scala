@@ -3,8 +3,6 @@ package io.github.jam01.json_schema
 import upickle.core.Visitor.Delegate
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-import scala.collection.mutable
-
 /**
  * A delegating visitor that keeps track of the current node visited as a JSON Pointer.
  *
