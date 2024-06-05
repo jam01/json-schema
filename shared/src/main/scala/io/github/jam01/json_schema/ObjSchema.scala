@@ -9,9 +9,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
     getString("$id")
   }
 
-  lazy val location: Uri = {
-    val parentRel = parent.map(p => p.location).map(u => u.appendedFragment(prel.get))
-    getId.map(id => base.resolve(id)).getOrElse(parentRel.getOrElse(base))
+  lazy val location: Uri = { 
+    getId.map(id => base.resolve(id))
+      .getOrElse(parent.map(p => p.location)
+        .map(u => u.appendedFragment(prel.get))
+        .getOrElse(base)) 
   }
 
   lazy val base: Uri = {
@@ -24,6 +26,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema => // https://docs.sca
   }
 
   def getDynRef: Option[Uri] = {
+    // see: https://github.com/json-schema-org/json-schema-spec/issues/1140
     getString("$dynamicRef").map(dynref => base.resolve(dynref, true))
   }
 

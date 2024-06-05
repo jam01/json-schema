@@ -4,7 +4,7 @@ import upickle.core.Visitor.MapReader
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 object SchemaValidator {
-  def of(sch: Schema, ctx: Context, path: JsonPointer, dynParent: Option[VocabBase]): Visitor[?, OutputUnit] = {
+  def of(sch: Schema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Visitor[?, OutputUnit] = {
     sch match
       case BooleanSchema(bool) => new BooleanSchemaValidator(bool, ctx, path)
       case osch: ObjectSchema =>
@@ -13,11 +13,14 @@ object SchemaValidator {
           .map(v => v.from(osch, ctx, path, dynParent))
 
         val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
-          new PeekCompositeVisitor(u => ctx.add(path, u), () => ctx.clear(path), vocabs*) // registers/clears sibling annotations
+//          new TapCompositeVisitor(units => (), vocabs*)
+          new TapCompositeVisitor(units => ctx.publish(path, units), vocabs*)
 
         new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
-          override def mapNonNullsFunction(v: Seq[collection.Seq[OutputUnit]]): OutputUnit =
-            ctx.config.struct.compose(path, v.flatten, ctx)
+          override def mapNonNullsFunction(unitss: Seq[collection.Seq[OutputUnit]]): OutputUnit =
+            val res = ctx.config.struct.compose(path, unitss.flatten, ctx)
+            ctx.endDynScope(path, res)
+            res
         }
   }
 }

@@ -24,7 +24,7 @@ sealed class OutputUnit(val valid: Boolean,
                         val annotations: collection.Seq[OutputUnit] = Nil) { // TODO: consider T | Null
 
   def hasAnnotations: Boolean = annotation.nonEmpty ||
-    (annotations.nonEmpty && annotations.forall(u => u.hasAnnotations))
+    (annotations.nonEmpty && annotations.exists(u => u.hasAnnotations))
 
   def vvalid: Boolean = valid
 }

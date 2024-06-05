@@ -4,6 +4,7 @@ import io.github.jam01.json_schema.*
 import io.github.jam01.json_schema.vocab.Unevaluated.*
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -11,6 +12,17 @@ class Unevaluated private(schema: ObjectSchema,
                           ctx: Context,
                           path: JsonPointer,
                           dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
+
+  ctx.addDynDependent(path, unit => {
+    if (schema.value.contains(UnevaluatedItems)) check(unit.kwLoc, ItemsAnnotations)
+    else if (schema.value.contains(UnevaluatedProperties)) check(unit.kwLoc, PropertiesAnnotations)
+    else false
+  })
+
+  private final def check(other: JsonPointer, anns: Seq[String]): Boolean = {
+    anns.contains(other.refTokens.last) &&
+      other.refTokens.drop(path.refTokens.size).count(anns.contains) == 1 // perf: could use an iterator to do drop + count
+  }
 
   private val itemsVis: Option[ArrVisitor[OutputUnit, collection.Seq[OutputUnit]]] = schema.getSchemaOpt(UnevaluatedItems)
     .map(sch => new ArrVisitor[OutputUnit, collection.Seq[OutputUnit]] {
@@ -28,17 +40,19 @@ class Unevaluated private(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), Applicator.Items)
-        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), Applicator.PrefixItems)
-        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), Applicator.Contains)
-        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)), UnevaluatedItems)
+        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), Applicator.Items)
+        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), Applicator.PrefixItems)
+        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), Applicator.Contains)
+        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.dependenciesFor(path), UnevaluatedItems)
 
-        val saa = units.filterNot(u => {
-          evalItems.contains(True) || evalUneval.contains(True) || evalPrefixItems.exists(n => Validation.gteq(n.num, u.kwLoc.refTokens.last.toLong))
+        val (applied, void) = units.partition(u => !{
+          evalItems.contains(True) || evalUneval.contains(True)
+            || evalPrefixItems.exists(n => Validation.gteq(n.num, u.kwLoc.refTokens.last.toLong))
             || evalContains.exists(is => is.arr.contains(Num(u.kwLoc.refTokens.last.toInt)))
         })
 
-        Seq(and(UnevaluatedItems, saa, Some(True)))
+        ctx.asInstanceOf[SimpleContext].discardDynComputed(void)
+        Seq(and(UnevaluatedItems, applied, Some(True)))
       }
     })
   private val propsVis: Option[ObjVisitor[OutputUnit, collection.Seq[OutputUnit]]] = schema.getSchemaOpt(UnevaluatedProperties)
@@ -65,27 +79,21 @@ class Unevaluated private(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val evaluated = getPropsAnnotations(ctx.internal(path).filter(ann => path.isRelative(ann.kwLoc)))
-        Seq(and(UnevaluatedProperties, units.filterNot(u => evaluated.contains(u.kwLoc.refTokens.last)), Some(Arr.from(annot))))
+        val evaluated = getPropsAnnotations(ctx.dependenciesFor(path))
+        val (applied, void) = units.partition(u => !evaluated.contains(u.kwLoc.refTokens.last))
+        ctx.asInstanceOf[SimpleContext].discardDynComputed(void)
+        Seq(and(UnevaluatedProperties, applied, Some(Arr.from(annot))))
       }
     })
 
   private def getPropsAnnotations(units: collection.Seq[OutputUnit]): collection.Seq[String] = { // warning: this depends on units being on the right "branch"
     units.withFilter(ann => PropertiesAnnotations.contains(ann.kwLoc.refTokens.last) && ann.annotation.nonEmpty)
       .flatMap(ann => ann.annotation.get.arr.map(v => v.str))
-      .appendedAll(units.withFilter(ann => SecondAppl.contains(ann.kwLoc.refTokens.last))
-          .flatMap(ann => ann.annotations.flatMap(ann0 => getPropsAnnotations(ann0.annotations))))
-      .appendedAll(units.withFilter(ann => DirectAppl.contains(ann.kwLoc.refTokens.last))
-          .flatMap(ann => getPropsAnnotations(ann.annotations)))
   }
 
-  private def getItemsAnnotations(units: collection.Seq[OutputUnit], annNames: String): collection.Seq[Value] = { // warning: this depends on units being on the right "branch"
-    units.withFilter(ann => annNames == ann.kwLoc.refTokens.last && ann.annotation.nonEmpty)
+  private def getItemsAnnotations(units: collection.Seq[OutputUnit], annotName: String): collection.Seq[Value] = { // warning: this depends on units being on the right "branch"
+    units.withFilter(ann => annotName == ann.kwLoc.refTokens.last && ann.annotation.nonEmpty)
       .map(ann => ann.annotation.get)
-      .appendedAll(units.withFilter(ann => SecondAppl.contains(ann.kwLoc.refTokens.last))
-          .flatMap(ann => ann.annotations.flatMap(ann0 => getItemsAnnotations(ann0.annotations, annNames))))
-      .appendedAll(units.withFilter(ann => DirectAppl.contains(ann.kwLoc.refTokens.last))
-          .flatMap(ann => getItemsAnnotations(ann.annotations, annNames)))
   }
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = Nil

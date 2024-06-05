@@ -128,30 +128,24 @@ object StringVisitor extends SimpleVisitor[Any, String] {
 }
 
 
-private[json_schema] final class PeekCompositeVisitor[-T, +J](peek: J => J, eff: () => Unit, delegates: Visitor[T, J]*)
+private[json_schema] final class TapCompositeVisitor[-T, +J](tap: J => Unit, delegates: Visitor[T, J]*)
   extends JsonVisitor[Seq[T], Seq[J]] {
-  def visitNull(index: Int): Seq[J] = {
-    val u = delegates.map(d => peek(d.visitNull(index))); eff.apply(); u }
-  def visitFalse(index: Int): Seq[J] = {
-    val u = delegates.map(d => peek(d.visitFalse(index))); eff.apply(); u }
-  def visitTrue(index: Int): Seq[J] = {
-    val u = delegates.map(d => peek(d.visitTrue(index))); eff.apply(); u }
-  def visitFloat64(d: Double, index: Int): Seq[J] = {
-    val u = delegates.map(dv => peek(dv.visitFloat64(d, index))); eff.apply(); u }
-  def visitInt64(i: Long, index: Int): Seq[J] = {
-    val u = delegates.map(d => peek(d.visitInt64(i, index))); eff.apply(); u }
-  def visitString(s: CharSequence, index: Int): Seq[J] = {
-    val u = delegates.map(d => peek(d.visitString(s, index))); eff.apply(); u }
+  def visitNull(index: Int): Seq[J] = delegates.map(v => { val r = v.visitNull(index); tap(r); r })
+  def visitFalse(index: Int): Seq[J] = delegates.map(v => { val r = v.visitFalse(index); tap(r); r })
+  def visitTrue(index: Int): Seq[J] = delegates.map(v => { val r = v.visitTrue(index); tap(r); r })
+  def visitFloat64(d: Double, index: Int): Seq[J] = delegates.map(v => { val r = v.visitFloat64(d, index); tap(r); r })
+  def visitInt64(i: Long, index: Int): Seq[J] = delegates.map(v => { val r = v.visitInt64(i, index); tap(r); r })
+  def visitString(s: CharSequence, index: Int): Seq[J] = delegates.map(v => { val r = v.visitString(s, index); tap(r); r })
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], Seq[J]] =
     new CompositeArrVisitor[T, J](delegates.map(_.visitArray(length, index)) *) {
-      override def visitEnd(index: Int): Seq[J] = {
-        val u = delArrVis.map(d => peek(d.visitEnd(index))); eff.apply(); u }
+      override def visitEnd(index: Int): Seq[J] = 
+        delArrVis.map(v => { val r = v.visitEnd(index); tap(r); r })
     }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], Seq[J]] =
     new CompositeObjVisitor[T, J](delegates.map(_.visitObject(length, true, index)) *) {
-      override def visitEnd(index: Int): Seq[J] = {
-        val u = delObjVis.map(d => peek(d.visitEnd(index))); eff.apply(); u }
+      override def visitEnd(index: Int): Seq[J] = 
+        delObjVis.map(v => { val r = v.visitEnd(index); tap(r); r })
     }
 }

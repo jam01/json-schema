@@ -247,8 +247,13 @@ class Applicator private(schema: ObjectSchema,
 
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
-          if (u.vvalid) thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
-          else elseVis.foreach(_ => addUnit(units, els))            // are not set
+          if (u.vvalid) {
+            if (elseVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(els))
+            thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
+          } else {
+            if (thenVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(thenn))
+            elseVis.foreach(_ => addUnit(units, els))
+          }            // are not set
         })
 
         units
@@ -272,7 +277,9 @@ class Applicator private(schema: ObjectSchema,
         (k_vis._1, MapObjContext(k_vis._2.visitObject(length, true, index), b => (k_vis._1, b))))) // Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]]
       .foreach(viss =>
         insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq *), k_units => { // Vis[Seq[Nothing], OUnit]
-          and(DependentSchemas, k_units.filter((k, _) => propsVisited.contains(k)).map((_, u) => u))
+          val (applied, void) = k_units.partition((k, _) => propsVisited.contains(k))
+          ctx.asInstanceOf[SimpleContext].discardDynComputed(void.map((_, u) => u))
+          and(DependentSchemas, applied.map((_, u) => u))
         })))
 
     val insVisitor: CompositeObjVisitor[Nothing, OutputUnit] = new CompositeObjVisitor(insVisitors.toSeq*) // ObjVisitor[Seq[Nothing], Seq[OutputUnit]]
@@ -375,8 +382,13 @@ class Applicator private(schema: ObjectSchema,
 
         ifVis.foreach(_ => {
           val u = iff; addUnit(units, OutputUnit.info(u))
-          if (u.vvalid) thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
-          else elseVis.foreach(_ => addUnit(units, els))            // are not set
+          if (u.vvalid) {
+            if (elseVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(els))
+            thenVis.foreach(_ => addUnit(units, thenn)) // warning these could fail if for some reason iff/thenn/els
+          } else {
+            if (thenVis.nonEmpty) ctx.asInstanceOf[SimpleContext].discardDynComputed(Seq(thenn))
+            elseVis.foreach(_ => addUnit(units, els))
+          }            // are not set
         })
 
         units
@@ -403,12 +415,6 @@ class Applicator private(schema: ObjectSchema,
   private def anyOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
     val (annots, errs) = units.partition(_.vvalid)
     unitOf(annots.nonEmpty, kw, None, errs, None, annots)
-  }
-
-  private def if_then_else(iff: OutputUnit, thenn: Option[OutputUnit], els: Option[OutputUnit]): OutputUnit = {
-    if (iff.vvalid && thenn.nonEmpty) thenn.get
-    else if (!iff.vvalid && els.nonEmpty) els.get
-    else throw new IllegalArgumentException("Should not happen")
   }
 
   private def not(n: OutputUnit): OutputUnit = {

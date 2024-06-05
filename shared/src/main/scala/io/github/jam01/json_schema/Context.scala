@@ -18,9 +18,10 @@ trait Context {
       case Some(sch) => sch
       case None => throw new IllegalArgumentException(s"Unavailable schema $loc")
 
-  def internal(dynpath: JsonPointer): collection.Seq[OutputUnit]
-  def add(dynpath: JsonPointer, units: collection.Seq[OutputUnit]): collection.Seq[OutputUnit]
-  def clear(dynpath: JsonPointer): Unit
+  def addDynDependent(path: JsonPointer, pred: OutputUnit => Boolean): Unit
+  def dependenciesFor(path: JsonPointer): collection.Seq[OutputUnit]
+  def publish(path: JsonPointer, units: collection.Seq[OutputUnit]): Unit // should be internal
+  def endDynScope(path: JsonPointer, unit: OutputUnit): Unit
 }
 
 case class SimpleContext(private val reg: collection.Map[Uri, Schema],
@@ -68,17 +69,47 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
       .flatMap(dref => reg.get(dref))
   }
 
-  private val int: mutable.Map[JsonPointer, mutable.Buffer[OutputUnit]] = mutable.Map()
-  override def internal(dynpath: JsonPointer): collection.Seq[OutputUnit] = int.getOrElse(dynpath, Nil)
-  def add(dynpath: JsonPointer, units: collection.Seq[OutputUnit]): collection.Seq[OutputUnit] = {
-    if (units.isEmpty) return units
-
-    val appended = int.getOrElse(dynpath, mutable.ArrayBuffer()).addAll(units)
-    int.put(dynpath, appended)
-    units
+  private val dependents: mutable.Map[JsonPointer, mutable.Buffer[OutputUnit => Boolean]] = mutable.Map()
+  private val dependencies: mutable.Map[JsonPointer, mutable.ArrayBuffer[OutputUnit]] = mutable.Map()
+  
+  override def addDynDependent(path: JsonPointer, pred: OutputUnit => Boolean): Unit = {
+    dependents.getOrElseUpdate(path, mutable.ArrayBuffer()).addOne(pred)
   }
 
-  def clear(dynpath: JsonPointer): Unit = int.remove(dynpath)
+  override def dependenciesFor(path: JsonPointer): collection.Seq[OutputUnit] =
+    dependencies.getOrElse(path, Nil)
+
+  override def publish(path: JsonPointer, units: collection.Seq[OutputUnit]): Unit = {
+    if (units.isEmpty) return
+
+    dependents.withFilter((depPath, _) => depPath.isRelative(path)) // filtering filters relative to given path
+      .flatMap((depPath, preds) => preds.map(p => (depPath, p)))    // flattening (path, filters) to (path, filter)
+      .foreach((dependent, fltr) => units
+        .filter(u => u.vvalid && u.annotation.nonEmpty && fltr(u))  // applying filter to every unit
+        .foreach(u => addDependencyFor(dependent, u)))              // registering dependency
+
+    if (dependencies.nonEmpty) {
+      val inv = units.filter(u => !u.vvalid)
+      discardDynComputed(inv)
+    }
+  }
+
+  def discardDynComputed(inv: collection.Seq[OutputUnit]): Unit = {
+    dependencies.values.foreach(deps => {
+      deps.filterInPlace(dep => !inv.exists(i => i.kwLoc.isRelative(dep.kwLoc)))
+    })
+  }
+
+  def addDependencyFor(path: JsonPointer, unit: OutputUnit): Unit = {
+    dependencies.getOrElseUpdate(path, mutable.ArrayBuffer()).addOne(unit)
+  }
+
+  override def endDynScope(path: JsonPointer, unit: OutputUnit): Unit = {
+    dependents.remove(path)
+    dependencies.remove(path)
+
+    if (!unit.vvalid) discardDynComputed(Seq(unit))
+  }
 }
 
 object SimpleContext {
