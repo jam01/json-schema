@@ -27,7 +27,6 @@ abstract class VocabBase(schema: ObjectSchema,
   // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
   if (countRefs > 32) throw new IllegalStateException("depth limit exceeded")
 
-  // TODO: should these be in Context instead?
   def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
     val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
     if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.instanceLoc)

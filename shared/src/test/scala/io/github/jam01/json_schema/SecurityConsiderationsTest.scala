@@ -20,7 +20,7 @@ class SecurityConsiderationsTest {
         |}""".stripMargin).transform(SchemaR(Uri("mem://test"), reg))
 
     val ex1 = assertThrows(classOf[IllegalStateException],
-      () => Transformer.transform(Null, SchemaValidator.of(sch, SimpleContext(reg), JsonPointer.Root, None)))
+      () => Transformer.transform(Null, SchemaValidator.of(sch, DefaultContext(reg), JsonPointer.Root, None)))
 
     assertTrue(ex1.getMessage.contains("depth limit exceeded"))
   }

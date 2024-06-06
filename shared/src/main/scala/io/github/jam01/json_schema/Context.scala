@@ -16,7 +16,7 @@ trait Context {
    *
    * @see <a href="https://json-schema.org/draft/2020-12/json-schema-core#name-verbose">JSON Schema § Verbose</a>
    */
-  def isVerbose: Boolean = config.output == OutputFormat.Verbose
+  def isVerbose: Boolean = config.format == OutputFormat.Verbose
 
   /**
    * @return the current location being visited within instance under validation
@@ -133,8 +133,8 @@ trait Context {
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit // should be internal?
 }
 
-case class SimpleContext(private val reg: collection.Map[Uri, Schema],
-                         config: Config = Config.Default) extends Context with Tracker {
+case class DefaultContext(private val reg: collection.Map[Uri, Schema],
+                          config: Config = Config.Default) extends Context with Tracker {
 
   private val insloc = mutable.Stack[String]("")
   private var _pointer = JsonPointer.Root
@@ -221,6 +221,6 @@ case class SimpleContext(private val reg: collection.Map[Uri, Schema],
   }
 }
 
-object SimpleContext {
-  val Empty: SimpleContext = SimpleContext(Map.empty[Uri, Schema], Config.Default)
+object DefaultContext {
+  val Empty: DefaultContext = DefaultContext(Map.empty[Uri, Schema], Config.Default)
 }

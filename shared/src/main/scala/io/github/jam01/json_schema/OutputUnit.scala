@@ -15,9 +15,9 @@ import upickle.core.{Transformer, Visitor}
  * @param annotations produced by a successful validation
  */
 sealed class OutputUnit(val valid: Boolean,
-                        val kwLoc: JsonPointer,
-                        val absKwLoc: Option[Uri],
-                        val insLoc: JsonPointer,
+                        val kwLoc: JsonPointer | Null,
+                        val absKwLoc: Option[Uri] | Null,
+                        val insLoc: JsonPointer | Null,
                         val error: Option[String] = None,
                         val errors: collection.Seq[OutputUnit] = Nil,
                         val annotation: Option[Value] = None, // TODO: should allow schema?
@@ -29,22 +29,31 @@ sealed class OutputUnit(val valid: Boolean,
   def vvalid: Boolean = valid
 }
 
-final class InfoUnit(_valid: Boolean,
-                          _kwLoc: JsonPointer,
-                          _absKwLoc: Option[Uri],
-                          _insLoc: JsonPointer,
-                          _error: Option[String] = None,
-                          _errors: collection.Seq[OutputUnit] = Nil,
-                          _annotation: Option[Value] = None,
-                          _annotations: collection.Seq[OutputUnit] = Nil) extends OutputUnit(_valid, _kwLoc, _absKwLoc, _insLoc, _error, _errors, _annotation, _annotations) {
+/**
+ * Special informational OutputUnit that has no direct effect on the overall validation, e.g.: results of the <i>if</>
+ * keyword.
+ */
+final class InfoUnit(_valid: Boolean, _kwLoc: JsonPointer, _absKwLoc: Option[Uri], _insLoc: JsonPointer,
+                          _error: Option[String] = None, _errors: collection.Seq[OutputUnit] = Nil,
+                          _annotation: Option[Value] = None, _annotations: collection.Seq[OutputUnit] = Nil) extends
+  OutputUnit(_valid, _kwLoc, _absKwLoc, _insLoc, _error, _errors, _annotation, _annotations) {
   override val vvalid: Boolean = true
 }
 
 object OutputUnit {
-  def info(u: OutputUnit): OutputUnit = InfoUnit(u.valid, u.kwLoc, u.absKwLoc, u.insLoc,
-    u.error, u.errors, u.annotation, u.annotations)
+  /**
+   * Transform the given OutputUnit into an informational one.
+   *
+   * @param unit the unit to transform
+   * @return the [[InfoUnit]] equivalent
+   */
+  def info(unit: OutputUnit): OutputUnit = InfoUnit(unit.valid, unit.kwLoc, unit.absKwLoc, unit.insLoc,
+    unit.error, unit.errors, unit.annotation, unit.annotations)
 }
 
+/**
+ * A writer of OutputUnits
+ */
 object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
   override def transform[T](j: OutputUnit, f: Visitor[?, T]): T = {
     val ov = f.visitObject(-1, true, -1).narrow
@@ -87,5 +96,42 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
     }
 
     ov.visitEnd(-1)
+  }
+}
+
+/**
+ * JSON Schema validation output format
+ */
+sealed abstract class OutputFormat {
+  def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit
+}
+
+object OutputFormat {
+  val Flag: OutputFormat = new OutputFormat {
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      ???
+    }
+  }
+
+  val Basic: OutputFormat = new OutputFormat{
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      ???
+    }
+  }
+
+  val Detailed: OutputFormat = new OutputFormat {
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      val (annots, errs) = units.partition(_.vvalid)
+      if (errs.nonEmpty)
+        OutputUnit(false, path, None, ctx.instanceLoc, errors = errs)
+      else
+        OutputUnit(true, path, None, ctx.instanceLoc, annotations = annots)
+    }
+  }
+
+  val Verbose: OutputFormat = new OutputFormat{
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], ctx: Context): OutputUnit = {
+      ???
+    }
   }
 }

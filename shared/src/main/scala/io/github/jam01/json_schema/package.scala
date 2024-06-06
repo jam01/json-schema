@@ -12,7 +12,7 @@ package object json_schema {
    * 
    * Visiting this validator results in the validation results for the visited structure.
    *
-   * @param schema schema to apply
+   * @param schema the schema to apply
    * @param config validation configuration
    * @param schemaRegistry registry to lookup referenced schemas
    * @return the schema validator visitor
@@ -20,9 +20,31 @@ package object json_schema {
   def validator(schema: Schema,
                 config: Config = Config.Default,
                 schemaRegistry: collection.Map[Uri, Schema] = Map.empty): Visitor[?, OutputUnit] = {
-    val ctx = SimpleContext(schemaRegistry, config)
+    val ctx = DefaultContext(schemaRegistry, config)
     PointerDelegate(ctx, SchemaValidator.of(schema, ctx, JsonPointer.Root, None))
-  } // perf: when Mode.Flag, don't need pointer tracker
+  } // perf: when Format.Flag, don't need pointer tracker
+
+  /**
+   * Reusable validation configuration.
+   *
+   * @param dialect         to interpret the schema being applied
+   * @param format          structure to return by validator visitor
+   * @param ffast           whether to fail fast, i.e.: at first error vs fully validate the structure
+   * @param keepAnnotations list of JSON schema annotations to keep in output
+   */
+  case class Config(dialect: Dialect = Dialect._2020_12,
+                    format: OutputFormat = OutputFormat.Detailed,
+                    ffast: Boolean = false,
+                    keepAnnotations: Seq[String] = Nil) {
+
+    def ifAllowed(kw: String, ann: Value): Option[Value] =
+      if (keepAnnotations.contains(kw)) Some(ann)
+      else None
+  }
+
+  object Config {
+    val Default: Config = Config()
+  }
 
   /**
    * Creates a dialect for the given schema.

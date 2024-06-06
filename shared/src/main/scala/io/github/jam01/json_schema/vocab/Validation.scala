@@ -281,10 +281,10 @@ object Validation extends VocabBaseFactory {
 
   override def uri: String = "https://json-schema.org/draft/2020-12/vocab/validation"
 
-  override def from(schema: ObjectSchema,
-                    ctx: Context,
-                    path: JsonPointer,
-                    dynParent: Option[Vocab[?]]): Validation = new Validation(schema, ctx, path, dynParent)
+  override def create(schema: ObjectSchema,
+                      ctx: Context,
+                      path: JsonPointer,
+                      dynParent: Option[Vocab[?]]): Validation = new Validation(schema, ctx, path, dynParent)
 
-  override def appliesTo(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
+  override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

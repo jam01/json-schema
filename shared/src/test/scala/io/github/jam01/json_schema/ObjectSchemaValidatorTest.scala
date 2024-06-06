@@ -64,7 +64,7 @@ class ObjectSchemaValidatorTest {
   def valid_arr_ref(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(mkValidator(ArrRefSch, SimpleContext(Map(Uri("mem://test/str") -> RefSch0))))
+      .transform(mkValidator(ArrRefSch, DefaultContext(Map(Uri("mem://test/str") -> RefSch0))))
     assertTrue(r.vvalid)
   }
 
@@ -72,7 +72,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_ref(): Unit = { // base schema dictates arr, but $ref dictates string
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(mkValidator(ArrRefSch, SimpleContext(Map(Uri("mem://test/str") -> RefSch1))))
+      .transform(mkValidator(ArrRefSch, DefaultContext(Map(Uri("mem://test/str") -> RefSch1))))
     assertFalse(r.vvalid)
   }
 
@@ -128,7 +128,7 @@ class ObjectSchemaValidatorTest {
   def valid_obj_ref(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "bar", "null": null}""")
-      .transform(mkValidator(ObjRefSch0, SimpleContext(Map(Uri("mem://test/nullreq") -> RefSch2))))
+      .transform(mkValidator(ObjRefSch0, DefaultContext(Map(Uri("mem://test/nullreq") -> RefSch2))))
     assertTrue(r.vvalid)
   }
 
@@ -136,13 +136,13 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_ref(): Unit = { // base schema dictates obj, but $ref dictates string
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(mkValidator(ObjRefSch1, SimpleContext(Map(Uri("mem://test/str") -> RefSch3))))
+      .transform(mkValidator(ObjRefSch1, DefaultContext(Map(Uri("mem://test/str") -> RefSch3))))
     assertFalse(r.vvalid)
   }
 }
 
 object ObjectSchemaValidatorTest {
-  def mkValidator(osch: ObjectSchema, ctx: Context = SimpleContext.Empty,
+  def mkValidator(osch: ObjectSchema, ctx: Context = DefaultContext.Empty,
                   path: JsonPointer = JsonPointer.Root, dynParent: Option[VocabBase] = None): Visitor[?, OutputUnit] = {
     SchemaValidator.of(osch, ctx, path, dynParent)
   }

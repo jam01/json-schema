@@ -9,15 +9,15 @@ object SchemaValidator {
       case BooleanSchema(bool) => new BooleanSchemaValidator(bool, ctx, path)
       case osch: ObjectSchema =>
         val vocabs = ctx.config.dialect.vocabularies
-          .filter(v => v.appliesTo(osch))
-          .map(v => v.from(osch, ctx, path, dynParent))
+          .filter(vocabfact => vocabfact.shouldApply(osch))
+          .map(vocabfact => vocabfact.create(osch, ctx, path, dynParent))
 
         val comp: JsonVisitor[Seq[Nothing], Seq[collection.Seq[OutputUnit]]] =
           new TapCompositeVisitor(units => ctx.onVocabResults(path, units), vocabs*)
 
         new MapReader[Seq[Nothing], Seq[collection.Seq[OutputUnit]], OutputUnit](comp) {
           override def mapNonNullsFunction(unitss: Seq[collection.Seq[OutputUnit]]): OutputUnit =
-            val res = ctx.config.output.compose(path, unitss.flatten, ctx)
+            val res = ctx.config.format.compose(path, unitss.flatten, ctx)
             ctx.onScopeEnd(path, res)
             res
         }

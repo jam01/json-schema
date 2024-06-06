@@ -20,7 +20,7 @@ object Transformer extends upickle.core.Transformer[Value] {
         case ObjectSchema(map) => transformObj(map, v)
   }
 
-  private def transformObj[T](obj: LinkedHashMap[String, Value], v: Visitor[?, T]) = {
+  private def transformObj[T](obj: collection.Map[String, Value], v: Visitor[?, T]) = {
     val ctx = v.visitObject(obj.size, true, -1).narrow
     for (kv <- obj) {
       val keyVisitor = ctx.visitKey(-1)

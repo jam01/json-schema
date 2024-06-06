@@ -84,7 +84,7 @@ object Value {
 
 case class Str(value: String) extends Value
 
-case class Obj(value: LinkedHashMap[String, Value]) extends Value
+case class Obj(value: LinkedHashMap[String, Value]) extends Value // TODO: make collection.Map 
 
 object Obj {
   def apply[V](item: (String, V),
@@ -98,7 +98,7 @@ object Obj {
   def apply(): Obj = Obj(LinkedHashMap[String, Value]())
 }
 
-case class Arr(value: mutable.ArrayBuffer[Value]) extends Value
+case class Arr(value: mutable.ArrayBuffer[Value]) extends Value // TODO: make collection.Seq 
 
 object Arr {
   def from[T](items: IterableOnce[T])(using conv: T => Value): Arr = {
@@ -193,7 +193,7 @@ case object FalseSchema extends BooleanSchema {
  * @param parent optionally the lexical parent schema
  * @param prel optionally the JSON Pointer relative to the lexical parent schema
  */
-final class ObjectSchema private[json_schema](val value: LinkedHashMap[String, Value],
+final class ObjectSchema private[json_schema](val value: LinkedHashMap[String, Value], // TODO: make collection.Map 
                         protected val docbase: Uri,
                         protected val parent: Option[ObjectSchema] = None,
                         protected val prel: Option[String] = None) extends ObjSchema with Schema {
