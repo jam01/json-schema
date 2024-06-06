@@ -146,12 +146,12 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
   override def instanceLoc: JsonPointer = _pointer
 
   def getSch(schemaUri: Uri): Option[Schema] = {
-    val ptr = schemaUri.toString.lastIndexOf("#/")
-    if (ptr == -1)
-      reg.get(schemaUri).orElse(reg.get(schemaUri.asDyn))
-    else
-      reg.get(schemaUri.withoutFragment)
-        .map(sch => sch.schBy(JsonPointer(schemaUri.getFragment))) // using decoded fragment as map values would be unencoded
+    val frag = schemaUri.getFragment // using decoded fragment as map keys would be unencoded
+    if (frag == null) return reg.get(schemaUri)
+    
+    if (frag.startsWith("/")) reg.get(schemaUri.withoutFragment)
+      .map(sch => sch.schBy(JsonPointer(schemaUri.getFragment)))
+    else reg.get(schemaUri).orElse(reg.get(schemaUri.asDyn))
   }
 
   def getDynSch(schemaUri: Uri, origin: Vocab[?]): Option[Schema] = {
