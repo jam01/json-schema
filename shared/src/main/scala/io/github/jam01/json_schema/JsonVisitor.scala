@@ -23,7 +23,7 @@ trait JsonVisitor[-T, +J] extends Visitor[T, J] {
     visitFloat64(java.lang.Double.valueOf(s), index)
 
   override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): J =
-    visitFloat64(java.lang.Double.valueOf(s.asInstanceOf[String]), index)
+    visitFloat64(java.lang.Double.valueOf(s.toString), index)
 
   /* TODO: enable support
   def visitBigInt(i: BigInt, index: Int): J

@@ -24,8 +24,7 @@ final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
 
   override def toString: String = { // may need to be encoded
     refTokens.iterator
-      .map(_.replace("~", "~0")
-        .replace("/", "~1"))
+      .map(_.replace("~", "~0").replace("/", "~1")) // TODO: replace w/regex?
       .mkString("/")
   }
 }
@@ -36,8 +35,6 @@ object JsonPointer {
   def apply(s: String): JsonPointer = { // assumes string is already decoded (usually through URI's func)
     JsonPointer(s.split("/", -1)
       .toIndexedSeq
-      .map(_.replace("~0", "~")
-        .replace("~1", "/") // TODO: replace w/regex?
-      ))
+      .map(_.replace("~0", "~").replace("~1", "/"))) // TODO: replace w/regex?
   }
 }
