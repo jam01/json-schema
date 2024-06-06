@@ -216,11 +216,11 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
     val it = ptr.refTokens.iterator; it.next() // skip first empty string token
     for (key <- it) {
       res = res match
-        case ObjectSchema(value) => getOrThrow(value, key, refError(ptr, i)) 
-        case Obj(value) => getOrThrow(value, key, refError(ptr, i))
+        case ObjectSchema(value) => getOrThrow(value, key, ptr)
+        case Obj(value) => getOrThrow(value, key, ptr)
         case Arr(value) =>
           val i = key.toInt
-          if (value.length <= i) throw refError(ptr, i)
+          if (value.length <= i) throw refError(ptr)
           value(i)
         case x: Any => throw new IllegalArgumentException(s"unsupported type ${x.getClass.getName}")
 
@@ -232,12 +232,13 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
 }
 
 object ObjSchema {
-  private def getOrThrow[K, V](map: Map[K, V], k: K, err: Exception): V = {
-    val ret = map.get(k)
-    if (ret.isEmpty) throw err
-    else ret.get
+  private def getOrThrow[K, V](map: Map[K, V], k: K, ptr: JsonPointer): V = {
+    map.get(k) match
+      case Some(value) => value
+      case None => throw refError(ptr)
   }
 
-  private def refError(ptr: JsonPointer, idx: Int): Exception =
-    new IllegalArgumentException(s"invalid location ${ptr.refTokens.iterator.drop(idx + 1).mkString("/")}")
+  private def refError(ptr: JsonPointer): Exception =
+    new IllegalArgumentException(s"invalid location $ptr")
 }
+
