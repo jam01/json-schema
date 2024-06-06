@@ -38,7 +38,7 @@ abstract class VocabBase(schema: ObjectSchema,
     val kwLoc = path.appended(kw)
     val absKwLoc = if (hasRef) schema.location.appendedFragment(s"/$kw") else null
     if (annotation != null) ctx.offerAnnotation(kwLoc, annotation)
-    ctx.config.format.make(isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.ifAllowed(kw, annotation), verbose)
+    ctx.config.format.make(isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.allowList.ifAllowed(kw, annotation), verbose)
   }
 
   def accumulate(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {

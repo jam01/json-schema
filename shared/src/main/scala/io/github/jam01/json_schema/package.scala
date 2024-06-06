@@ -35,15 +35,32 @@ package object json_schema {
   case class Config(dialect: Dialect = Dialect._2020_12,
                     format: OutputFormat = OutputFormat.Flag,
                     ffast: Boolean = false,
-                    keepAnnotations: Seq[String] = Nil) {
-
-    def ifAllowed(kw: String, ann: Value | Null): Value | Null =
-      if (keepAnnotations.contains(kw)) ann
-      else null
+                    allowList: AllowList = AllowList.DenyAll) {
   }
 
   object Config {
     val Default: Config = Config()
+  }
+
+  abstract class AllowList {
+    def ifAllowed(kw: String, ann: Value | Null): Value | Null
+  }
+
+  final class Keep(val list: Seq[String]) extends AllowList {
+    override def ifAllowed(kw: String, ann: Value | Null): Value | Null =
+      if (list.contains(kw)) ann
+      else null
+  }
+
+  final class Deny(val list: Seq[String]) extends AllowList {
+    override def ifAllowed(kw: String, ann: Value | Null): Value | Null =
+      if (list.contains(kw)) null
+      else ann
+  }
+
+  object AllowList {
+    val AllowAll: AllowList = (kw: String, ann: Value | Null) => ann
+    val DenyAll: AllowList = (kw: String, ann: Value | Null) => null
   }
 
   /**
