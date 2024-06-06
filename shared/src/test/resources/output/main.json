@@ -2,7 +2,7 @@
   "valid": false,
   "keywordLocation": "",
   "instanceLocation": "",
-  "errors": [
+  "details": [
     {
       "valid": false,
       "keywordLocation": "/type",
@@ -13,12 +13,12 @@
       "valid": false,
       "keywordLocation": "/items",
       "instanceLocation": "",
-      "errors": [
+      "details": [
         {
           "valid": false,
           "keywordLocation": "/items",
           "instanceLocation": "/0",
-          "errors": [
+          "details": [
             {
               "valid": false,
               "keywordLocation": "/items/type",
@@ -31,7 +31,7 @@
           "valid": false,
           "keywordLocation": "/items",
           "instanceLocation": "/1",
-          "errors": [
+          "details": [
             {
               "valid": false,
               "keywordLocation": "/items/type",
@@ -44,7 +44,7 @@
           "valid": false,
           "keywordLocation": "/items",
           "instanceLocation": "/5",
-          "errors": [
+          "details": [
             {
               "valid": false,
               "keywordLocation": "/items/type",
@@ -57,7 +57,7 @@
           "valid": false,
           "keywordLocation": "/items",
           "instanceLocation": "/6",
-          "errors": [
+          "details": [
             {
               "valid": false,
               "keywordLocation": "/items/maximum",
@@ -70,7 +70,7 @@
           "valid": false,
           "keywordLocation": "/items",
           "instanceLocation": "/7",
-          "errors": [
+          "details": [
             {
               "valid": false,
               "keywordLocation": "/items/maximum",
@@ -85,7 +85,7 @@
       "valid": false,
       "keywordLocation": "/$ref",
       "instanceLocation": "",
-      "errors": [
+      "details": [
         {
           "valid": false,
           "keywordLocation": "/$ref/type",
@@ -98,12 +98,12 @@
           "keywordLocation": "/$ref/items",
           "absoluteKeywordLocation": "mem://ref#/items",
           "instanceLocation": "",
-          "errors": [
+          "details": [
             {
               "valid": false,
               "keywordLocation": "/$ref/items",
               "instanceLocation": "/0",
-              "errors": [
+              "details": [
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/type",
@@ -117,7 +117,7 @@
               "valid": false,
               "keywordLocation": "/$ref/items",
               "instanceLocation": "/1",
-              "errors": [
+              "details": [
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/type",
@@ -131,7 +131,7 @@
               "valid": false,
               "keywordLocation": "/$ref/items",
               "instanceLocation": "/2",
-              "errors": [
+              "details": [
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",
@@ -145,7 +145,7 @@
               "valid": false,
               "keywordLocation": "/$ref/items",
               "instanceLocation": "/3",
-              "errors": [
+              "details": [
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",
@@ -159,7 +159,7 @@
               "valid": false,
               "keywordLocation": "/$ref/items",
               "instanceLocation": "/4",
-              "errors": [
+              "details": [
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",
@@ -173,7 +173,7 @@
               "valid": false,
               "keywordLocation": "/$ref/items",
               "instanceLocation": "/5",
-              "errors": [
+              "details": [
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/type",
@@ -187,7 +187,7 @@
               "valid": false,
               "keywordLocation": "/$ref/items",
               "instanceLocation": "/6",
-              "errors": [
+              "details": [
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",

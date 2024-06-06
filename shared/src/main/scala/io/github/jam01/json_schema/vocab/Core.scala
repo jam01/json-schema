@@ -22,48 +22,48 @@ final class Core private(schema: ObjectSchema,
   override def visitNull(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.foreach(v => addUnit(units, v.visitNull(index)))
-    _dynRefVis.foreach(v => addUnit(units, v.visitNull(index)))
+    _refVis.foreach(v => accumulate(units, v.visitNull(index)))
+    _dynRefVis.foreach(v => accumulate(units, v.visitNull(index)))
     units
   }
 
   override def visitFalse(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.foreach(v => addUnit(units, v.visitFalse(index)))
-    _dynRefVis.foreach(v => addUnit(units, v.visitFalse(index)))
+    _refVis.foreach(v => accumulate(units, v.visitFalse(index)))
+    _dynRefVis.foreach(v => accumulate(units, v.visitFalse(index)))
     units
   }
 
   override def visitTrue(index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.foreach(v => addUnit(units, v.visitTrue(index)))
-    _dynRefVis.foreach(v => addUnit(units, v.visitTrue(index)))
+    _refVis.foreach(v => accumulate(units, v.visitTrue(index)))
+    _dynRefVis.foreach(v => accumulate(units, v.visitTrue(index)))
     units
   }
 
   override def visitInt64(l: Long, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
-    _dynRefVis.foreach(v => addUnit(units, v.visitInt64(l, index)))
+    _refVis.foreach(v => accumulate(units, v.visitInt64(l, index)))
+    _dynRefVis.foreach(v => accumulate(units, v.visitInt64(l, index)))
     units
   }
 
   override def visitFloat64(d: Double, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
-    _dynRefVis.foreach(v => addUnit(units, v.visitFloat64(d, index)))
+    _refVis.foreach(v => accumulate(units, v.visitFloat64(d, index)))
+    _dynRefVis.foreach(v => accumulate(units, v.visitFloat64(d, index)))
     units
   }
 
   override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
     val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
 
-    _refVis.foreach(v => addUnit(units, v.visitString(s, index)))
-    _dynRefVis.foreach(v => addUnit(units, v.visitString(s, index)))
+    _refVis.foreach(v => accumulate(units, v.visitString(s, index)))
+    _dynRefVis.foreach(v => accumulate(units, v.visitString(s, index)))
     units
   }
 

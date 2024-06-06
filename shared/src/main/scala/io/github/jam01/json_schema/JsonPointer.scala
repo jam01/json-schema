@@ -17,9 +17,9 @@ final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
 
   def appended(other: JsonPointer): JsonPointer = JsonPointer(refTokens.appendedAll(other.refTokens.tail))
 
-  def isRelative(other: JsonPointer): Boolean = {
+  def isRelativeTo(other: JsonPointer): Boolean = {
     if (other.refTokens.size < refTokens.size) false
-    else refTokens.lazyZip(other.refTokens).forall((pstr, ostr) => pstr == ostr)
+    else refTokens.lazyZip(other.refTokens).forall((pstr, ostr) => pstr == ostr) // perf: extra LazyZip2 object overhead
   }
 
   override def toString: String = { // may need to be encoded

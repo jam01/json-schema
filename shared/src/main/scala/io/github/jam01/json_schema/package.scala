@@ -33,13 +33,13 @@ package object json_schema {
    * @param keepAnnotations list of JSON schema annotations to keep in output
    */
   case class Config(dialect: Dialect = Dialect._2020_12,
-                    format: OutputFormat = OutputFormat.Detailed,
+                    format: OutputFormat = OutputFormat.Flag,
                     ffast: Boolean = false,
                     keepAnnotations: Seq[String] = Nil) {
 
-    def ifAllowed(kw: String, ann: Value): Option[Value] =
-      if (keepAnnotations.contains(kw)) Some(ann)
-      else None
+    def ifAllowed(kw: String, ann: Value | Null): Value | Null =
+      if (keepAnnotations.contains(kw)) ann
+      else null
   }
 
   object Config {

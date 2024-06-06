@@ -12,13 +12,6 @@ trait Context {
   def config: Config
 
   /**
-   * @return whether verbose output is required
-   *
-   * @see <a href="https://json-schema.org/draft/2020-12/json-schema-core#name-verbose">JSON Schema § Verbose</a>
-   */
-  def isVerbose: Boolean = config.format == OutputFormat.Verbose
-
-  /**
    * @return the current location being visited within instance under validation
    */
   def instanceLoc: JsonPointer
@@ -88,7 +81,7 @@ trait Context {
    * @param schLocation location of the schema where the dependant keyword is found
    * @param predicate function to filter candidate annotation [[OutputUnit]]s
    */
-  def registerDependant(schLocation: JsonPointer, predicate: OutputUnit => Boolean): Unit
+  def registerDependant(schLocation: JsonPointer, kwLocation: JsonPointer, predicate: JsonPointer => Boolean): Unit 
 
   /**
    * Retrieve annotations that satisfy one or more dependants located within the given schema location.
@@ -96,7 +89,7 @@ trait Context {
    * @param schLocation location of the schema where dependants may be found
    * @return the collection of annotation [[OutputUnit]]s that satisfy some dependant in the given schema location
    */
-  def getDependenciesFor(schLocation: JsonPointer): collection.Seq[OutputUnit]
+  def getDependenciesFor(schLocation: JsonPointer): collection.Seq[(JsonPointer, Value)]
 
   /**
    * Publish output units produced for the given schema location.
@@ -108,6 +101,9 @@ trait Context {
    * @param units that were produced
    */
   def onVocabResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit
+
+
+  def offerAnnotation(location: JsonPointer, value: Value): Unit
 
   /**
    * Notify of output units that were found to be invalid.
@@ -122,7 +118,7 @@ trait Context {
    *
    * @param invalid units
    */
-  def onInvalidated(invalid: collection.Seq[OutputUnit]): Unit
+  def notifyInvalid(invalid: collection.Seq[OutputUnit]): Unit
 
   /**
    * Signal the end of a schema scope.
@@ -179,45 +175,45 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
       .flatMap(dref => reg.get(dref))
   }
 
-  private val dependents: mutable.Map[JsonPointer, mutable.Buffer[OutputUnit => Boolean]] = mutable.Map()
-  private val dependencies: mutable.Map[JsonPointer, mutable.ArrayBuffer[OutputUnit]] = mutable.Map()
+  private val dependents: mutable.Map[JsonPointer, mutable.ArrayBuffer[(JsonPointer, JsonPointer => Boolean)]] = mutable.Map.empty // schLoc -> [(kwLoc, pred)]
+  private val dependencies: mutable.Map[JsonPointer, mutable.ArrayBuffer[(JsonPointer, Value)]] = mutable.Map.empty // kwLoc -> [(annKwLoc, value)]
 
-  override def registerDependant(schLocation: JsonPointer, predicate: OutputUnit => Boolean): Unit = {
-    dependents.getOrElseUpdate(schLocation, mutable.ArrayBuffer()).addOne(predicate)
+  override def registerDependant(schLocation: JsonPointer, kwLocation: JsonPointer, predicate: JsonPointer => Boolean): Unit =
+    dependents.getOrElseUpdate(schLocation, new mutable.ArrayBuffer(1)).addOne((kwLocation, predicate)) // perf: chances of there being 2 dependant kws in one sch
+
+  override def getDependenciesFor(kwLocation: JsonPointer): collection.Seq[(JsonPointer, Value)] =
+    dependencies.getOrElse(kwLocation, Nil)
+
+  override def offerAnnotation(location: JsonPointer, value: Value): Unit = {
+    if (dependents.isEmpty) return
+    
+    val it = dependents.iterator
+    while (it.hasNext) { 
+      val (schLoc, schdeps) = it.next()
+      val it0 = schdeps.iterator
+      while (it0.hasNext) {
+        val (depKwLoc, predicate) = it0.next()
+        if (schLoc.isRelativeTo(location) && predicate(location))
+          dependencies.getOrElseUpdate(depKwLoc, new mutable.ArrayBuffer(5)).addOne((location, value))  // perf: chances of a dependent kw requiring 5+ annotations
+      }
+    }
   }
-
-  override def getDependenciesFor(schLocation: JsonPointer): collection.Seq[OutputUnit] =
-    dependencies.getOrElse(schLocation, Nil)
 
   override def onVocabResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit = {
-    if (dependents.isEmpty || units.isEmpty) return
-
-    // this checks if any unit satisfies dependants and registers the dependency
-    dependents.withFilter((depPath, _) => depPath.isRelative(schLocation)) // filtering filters relative to given path
-      .flatMap((depPath, preds) => preds.map(p => (depPath, p)))           // flattening (path, filters) to (path, filter)
-      .foreach((dependent, fltr) => units
-        .filter(u => u.vvalid && u.annotation.nonEmpty && fltr(u))         // applying filter to every unit
-        .foreach(u => addDependencyFor(dependent, u)))                     // registering dependency
-
-    // this discards registered dependencies that are found to be relative to an error
-    if (dependencies.nonEmpty) onInvalidated(units.filter(u => !u.vvalid))
+    if (dependencies.nonEmpty && units.nonEmpty) 
+      notifyInvalid(units.filter(u => !u.vvalid)) // discard dependencies relative to an error
   }
 
-  override def onInvalidated(invalid: collection.Seq[OutputUnit]): Unit = {
-    dependencies.values.foreach(deps => {
-      deps.filterInPlace(dep => !invalid.exists(i => i.kwLoc.isRelative(dep.kwLoc)))
-    })
-  }
-
-  def addDependencyFor(path: JsonPointer, unit: OutputUnit): Unit = {
-    dependencies.getOrElseUpdate(path, mutable.ArrayBuffer()).addOne(unit)
+  override def notifyInvalid(invalid: collection.Seq[OutputUnit]): Unit = {
+    dependencies.values.foreach(deps => 
+      deps.filterInPlace((kwLoc, _) => !invalid.exists(i => i.kwLoc.isRelativeTo(kwLoc))))
   }
 
   override def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit = {
     dependents.remove(schLocation)
     dependencies.remove(schLocation)
 
-    if (!result.vvalid) onInvalidated(Seq(result))
+    if (!result.vvalid) notifyInvalid(Seq(result))
   }
 }
 

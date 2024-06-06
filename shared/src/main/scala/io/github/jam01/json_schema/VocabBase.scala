@@ -6,7 +6,7 @@ import scala.collection.mutable
 
 /**
  * A base class for implementing validators using a given Schema. 
- * 
+ *
  * Implementations can validate whole vocabularies or single keywords only, as it returns a sequence of OutputUnits  
  *
  * @param schema    schema to apply
@@ -25,33 +25,35 @@ abstract class VocabBase(schema: ObjectSchema,
     head = head.dynParent.get
   }
   // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
-  if (countRefs > 32) throw new IllegalStateException("depth limit exceeded")
+  if (countRefs > 32) throw new IllegalStateException("Depth limit exceeded")
 
-  def unitOf(isValid: Boolean, kw: String, err: String): OutputUnit = {
-    val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
-    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.instanceLoc)
-    else OutputUnit(false, path.appended(kw), abs, ctx.instanceLoc, Some(err))
+  // TODO: reuse path.appended(kw) across implementations
+
+  def mkUnit(isValid: Boolean,
+             kw: String,
+             error: String | Null = null,
+             errors: collection.Seq[OutputUnit] = Nil,
+             annotation: Value | Null = null,
+             verbose: collection.Seq[OutputUnit] = Nil): OutputUnit = {
+    val kwLoc = path.appended(kw)
+    val absKwLoc = if (hasRef) schema.location.appendedFragment(s"/$kw") else null
+    if (annotation != null) ctx.offerAnnotation(kwLoc, annotation)
+    ctx.config.format.make(isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.ifAllowed(kw, annotation), verbose)
   }
 
-  def unitOf(isValid: Boolean, kw: String,
-             err: Option[String], errs: collection.Seq[OutputUnit],
-             annot: Option[Value], annots: collection.Seq[OutputUnit]): OutputUnit = {
-    val abs = if (hasRef) Some(schema.location.appendedFragment(s"/$kw")) else None
-    if (isValid) OutputUnit(true, path.appended(kw), abs, ctx.instanceLoc,
-      annotation = if (ctx.isVerbose || ctx.config.mode == Mode.Annotation) annot else None,
-      annotations = if (ctx.isVerbose) errs.appendedAll(annots) else if (ctx.config.mode == Mode.Annotation) annots.filter(a => a.hasAnnotations) else Nil)
-    else OutputUnit(false, path.appended(kw), abs, ctx.instanceLoc, err, errs)
-  }
-  
-  def addUnit(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {
-    if (unit.vvalid) {
-      if (ctx.isVerbose || (ctx.config.mode == Mode.Annotation && unit.hasAnnotations)) units.addOne(unit)
-      units
-    } else units.addOne(unit)
+  def accumulate(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {
+    if (!unit.vvalid) units.addOne(unit)
+    else if (ctx.config.format == OutputFormat.Verbose) units.addOne(unit)
+    else units
   }
 
   private def hasRef: Boolean = {
     path.refTokens.exists(s => Core._Ref == s || Core._DynRef == s)
+  }
+
+  protected def compose(kw: String, units: collection.Seq[OutputUnit], ann: Value | Null = null): OutputUnit = {
+    val (valid, invalid) = units.partition(_.vvalid)
+    mkUnit(invalid.isEmpty, kw, errors = invalid, annotation = ann, verbose = valid)
   }
 }
 
