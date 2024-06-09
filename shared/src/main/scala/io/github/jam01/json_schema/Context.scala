@@ -148,7 +148,7 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
   def getSch(schemaUri: Uri): Option[Schema] = {
     val frag = schemaUri.getFragment // using decoded fragment as map keys would be unencoded
     if (frag == null) return reg.get(schemaUri)
-    
+
     if (frag.startsWith("/")) reg.get(schemaUri.withoutFragment)
       .map(sch => sch.schBy(JsonPointer(schemaUri.getFragment)))
     else reg.get(schemaUri).orElse(reg.get(schemaUri.asDyn))
@@ -188,7 +188,7 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
     if (dependents.isEmpty) return
     
     val it = dependents.iterator
-    while (it.hasNext) { 
+    while (it.hasNext) {
       val (schLoc, schdeps) = it.next()
       val it0 = schdeps.iterator
       while (it0.hasNext) {

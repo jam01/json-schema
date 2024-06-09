@@ -18,6 +18,8 @@ abstract class VocabBase(schema: ObjectSchema,
                          val ctx: Context,
                          val path: JsonPointer,
                          dynParent: Option[Vocab[?]]) extends Vocab[Nothing](schema, dynParent) {
+  
+  // TODO: move this to ObjSchValidator 
   private var countRefs = 0
   private var head: Vocab[?] = this
   while (head.dynParent.nonEmpty) {
@@ -29,7 +31,7 @@ abstract class VocabBase(schema: ObjectSchema,
 
   // TODO: reuse path.appended(kw) across implementations
 
-  def mkUnit(isValid: Boolean,
+  protected def mkUnit(isValid: Boolean,
              kw: String,
              error: String | Null = null,
              errors: collection.Seq[OutputUnit] = Nil,
@@ -37,14 +39,19 @@ abstract class VocabBase(schema: ObjectSchema,
              verbose: collection.Seq[OutputUnit] = Nil): OutputUnit = {
     val kwLoc = path.appended(kw)
     val absKwLoc = if (hasRef) schema.location.appendedFragment(s"/$kw") else null
-    if (annotation != null) ctx.offerAnnotation(kwLoc, annotation)
+    if (isValid && annotation != null) ctx.offerAnnotation(kwLoc, annotation)
     ctx.config.format.make(isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.allowList.ifAllowed(kw, annotation), verbose)
   }
 
-  def accumulate(units: mutable.Buffer[OutputUnit], unit: OutputUnit): mutable.Buffer[OutputUnit] = {
-    if (!unit.vvalid) units.addOne(unit)
-    else if (ctx.config.format == OutputFormat.Verbose) units.addOne(unit)
-    else units
+  // perf: @inline?
+  def accumulate(units: mutable.Growable[OutputUnit], unit: OutputUnit): Boolean = {
+    ctx.config.format.accumulate(units, unit)
+    unit.vvalid || !ctx.config.ffast
+  }
+  
+  def accumulateOpt(results: mutable.Growable[OutputUnit], unitOpt: Option[OutputUnit]): Boolean = {
+    if (unitOpt.isEmpty) return true
+    accumulate(results, unitOpt.get)
   }
 
   private def hasRef: Boolean = {

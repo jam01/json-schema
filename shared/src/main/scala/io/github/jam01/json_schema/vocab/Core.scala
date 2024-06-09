@@ -12,75 +12,68 @@ final class Core private(schema: ObjectSchema,
                    path: JsonPointer,
                    dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
 
-  private val _refVis: Option[Visitor[?, OutputUnit]] = schema.getRef
-    .map(s => ctx.getSchOrThrow(s))
+  // these are made lazy to avoid infinite-loops of recursive schemas such as 2020-12 meta schema
+  private lazy val _refVis: Option[Visitor[?, OutputUnit]] = schema.getRef
+    .map(ref => ctx.getSchOrThrow(ref))
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(_Ref), Some(this)))
-  private val _dynRefVis: Option[Visitor[?, OutputUnit]] = schema.getDynRef
-    .map(s => ctx.getDynSchOrThrow(s, this))
+  private lazy val _dynRefVis: Option[Visitor[?, OutputUnit]] = schema.getDynRef
+    .map(dynref => ctx.getDynSchOrThrow(dynref, this))
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(_DynRef), Some(this)))
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = {
-    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
-
-    _refVis.foreach(v => accumulate(units, v.visitNull(index)))
-    _dynRefVis.foreach(v => accumulate(units, v.visitNull(index)))
-    units
+    val result: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: reuse -> memory vs speed
+    _refVis.foreach(v => accumulate(result, v.visitNull(index)))
+    _dynRefVis.foreach(v => accumulate(result, v.visitNull(index)))
+    result
   }
 
   override def visitFalse(index: Int): collection.Seq[OutputUnit] = {
-    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
-
-    _refVis.foreach(v => accumulate(units, v.visitFalse(index)))
-    _dynRefVis.foreach(v => accumulate(units, v.visitFalse(index)))
-    units
+    val result: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: reuse -> memory vs speed
+    _refVis.foreach(v => accumulate(result, v.visitFalse(index)))
+    _dynRefVis.foreach(v => accumulate(result, v.visitFalse(index)))
+    result
   }
 
   override def visitTrue(index: Int): collection.Seq[OutputUnit] = {
-    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
-
-    _refVis.foreach(v => accumulate(units, v.visitTrue(index)))
-    _dynRefVis.foreach(v => accumulate(units, v.visitTrue(index)))
-    units
+    val result: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: reuse -> memory vs speed
+    _refVis.foreach(v => accumulate(result, v.visitTrue(index)))
+    _dynRefVis.foreach(v => accumulate(result, v.visitTrue(index)))
+    result
   }
 
   override def visitInt64(l: Long, index: Int): collection.Seq[OutputUnit] = {
-    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
-
-    _refVis.foreach(v => accumulate(units, v.visitInt64(l, index)))
-    _dynRefVis.foreach(v => accumulate(units, v.visitInt64(l, index)))
-    units
+    val result: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: reuse -> memory vs speed
+    _refVis.foreach(v => accumulate(result, v.visitInt64(l, index)))
+    _dynRefVis.foreach(v => accumulate(result, v.visitInt64(l, index)))
+    result
   }
 
   override def visitFloat64(d: Double, index: Int): collection.Seq[OutputUnit] = {
-    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
-
-    _refVis.foreach(v => accumulate(units, v.visitFloat64(d, index)))
-    _dynRefVis.foreach(v => accumulate(units, v.visitFloat64(d, index)))
-    units
+    val result: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: reuse -> memory vs speed
+    _refVis.foreach(v => accumulate(result, v.visitFloat64(d, index)))
+    _dynRefVis.foreach(v => accumulate(result, v.visitFloat64(d, index)))
+    result
   }
 
   override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
-    val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
-
-    _refVis.foreach(v => accumulate(units, v.visitString(s, index)))
-    _dynRefVis.foreach(v => accumulate(units, v.visitString(s, index)))
-    units
+    val result: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: reuse -> memory vs speed
+    _refVis.foreach(v => accumulate(result, v.visitString(s, index)))
+    _dynRefVis.foreach(v => accumulate(result, v.visitString(s, index)))
+    result
   }
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Seq[Nothing], collection.Seq[OutputUnit]] = {
     val insVisitors: mutable.ArrayBuffer[ArrVisitor[Nothing, OutputUnit]] = new ArrayBuffer(2)
     _refVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
-
-    new CompositeArrVisitor(insVisitors.toSeq*) // Vis[Seq[Nothing], Seq[OUnit]]
+    new CompositeArrVisitor(insVisitors.toSeq *) // Vis[Seq[Nothing], Seq[OUnit]]
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[Nothing], collection.Seq[OutputUnit]] = {
     val insVisitors: mutable.ArrayBuffer[ObjVisitor[Nothing, OutputUnit]] = new ArrayBuffer(2)
     _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
-
-    new CompositeObjVisitor(insVisitors.toSeq*) // Vis[Seq[Nothing], Seq[OUnit]]
+    new CompositeObjVisitor(insVisitors.toSeq *) // Vis[Seq[Nothing], Seq[OUnit]]
   }
 }
 

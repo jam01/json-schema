@@ -34,7 +34,7 @@ package object json_schema {
    */
   case class Config(dialect: Dialect = Dialect._2020_12,
                     format: OutputFormat = OutputFormat.Flag,
-                    ffast: Boolean = false,
+                    ffast: Boolean = true,
                     allowList: AllowList = AllowList.DenyAll) {
   }
 

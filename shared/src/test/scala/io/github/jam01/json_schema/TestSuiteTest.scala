@@ -1,24 +1,22 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
-import io.github.jam01.json_schema.TestSuiteTest.Registry
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 import ujson.StringRenderer
+import upickle.core.Visitor
 
 import java.nio.file.{Files, Path, Paths}
-import java.util.*
 import scala.collection.mutable
 import scala.util.Using
 
 class TestSuiteTest {
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
-  def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, sch: Schema): Unit = {
+  def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
 
-    val dial = json_schema.tryDialect(sch, registry = TestSuiteTest.Registry).getOrElse(Dialect._2020_12)
-    val res = data.transform(json_schema.validator(sch, Config(dial), Registry))
+    val res = data.transform(vis)
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
@@ -56,9 +54,10 @@ object TestSuiteTest {
     Using(Files.walk(resource("test-suite/tests/draft2020-12/"), 1)) { tests =>
         tests.filter(Files.isRegularFile(_))
           .filter(p => !NotSupported.contains(p.getFileName.toString))
-          //.peek(println
+          //.peek(println)
           .forEach(p => args.addAll(args_provider(p)))
     }
+    //args.addAll(args_provider(resource("test-suite/tests/draft2020-12/defs.json")))
 
     args
   }
@@ -68,15 +67,18 @@ object TestSuiteTest {
     val args = new java.util.ArrayList[Arguments]()
 
     suite.foreach { testcase =>
-      testcase.obj.get("tests").get.arr.foreach { test =>
+      testcase.obj.get("tests").get.arr.foreach(test => {
+        val sch = testcase.obj.get("schema").get.transform(SchemaR(reg = Registry))
+        val dial = json_schema.tryDialect(sch, registry = Registry).getOrElse(Dialect._2020_12)
+
         args.add(Arguments.of(
           resource("test-suite/tests/draft2020-12/").relativize(path).toString,
           testcase.obj.get("description").get.str,
           test.obj.get("description").get.str,
           test.obj.get("data").get,
           test.obj.get("valid").get.bool,
-          testcase.obj.get("schema").get.transform(SchemaR(reg = Registry))))
-      }
+          json_schema.validator(sch, Config(dial), Registry)))
+      })
     }
 
     args

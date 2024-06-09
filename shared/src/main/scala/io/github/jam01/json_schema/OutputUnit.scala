@@ -2,6 +2,8 @@ package io.github.jam01.json_schema
 
 import upickle.core.{Transformer, Visitor}
 
+import scala.collection.mutable
+
 /**
  * JSON Schema validation output unit
  *
@@ -104,6 +106,11 @@ sealed abstract class OutputFormat {
            errors: collection.Seq[OutputUnit] = Nil,
            annotation: Value | Null = null,
            verbose: collection.Seq[OutputUnit] = Nil): OutputUnit
+
+  def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
+    if (!unit.vvalid) results.addOne(unit)
+    else results
+  }
 }
 
 object OutputFormat {
@@ -124,12 +131,15 @@ object OutputFormat {
     override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: collection.Seq[OutputUnit], annotation: Value | Null, verbose: collection.Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
       else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors)
-
   }
 
   val Verbose: OutputFormat = new OutputFormat {
     override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: collection.Seq[OutputUnit], annotation: Value | Null, verbose: collection.Seq[OutputUnit]): OutputUnit =
-      if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
-      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors ++: verbose.filter(_.hasAnnotations))
+      if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, errors ++: verbose)
+      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors ++: verbose)
+
+    override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
+      results.addOne(unit)
+    }
   }
 }
