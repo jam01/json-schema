@@ -66,14 +66,14 @@ final class Core private(schema: ObjectSchema,
     val insVisitors: mutable.ArrayBuffer[ArrVisitor[Nothing, OutputUnit]] = new ArrayBuffer(2)
     _refVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitArray(length, index)))
-    new CompositeArrVisitor(insVisitors.toSeq *) // Vis[Seq[Nothing], Seq[OUnit]]
+    new CompositeArrVisitor(insVisitors.toSeq) // Vis[Seq[Nothing], Seq[OUnit]]
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[Nothing], collection.Seq[OutputUnit]] = {
     val insVisitors: mutable.ArrayBuffer[ObjVisitor[Nothing, OutputUnit]] = new ArrayBuffer(2)
     _refVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     _dynRefVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
-    new CompositeObjVisitor(insVisitors.toSeq *) // Vis[Seq[Nothing], Seq[OUnit]]
+    new CompositeObjVisitor(insVisitors.toSeq) // Vis[Seq[Nothing], Seq[OUnit]]
   }
 }
 

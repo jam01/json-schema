@@ -35,8 +35,7 @@ class PointerDelegate[T, V](tracker: Tracker, delegate: Visitor[T, V]) extends D
     val objVis: ObjVisitor[T, V] = delegate.visitObject(length, jsonablekeys, index)
 
     override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
-      override def expectedMsg: String = "expected string"
-
+      override def expectedMsg: String = "Expected string"
       override def visitString(s: CharSequence, index: Int): Any = {
         tracker.push(s.toString)
         objVis.visitKey(index).visitString(s, index)

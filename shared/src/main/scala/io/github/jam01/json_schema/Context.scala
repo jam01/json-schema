@@ -206,7 +206,7 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
 
   override def notifyInvalid(invalid: collection.Seq[OutputUnit]): Unit = {
     dependencies.values.foreach(deps => 
-      deps.filterInPlace((kwLoc, _) => !invalid.exists(i => i.kwLoc.isRelativeTo(kwLoc))))
+      deps.filterInPlace((kwLoc, _) => !invalid.exists(inv => inv.kwLoc.isRelativeTo(kwLoc))))
   }
 
   override def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit = {

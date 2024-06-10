@@ -32,13 +32,13 @@ final class Applicator private(schema: ObjectSchema,
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(Else), Some(this)))
   private val allOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt(AllOf)
     .map(schs => schs.view.zipWithIndex.map((sch, idx) => SchemaValidator.of(sch, ctx, path.appended(AllOf, idx.toString), Some(this))))
-    .map(schViss => new FlatCompositeVisitor(units => allOf(AllOf, units), schViss.toSeq*))
+    .map(schViss => new MapCompositeVisitor(schViss.toSeq, units => allOf(AllOf, units)))
   private val oneOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt(OneOf)
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended(OneOf, schidx._2.toString), Some(this))))
-    .map(schViss => new FlatCompositeVisitor(units => oneOf(OneOf, units), schViss.toSeq*))
+    .map(schViss => new MapCompositeVisitor(schViss.toSeq, units => oneOf(OneOf, units)))
   private val anyOfVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaArrayOpt(AnyOf)
     .map(schs => schs.view.zipWithIndex.map(schidx => SchemaValidator.of(schidx._1, ctx, path.appended(AnyOf, schidx._2.toString), Some(this))))
-    .map(schViss => new FlatCompositeVisitor(units => anyOf(AnyOf, units), schViss.toSeq*))
+    .map(schViss => new MapCompositeVisitor(schViss.toSeq, units => anyOf(AnyOf, units)))
   private val notVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(Not)
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(Not), Some(this)))
   private val itemsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(Items)
@@ -51,31 +51,8 @@ final class Applicator private(schema: ObjectSchema,
 
   private val maxContains: Option[Int] = schema.getInt(MaxContains)
   private val minContains: Option[Int] = schema.getInt(MinContains)
-  private val contains: Option[ArrVisitor[OutputUnit, OutputUnit]] = schema.getSchemaOpt(Contains)
+  private val containsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(Contains)
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(Contains), Some(this)))
-    .map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
-      private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
-      private var nextIdx = 0
-      private val matched: mutable.ArrayBuffer[Num] = new ArrayBuffer()
-
-      override def subVisitor: Visitor[?, ?] = schValidator
-
-      override def visitValue(u: OutputUnit, index: Int): Unit = {
-        if (u.vvalid) matched.addOne(Num(nextIdx)); nextIdx += 1
-      }
-
-      override def visitEnd(index: Int): OutputUnit = { // TODO: break up contains into contains, min/max
-        var res = matched.nonEmpty
-        if (minContains.nonEmpty) {
-          if (minContains.get == 0) res = true
-          else res = res && (matched.size >= minContains.get)
-        }
-        if (maxContains.nonEmpty) {
-          res = res && (matched.size <= maxContains.get)
-        }
-        mkUnit(res, Contains, "Array does not contain given elements", Nil, Arr.from(matched), Nil) // TODO: include if failed bc min/max
-      }
-    })
 
   override def visitNull(index: Int): collection.Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
@@ -186,18 +163,41 @@ final class Applicator private(schema: ObjectSchema,
    */
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Any, collection.Seq[OutputUnit]] = {
+    val containsArrVis = containsVis.map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
+      private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
+      private var nextIdx = 0
+      private val matched: mutable.ArrayBuffer[Num] = new ArrayBuffer()
+
+      override def subVisitor: Visitor[?, ?] = schValidator
+      override def visitValue(u: OutputUnit, index: Int): Unit = {
+        if (u.vvalid) matched.addOne(Num(nextIdx)); nextIdx += 1
+      }
+
+      override def visitEnd(index: Int): OutputUnit = { // TODO: break up contains into contains, min/max
+        var res = matched.nonEmpty
+        if (minContains.nonEmpty) {
+          if (minContains.get == 0) res = true
+          else res = res && (matched.size >= minContains.get)
+        }
+        if (maxContains.nonEmpty) {
+          res = res && (matched.size <= maxContains.get)
+        }
+        mkUnit(res, Contains, "Array does not contain given elements", Nil, Arr.from(matched), Nil) // TODO: include if failed bc min/max
+      }
+    })
+
     val instanceVisitors = Seq(
       notVis.map(v => new MapArrContext(v.visitArray(length, index), unit => not(unit))),
       allOfVis.map(v => v.visitArray(length, index)),
       anyOfVis.map(v => v.visitArray(length, index)),
       oneOfVis.map(v => v.visitArray(length, index)),
-      contains,
+      containsArrVis,
       ifVis.map(v => v.visitArray(length, index)),
       thenVis.map(v => v.visitArray(length, index)),
       elseVis.map(v => v.visitArray(length, index))
     ).flatten
 
-    val insVisitor: ArrVisitor[Seq[Nothing], Seq[OutputUnit]] = new CompositeArrVisitor(instanceVisitors*)
+    val insVisitor: ArrVisitor[Seq[Nothing], Seq[OutputUnit]] = new CompositeArrVisitor(instanceVisitors)
     var childVisitor: ArrVisitor[?, ?] = null // to be assigned based on child
 
     new ArrVisitor[Any, collection.Seq[OutputUnit]] {
@@ -226,7 +226,7 @@ final class Applicator private(schema: ObjectSchema,
 
         childVisitor =
           if (childVisitors.length == 1) childVisitors.head
-          else new CompositeArrVisitor(childVisitors.result*)
+          else new CompositeArrVisitor(childVisitors.result)
         childVisitor.subVisitor
       }
 
@@ -278,15 +278,15 @@ final class Applicator private(schema: ObjectSchema,
     thenVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
     elseVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
 
-    depSchsViss.map(viss => viss.map((key, v) => (key, MapObjContext(v.visitObject(length, true, index), unit => (key, unit))))) // Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]]
+    depSchsViss.map(viss => viss.map((key, v) => (key, MapObjContext(v.visitObject(length, true, index), unit => (key, unit.asInstanceOf[OutputUnit]))))) // Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]]
       .foreach(viss =>
-        insVisitors.addOne(MapObjContext(new CompositeObjVisitor(viss.values.toSeq *), key_unit_tuples => { // Vis[Seq[Nothing], OUnit]
+        insVisitors.addOne(new MapCompositeObjContext[Nothing, (String, OutputUnit), OutputUnit](viss.values.toSeq, key_unit_tuples => { // Vis[Seq[Nothing], OUnit]
           val (applied, invalid) = key_unit_tuples.partition((key, _) => propsVisited.contains(key))
           ctx.notifyInvalid(invalid.map((_, unit) => unit))
           compose(DependentSchemas, applied.map((_, unit) => unit))
         })))
 
-    val insVisitor: CompositeObjVisitor[Nothing, OutputUnit] = new CompositeObjVisitor(insVisitors.toSeq*) // ObjVisitor[Seq[Nothing], Seq[OutputUnit]]
+    val insVisitor: CompositeObjVisitor[Nothing, OutputUnit] = new CompositeObjVisitor(insVisitors.toSeq) // ObjVisitor[Seq[Nothing], Seq[OutputUnit]]
     var childVisitor: ObjVisitor[?, ?] = null // to be assigned based on child
 
     new ObjVisitor[Any, collection.Seq[OutputUnit]] {
@@ -314,7 +314,7 @@ final class Applicator private(schema: ObjectSchema,
 
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
-        override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map((_, v) => v)*)
+        override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map((_, v) => v))
         override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { accumulate(units, u); if (u.vvalid) annot.addOne(Str(currentKey))})
         override def visitEnd(index: Int): OutputUnit = compose(PatternProperties, units, Arr.from(annot))
       })
@@ -359,7 +359,7 @@ final class Applicator private(schema: ObjectSchema,
 
         childVisitor =
           if (childVisitors.length == 1) childVisitors.head
-          else new CompositeObjVisitor(childVisitors.toSeq*)
+          else new CompositeObjVisitor(childVisitors.toSeq)
         childVisitor.subVisitor
       }
 

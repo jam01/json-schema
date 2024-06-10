@@ -22,7 +22,7 @@ package object json_schema {
                 schemaRegistry: collection.Map[Uri, Schema] = Map.empty): Visitor[?, OutputUnit] = {
     val ctx = DefaultContext(schemaRegistry, config)
     PointerDelegate(ctx, SchemaValidator.of(schema, ctx, JsonPointer.Root, None))
-  } // perf: when Format.Flag, don't need pointer tracker
+  }
 
   /**
    * Reusable validation configuration.
