@@ -37,24 +37,24 @@ final class Validation private(schema: ObjectSchema,
   override def visitNull(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("null"), Tyype, s"Expected $tyype, got null"))) &&
-      accumulateOpt(buff, const.map(c => mkUnit(c == Null, Const, "null does not match expected constant"))) &&
-      accumulateOpt(buff, enuum.map(e => mkUnit(e.contains(Null), Enuum, "null not found in enumeration")))
+      const.forall(c => accumulate(buff, mkUnit(c == Null, Const, "null does not match expected constant"))) &&
+      enuum.forall(e => accumulate(buff, mkUnit(e.contains(Null), Enuum, "null not found in enumeration")))
     buff.result()
   }
 
   override def visitFalse(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("boolean"), Tyype, s"Expected $tyype, got false"))) &&
-      accumulateOpt(buff, const.map(c => mkUnit(c == False, Const, "false does not match expected constant"))) &&
-      accumulateOpt(buff, enuum.map(e => mkUnit(e.contains(False), Enuum, "false not found in enumeration")))
+      const.forall(c => accumulate(buff, mkUnit(c == False, Const, "false does not match expected constant"))) &&
+      enuum.forall(e => accumulate(buff, mkUnit(e.contains(False), Enuum, "false not found in enumeration")))
     buff.result()
   }
 
   override def visitTrue(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("boolean"), Tyype, s"Expected $tyype, got true"))) &&
-      accumulateOpt(buff, const.map(c => mkUnit(c == True, Const, "true does not match expected constant"))) &&
-      accumulateOpt(buff, enuum.map(e => mkUnit(e.contains(True), Enuum, "true not found in enumeration")))
+      const.forall(c => accumulate(buff, mkUnit(c == True, Const, "true does not match expected constant"))) &&
+      enuum.forall(e => accumulate(buff, mkUnit(e.contains(True), Enuum, "true not found in enumeration")))
     buff.result()
   }
 
@@ -67,7 +67,7 @@ final class Validation private(schema: ObjectSchema,
 
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.exists(t => "integer" == t || "number" == t), Tyype, s"Expected $tyype, got number"))) &&
-      accumulateOpt(buff, multipleOf.map(mult => mkUnit(isMultiple(mult), MultipleOf, "Number is not a multiple"))) &&
+      multipleOf.forall(mult => accumulate(buff, mkUnit(isMultiple(mult), MultipleOf, "Number is not a multiple"))) &&
       visitNumber(num, buff)
     buff.result()
   }
@@ -81,28 +81,28 @@ final class Validation private(schema: ObjectSchema,
 
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.exists(t => "number" == t || "integer" == t && num.isWhole), Tyype, s"Expected $tyype, got number"))) &&
-      accumulateOpt(buff, multipleOf.map(mult => mkUnit(isMultiple(mult), MultipleOf, "Number is not a multiple"))) &&
+      multipleOf.forall(mult => accumulate(buff, mkUnit(isMultiple(mult), MultipleOf, "Number is not a multiple"))) &&
       visitNumber(num, buff)
     buff.result()
   }
 
   private def visitNumber(num: Long | Double, buff: mutable.Growable[OutputUnit]): Boolean = {
-    accumulateOpt(buff, const.map(c => mkUnit(c.value == num, Const, "Number does not match expected constant"))) &&
-      accumulateOpt(buff, enuum.map(e => mkUnit(e.exists(v => v.value == num), Enuum, "Number not found in enumeration"))) &&
-      accumulateOpt(buff, maximum.map(max => mkUnit(lteq(num, max), Maximum, "Number is greater than maximum"))) &&
-      accumulateOpt(buff, minimum.map(min => mkUnit(gteq(num, min), Minimum, "Number is less than minimum"))) &&
-      accumulateOpt(buff, exclusiveMax.map(max => mkUnit(lt(num, max), ExclusiveMax, "Number is greater than exclusive maximum"))) &&
-      accumulateOpt(buff, exclusiveMin.map(min => mkUnit(gt(num, min), ExclusiveMin, "Number is less than exclusive minimum")))
+    const.forall(c => accumulate(buff, mkUnit(c.value == num, Const, "Number does not match expected constant"))) &&
+      enuum.forall(e => accumulate(buff, mkUnit(e.exists(v => v.value == num), Enuum, "Number not found in enumeration"))) &&
+      maximum.forall(max => accumulate(buff, mkUnit(lteq(num, max), Maximum, "Number is greater than maximum"))) &&
+      minimum.forall(min => accumulate(buff, mkUnit(gteq(num, min), Minimum, "Number is less than minimum"))) &&
+      exclusiveMax.forall(max => accumulate(buff, mkUnit(lt(num, max), ExclusiveMax, "Number is greater than exclusive maximum"))) &&
+      exclusiveMin.forall(min => accumulate(buff, mkUnit(gt(num, min), ExclusiveMin, "Number is less than exclusive minimum")))
   }
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("string"), Tyype, s"Expected $tyype, got string"))) &&
-      accumulateOpt(buff, const.map(c => mkUnit(c.value == s.toString, Const, "String does not match expected constant"))) &&
-      accumulateOpt(buff, enuum.map(e => mkUnit(e.exists(v => v.value == s.toString), Enuum, "String not found in enumeration"))) &&
-      accumulateOpt(buff, maxLength.map(max => mkUnit(s.toString.codePointCount(0, s.length()) <= max, MaxLength, "String is greater than maximum length"))) &&
-      accumulateOpt(buff, minLength.map(min => mkUnit(s.toString.codePointCount(0, s.length()) >= min, MinLength, "String is less than minimum length"))) &&
-      accumulateOpt(buff, pattern.map(p => mkUnit(p.matches(s), Pattern, "String does not match pattern")))
+      const.forall(c => accumulate(buff, mkUnit(c.value == s.toString, Const, "String does not match expected constant"))) &&
+      enuum.forall(e => accumulate(buff, mkUnit(e.exists(v => v.value == s.toString), Enuum, "String not found in enumeration"))) &&
+      maxLength.forall(max => accumulate(buff, mkUnit(s.toString.codePointCount(0, s.length()) <= max, MaxLength, "String is greater than maximum length"))) &&
+      minLength.forall(min => accumulate(buff, mkUnit(s.toString.codePointCount(0, s.length()) >= min, MinLength, "String is less than minimum length"))) &&
+      pattern.forall(p => accumulate(buff, mkUnit(p.matches(s), Pattern, "String does not match pattern")))
     buff.result()
   }
 

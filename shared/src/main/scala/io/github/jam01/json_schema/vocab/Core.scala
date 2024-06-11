@@ -22,43 +22,43 @@ final class Core private(schema: ObjectSchema,
 
   override def visitNull(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
-    accumulateOpt(buff, _refVis.map(v => v.visitNull(index))) &&
-      accumulateOpt(buff, _dynRefVis.map(v => v.visitNull(index)))
+    _refVis.forall(v => accumulate(buff, v.visitNull(index))) &&
+      _dynRefVis.forall(v => accumulate(buff, v.visitNull(index)))
     buff.result()
   }
 
   override def visitFalse(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
-    accumulateOpt(buff, _refVis.map(v => v.visitFalse(index))) &&
-      accumulateOpt(buff, _dynRefVis.map(v => v.visitFalse(index)))
+    _refVis.forall(v => accumulate(buff, v.visitFalse(index))) &&
+      _dynRefVis.forall(v => accumulate(buff, v.visitFalse(index)))
     buff.result()
   }
 
   override def visitTrue(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
-    accumulateOpt(buff, _refVis.map(v => v.visitTrue(index))) &&
-      accumulateOpt(buff, _dynRefVis.map(v => v.visitTrue(index)))
+    _refVis.forall(v => accumulate(buff, v.visitTrue(index))) &&
+      _dynRefVis.forall(v => accumulate(buff, v.visitTrue(index)))
     buff.result()
   }
 
   override def visitInt64(num: Long, index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
-    accumulateOpt(buff, _refVis.map(v => v.visitInt64(num, index))) &&
-      accumulateOpt(buff, _dynRefVis.map(v => v.visitInt64(num, index)))
+    _refVis.forall(v => accumulate(buff, v.visitInt64(num, index))) &&
+      _dynRefVis.forall(v => accumulate(buff, v.visitInt64(num, index)))
     buff.result()
   }
 
   override def visitFloat64(num: Double, index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
-    accumulateOpt(buff, _refVis.map(v => v.visitFloat64(num, index))) &&
-      accumulateOpt(buff, _dynRefVis.map(v => v.visitFloat64(num, index)))
+    _refVis.forall(v => accumulate(buff, v.visitFloat64(num, index))) &&
+      _dynRefVis.forall(v => accumulate(buff, v.visitFloat64(num, index)))
     buff.result()
   }
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
-    accumulateOpt(buff, _refVis.map(v => v.visitString(s, index))) &&
-      accumulateOpt(buff, _dynRefVis.map(v => v.visitString(s, index)))
+    _refVis.forall(v => accumulate(buff, v.visitString(s, index))) &&
+      _dynRefVis.forall(v => accumulate(buff, v.visitString(s, index)))
     buff.result()
   }
 

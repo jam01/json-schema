@@ -34,14 +34,10 @@ abstract class VocabBase(schema: ObjectSchema,
   }
 
   // perf: @inline?
-  def accumulate(units: mutable.Growable[OutputUnit], unit: OutputUnit): Boolean = {
-    ctx.config.format.accumulate(units, unit)
-    unit.vvalid || !ctx.config.ffast //perf: cost of boolean logic when config.ffast is unchangin
+  protected def accumulate(buff: mutable.Growable[OutputUnit], unit: OutputUnit): Boolean = {
+    ctx.config.format.accumulate(buff, unit)
+    unit.vvalid || !ctx.config.ffast // perf: cost of boolean logic when config.ffast is unchanging
   }
-  
-  def accumulateOpt(results: mutable.Growable[OutputUnit], unitOpt: Option[OutputUnit]): Boolean = {
-    if (unitOpt.isEmpty) return true
-    accumulate(results, unitOpt.get)
   }
 
   private def hasRef: Boolean = {

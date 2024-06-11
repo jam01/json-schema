@@ -56,14 +56,14 @@ final class Applicator private(schema: ObjectSchema,
 
   override def visitNull(index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
-    accumulateOpt(buff, notVis.map(v => not(v.visitNull(index)))) &&
-      accumulateOpt(buff, allOfVis.map(v => v.visitNull(index))) &&
-      accumulateOpt(buff, anyOfVis.map(v => v.visitNull(index))) &&
-      accumulateOpt(buff, oneOfVis.map(v => v.visitNull(index))) &&
+    notVis.forall(v => accumulate(buff, not(v.visitNull(index)))) &&
+      allOfVis.forall(v => accumulate(buff, v.visitNull(index))) &&
+      anyOfVis.forall(v => accumulate(buff, v.visitNull(index))) &&
+      oneOfVis.forall(v => accumulate(buff, v.visitNull(index))) &&
       ifVis.forall(ifv => {
-        val iff = ifVis.get.visitNull(index); accumulate(buff, OutputUnit.info(iff))
-        if (iff.vvalid) accumulateOpt(buff, thenVis.map(v => v.visitNull(index)))
-        else accumulateOpt(buff, elseVis.map(v => v.visitNull(index)))
+        val iff = ifv.visitNull(index); accumulate(buff, OutputUnit.info(iff))
+        if (iff.vvalid) thenVis.forall(v => accumulate(buff, v.visitNull(index)))
+        else elseVis.forall(v => accumulate(buff, v.visitNull(index)))
       })
 
     buff.result
@@ -71,14 +71,14 @@ final class Applicator private(schema: ObjectSchema,
 
   override def visitFalse(index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
-    accumulateOpt(buff, notVis.map(v => not(v.visitFalse(index)))) &&
-      accumulateOpt(buff, allOfVis.map(v => v.visitFalse(index))) &&
-      accumulateOpt(buff, anyOfVis.map(v => v.visitFalse(index))) &&
-      accumulateOpt(buff, oneOfVis.map(v => v.visitFalse(index))) &&
+    notVis.forall(v => accumulate(buff, not(v.visitFalse(index)))) &&
+      allOfVis.forall(v => accumulate(buff, v.visitFalse(index))) &&
+      anyOfVis.forall(v => accumulate(buff, v.visitFalse(index))) &&
+      oneOfVis.forall(v => accumulate(buff, v.visitFalse(index))) &&
       ifVis.forall(ifv => {
         val iff = ifv.visitFalse(index); accumulate(buff, OutputUnit.info(iff))
-        if (iff.vvalid) accumulateOpt(buff, thenVis.map(v => v.visitFalse(index)))
-        else accumulateOpt(buff, elseVis.map(v => v.visitFalse(index)))
+        if (iff.vvalid) thenVis.forall(v => accumulate(buff, v.visitFalse(index)))
+        else elseVis.forall(v => accumulate(buff, v.visitFalse(index)))
       })
 
     buff.result
@@ -86,14 +86,14 @@ final class Applicator private(schema: ObjectSchema,
 
   override def visitTrue(index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
-    accumulateOpt(buff, notVis.map(v => not(v.visitTrue(index)))) &&
-      accumulateOpt(buff, allOfVis.map(v => v.visitTrue(index))) &&
-      accumulateOpt(buff, anyOfVis.map(v => v.visitTrue(index))) &&
-      accumulateOpt(buff, oneOfVis.map(v => v.visitTrue(index))) &&
+    notVis.forall(v => accumulate(buff, not(v.visitTrue(index)))) &&
+      allOfVis.forall(v => accumulate(buff, v.visitTrue(index))) &&
+      anyOfVis.forall(v => accumulate(buff, v.visitTrue(index))) &&
+      oneOfVis.forall(v => accumulate(buff, v.visitTrue(index))) &&
       ifVis.forall(ifv => {
-        val iff = ifVis.get.visitTrue(index); accumulate(buff, OutputUnit.info(iff))
-        if (iff.vvalid) accumulateOpt(buff, thenVis.map(v => v.visitTrue(index)))
-        else accumulateOpt(buff, elseVis.map(v => v.visitTrue(index)))
+        val iff = ifv.visitTrue(index); accumulate(buff, OutputUnit.info(iff))
+        if (iff.vvalid) thenVis.forall(v => accumulate(buff, v.visitTrue(index)))
+        else elseVis.forall(v => accumulate(buff, v.visitTrue(index)))
       })
 
     buff.result
@@ -101,14 +101,14 @@ final class Applicator private(schema: ObjectSchema,
 
   override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
-    accumulateOpt(buff, notVis.map(v => not(v.visitInt64(l, index)))) &&
-      accumulateOpt(buff, allOfVis.map(v => v.visitInt64(l, index))) &&
-      accumulateOpt(buff, anyOfVis.map(v => v.visitInt64(l, index))) &&
-      accumulateOpt(buff, oneOfVis.map(v => v.visitInt64(l, index))) &&
+    notVis.forall(v => accumulate(buff, not(v.visitInt64(l, index)))) &&
+      allOfVis.forall(v => accumulate(buff, v.visitInt64(l, index))) &&
+      anyOfVis.forall(v => accumulate(buff, v.visitInt64(l, index))) &&
+      oneOfVis.forall(v => accumulate(buff, v.visitInt64(l, index))) &&
       ifVis.forall(ifv => {
-        val iff = ifVis.get.visitInt64(l, index); accumulate(buff, OutputUnit.info(iff))
-        if (iff.vvalid) accumulateOpt(buff, thenVis.map(v => v.visitInt64(l, index)))
-        else accumulateOpt(buff, elseVis.map(v => v.visitInt64(l, index)))
+        val iff = ifv.visitInt64(l, index); accumulate(buff, OutputUnit.info(iff))
+        if (iff.vvalid) thenVis.forall(v => accumulate(buff, v.visitInt64(l, index)))
+        else elseVis.forall(v => accumulate(buff, v.visitInt64(l, index)))
       })
 
     buff.result
@@ -116,14 +116,14 @@ final class Applicator private(schema: ObjectSchema,
 
   override def visitFloat64(num: Double, index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
-    accumulateOpt(buff, notVis.map(v => not(v.visitFloat64(num, index)))) &&
-      accumulateOpt(buff, allOfVis.map(v => v.visitFloat64(num, index))) &&
-      accumulateOpt(buff, anyOfVis.map(v => v.visitFloat64(num, index))) &&
-      accumulateOpt(buff, oneOfVis.map(v => v.visitFloat64(num, index))) &&
+    notVis.forall(v => accumulate(buff, not(v.visitFloat64(num, index)))) &&
+      allOfVis.forall(v => accumulate(buff, v.visitFloat64(num, index))) &&
+      anyOfVis.forall(v => accumulate(buff, v.visitFloat64(num, index))) &&
+      oneOfVis.forall(v => accumulate(buff, v.visitFloat64(num, index))) &&
       ifVis.forall(ifv => {
-        val iff = ifVis.get.visitFloat64(num, index); accumulate(buff, OutputUnit.info(iff))
-        if (iff.vvalid) accumulateOpt(buff, thenVis.map(v => v.visitFloat64(num, index)))
-        else accumulateOpt(buff, elseVis.map(v => v.visitFloat64(num, index)))
+        val iff = ifv.visitFloat64(num, index); accumulate(buff, OutputUnit.info(iff))
+        if (iff.vvalid) thenVis.forall(v => accumulate(buff, v.visitFloat64(num, index)))
+        else elseVis.forall(v => accumulate(buff, v.visitFloat64(num, index)))
       })
 
     buff.result
@@ -131,14 +131,14 @@ final class Applicator private(schema: ObjectSchema,
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
-    accumulateOpt(buff, notVis.map(v => not(v.visitString(s, index)))) &&
-      accumulateOpt(buff, allOfVis.map(v => v.visitString(s, index))) &&
-      accumulateOpt(buff, anyOfVis.map(v => v.visitString(s, index))) &&
-      accumulateOpt(buff, oneOfVis.map(v => v.visitString(s, index))) &&
+    notVis.forall(v => accumulate(buff, not(v.visitString(s, index)))) &&
+      allOfVis.forall(v => accumulate(buff, v.visitString(s, index))) &&
+      anyOfVis.forall(v => accumulate(buff, v.visitString(s, index))) &&
+      oneOfVis.forall(v => accumulate(buff, v.visitString(s, index))) &&
       ifVis.forall(ifv => {
-        val iff = ifVis.get.visitString(s, index); accumulate(buff, OutputUnit.info(iff))
-        if (iff.vvalid) accumulateOpt(buff, thenVis.map(v => v.visitString(s, index)))
-        else accumulateOpt(buff, elseVis.map(v => v.visitString(s, index)))
+        val iff = ifv.visitString(s, index); accumulate(buff, OutputUnit.info(iff))
+        if (iff.vvalid) thenVis.forall(v => accumulate(buff, v.visitString(s, index)))
+        else elseVis.forall(v => accumulate(buff, v.visitString(s, index)))
       })
 
     buff.result
@@ -211,7 +211,7 @@ final class Applicator private(schema: ObjectSchema,
         override def visitValue(u: OutputUnit, index: Int): Unit = { accumulate(buff, u); if (u.vvalid) idx = nextIdx }
         override def visitEnd(index: Int): OutputUnit = compose(PrefixItems, buff.result, Num(idx))
       })
-      
+
       val itemsArrVis: Option[ArrVisitor[OutputUnit, OutputUnit]] = itemsVis.map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
         private val buff = ListBuffer[OutputUnit]()
         override def subVisitor: Visitor[?, ?] = schValidator
@@ -247,8 +247,8 @@ final class Applicator private(schema: ObjectSchema,
           else accumulate(buff, unit)
         })
 
-        accumulateOpt(buff, prefixItemsArrVis.map(v => v.visitEnd(index)))
-        accumulateOpt(buff, itemsArrVis.map(v => v.visitEnd(index)))
+        prefixItemsArrVis.forall(v => accumulate(buff, v.visitEnd(index)))
+        itemsArrVis.forall(v => accumulate(buff, v.visitEnd(index)))
         ifVis.foreach(_ => {
           val iff0 = iff; accumulate(buff, OutputUnit.info(iff0))
           if (iff0.vvalid) {
