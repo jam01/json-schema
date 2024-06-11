@@ -7,6 +7,8 @@ object SchemaValidator {
     sch match
       case BooleanSchema(bool) => new BooleanSchemaValidator(bool, ctx, path)
       case osch: ObjectSchema =>
+        guardDepth(dynParent)
+
         val vocabs: Seq[Vocab[?]] = ctx.config.dialect.vocabularies
           .filter(vocabfact => vocabfact.shouldApply(osch))
           .map(vocabfact => vocabfact.create(osch, ctx, path, dynParent))
@@ -44,6 +46,19 @@ object SchemaValidator {
             new MapCompositeObjContext[Nothing, Seq[OutputUnit], OutputUnit](vocabs.map(_.visitObject(length, index)), units => compose(units.flatten))
         }
   }
+}
+
+private def guardDepth(dynParent: Option[Vocab[?]]): Unit = {
+  if (dynParent.isEmpty) return  
+  var countRefs = 0
+  var head: Vocab[?] = dynParent.get
+  while (head.dynParent.nonEmpty) {
+    countRefs += 1
+    head = head.dynParent.get
+  }
+
+  // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
+  if (countRefs > 32) throw new IllegalStateException("Depth limit exceeded")
 }
 
 final class BooleanSchemaValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends JsonVisitor[OutputUnit, OutputUnit] {

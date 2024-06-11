@@ -19,16 +19,6 @@ abstract class VocabBase(schema: ObjectSchema,
                          val path: JsonPointer,
                          dynParent: Option[Vocab[?]]) extends Vocab[Nothing](schema, dynParent) {
   
-  // TODO: move this to ObjSchValidator 
-  private var countRefs = 0
-  private var head: Vocab[?] = this
-  while (head.dynParent.nonEmpty) {
-    countRefs += 1
-    head = head.dynParent.get
-  }
-  // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
-  if (countRefs > 32) throw new IllegalStateException("Depth limit exceeded")
-
   // TODO: reuse path.appended(kw) across implementations
 
   protected def mkUnit(isValid: Boolean,
