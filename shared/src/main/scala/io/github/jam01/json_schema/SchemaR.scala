@@ -61,7 +61,7 @@ final class SchemaR private(docbase: Uri,
             }
 
             override def visitValue(v: Value, index: Int): Unit = {
-              super.visitValue(v, index);
+              super.visitValue(v, index)
               nextIdx += 1
             }
           }

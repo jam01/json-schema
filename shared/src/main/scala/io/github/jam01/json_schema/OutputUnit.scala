@@ -12,9 +12,8 @@ import scala.collection.mutable
  * @param absKwLoc    absolute, dereferenced location of the validating keyword
  * @param insLoc      location of the JSON value evaluated within the instance
  * @param error       produced by a failed validation
- * @param errors      produced by a failed validation
  * @param annotation  produced by a successful validation
- * @param annotations produced by a successful validation
+ * @param details     subschema(s) validation details
  */
 sealed class OutputUnit(val valid: Boolean,
                         val kwLoc: JsonPointer,

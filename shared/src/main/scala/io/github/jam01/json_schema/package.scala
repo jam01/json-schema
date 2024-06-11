@@ -27,10 +27,10 @@ package object json_schema {
   /**
    * Reusable validation configuration.
    *
-   * @param dialect         to interpret the schema being applied
-   * @param format          structure to return by validator visitor
-   * @param ffast           whether to fail fast, i.e.: at first error vs fully validate the structure
-   * @param keepAnnotations list of JSON schema annotations to keep in output
+   * @param dialect   to interpret the schema being applied
+   * @param format    structure to return by validator visitor
+   * @param ffast     whether to fail fast, i.e.: at first error vs fully validate the structure
+   * @param allowList [[AllowList]] of JSON schema annotations to (dis)allow in the result
    */
   case class Config(dialect: Dialect = Dialect._2020_12,
                     format: OutputFormat = OutputFormat.Flag,

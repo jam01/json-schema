@@ -28,7 +28,7 @@ object SchemaValidator {
               val res1 = f(it.next())
               ctx.onVocabResults(path, res1)
               res0 = res0 :++ res1
-              if (ctx.config.ffast && res1.exists(u => !u.vvalid)) continue = false
+              if (ctx.config.ffast && res1.exists(u => !u.vvalid)) continue = false //perf: cost of boolean logic when config.ffast is unchangin
             }
 
             compose(res0)

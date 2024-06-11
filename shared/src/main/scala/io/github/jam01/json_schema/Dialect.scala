@@ -33,7 +33,7 @@ trait Vocab[-T](val schema: ObjectSchema,
  * Factory for creating vocabulary validator instances.
  *
  * @see [[upickle.core.Visitor]]
- * @tparam T the type of subvisitor result for array or object elements. Usually safe to wildcard.
+ * @tparam B the type of subvisitor result for array or object elements. Usually safe to wildcard.
  */
 trait VocabFactory[B <: Vocab[?]] {
   /**

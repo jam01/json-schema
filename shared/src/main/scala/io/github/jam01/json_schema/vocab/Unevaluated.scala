@@ -4,8 +4,8 @@ import io.github.jam01.json_schema.*
 import io.github.jam01.json_schema.vocab.Unevaluated.*
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-import scala.collection.{SeqFactory, mutable}
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.{SeqFactory, mutable}
 
 final class Unevaluated private(schema: ObjectSchema,
                           ctx: Context,
