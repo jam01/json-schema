@@ -27,7 +27,7 @@ object Dialect {
  * @tparam T the type of subvisitor result for array or object elements. Usually safe to wildcard.
  */
 trait Vocab[-T](val schema: ObjectSchema,
-                val dynParent: Option[Vocab[?]]) extends JsonVisitor[T, collection.Seq[OutputUnit]]
+                val dynParent: Option[Vocab[?]]) extends JsonVisitor[T, Seq[OutputUnit]]
 
 /**
  * Factory for creating vocabulary validator instances.

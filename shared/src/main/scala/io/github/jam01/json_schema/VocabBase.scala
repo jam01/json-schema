@@ -34,9 +34,9 @@ abstract class VocabBase(schema: ObjectSchema,
   protected def mkUnit(isValid: Boolean,
              kw: String,
              error: String | Null = null,
-             errors: collection.Seq[OutputUnit] = Nil,
+             errors: Seq[OutputUnit] = Nil,
              annotation: Value | Null = null,
-             verbose: collection.Seq[OutputUnit] = Nil): OutputUnit = {
+             verbose: Seq[OutputUnit] = Nil): OutputUnit = {
     val kwLoc = path.appended(kw)
     val absKwLoc = if (hasRef) schema.location.appendedFragment(s"/$kw") else null
     if (isValid && annotation != null) ctx.offerAnnotation(kwLoc, annotation)
@@ -58,7 +58,7 @@ abstract class VocabBase(schema: ObjectSchema,
     path.refTokens.exists(s => Core._Ref == s || Core._DynRef == s)
   }
 
-  protected def compose(kw: String, units: collection.Seq[OutputUnit], ann: Value | Null = null): OutputUnit = {
+  protected def compose(kw: String, units: Seq[OutputUnit], ann: Value | Null = null): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
     mkUnit(invalid.isEmpty, kw, errors = invalid, annotation = ann, verbose = valid)
   }

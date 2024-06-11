@@ -54,7 +54,7 @@ final class Applicator private(schema: ObjectSchema,
   private val containsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(Contains)
     .map(sch => SchemaValidator.of(sch, ctx, path.appended(Contains), Some(this)))
 
-  override def visitNull(index: Int): collection.Seq[OutputUnit] = {
+  override def visitNull(index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
     accumulateOpt(buff, notVis.map(v => not(v.visitNull(index)))) &&
       accumulateOpt(buff, allOfVis.map(v => v.visitNull(index))) &&
@@ -69,7 +69,7 @@ final class Applicator private(schema: ObjectSchema,
     buff.result
   }
 
-  override def visitFalse(index: Int): collection.Seq[OutputUnit] = {
+  override def visitFalse(index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
     accumulateOpt(buff, notVis.map(v => not(v.visitFalse(index)))) &&
       accumulateOpt(buff, allOfVis.map(v => v.visitFalse(index))) &&
@@ -84,7 +84,7 @@ final class Applicator private(schema: ObjectSchema,
     buff.result
   }
 
-  override def visitTrue(index: Int): collection.Seq[OutputUnit] = {
+  override def visitTrue(index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
     accumulateOpt(buff, notVis.map(v => not(v.visitTrue(index)))) &&
       accumulateOpt(buff, allOfVis.map(v => v.visitTrue(index))) &&
@@ -99,7 +99,7 @@ final class Applicator private(schema: ObjectSchema,
     buff.result
   }
 
-  override def visitInt64(l: Long, index: Int): collection.Seq[OutputUnit] = {
+  override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
     accumulateOpt(buff, notVis.map(v => not(v.visitInt64(l, index)))) &&
       accumulateOpt(buff, allOfVis.map(v => v.visitInt64(l, index))) &&
@@ -114,7 +114,7 @@ final class Applicator private(schema: ObjectSchema,
     buff.result
   }
 
-  override def visitFloat64(num: Double, index: Int): collection.Seq[OutputUnit] = {
+  override def visitFloat64(num: Double, index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
     accumulateOpt(buff, notVis.map(v => not(v.visitFloat64(num, index)))) &&
       accumulateOpt(buff, allOfVis.map(v => v.visitFloat64(num, index))) &&
@@ -129,7 +129,7 @@ final class Applicator private(schema: ObjectSchema,
     buff.result
   }
 
-  override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
+  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
     accumulateOpt(buff, notVis.map(v => not(v.visitString(s, index)))) &&
       accumulateOpt(buff, allOfVis.map(v => v.visitString(s, index))) &&
@@ -162,11 +162,11 @@ final class Applicator private(schema: ObjectSchema,
    * `insVisitor` and all of child visitors invoked before through the `childVisitor` variable.
    */
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[Any, collection.Seq[OutputUnit]] = {
+  override def visitArray(length: Int, index: Int): ArrVisitor[Any, Seq[OutputUnit]] = {
     val containsArrVis = containsVis.map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
-      private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
+      private val buff = new ListBuffer[OutputUnit]
       private var nextIdx = 0
-      private val matched: mutable.ArrayBuffer[Num] = new ArrayBuffer()
+      private val matched = new ListBuffer[Value]
 
       override def subVisitor: Visitor[?, ?] = schValidator
       override def visitValue(u: OutputUnit, index: Int): Unit = {
@@ -182,7 +182,7 @@ final class Applicator private(schema: ObjectSchema,
         if (maxContains.nonEmpty) {
           res = res && (matched.size <= maxContains.get)
         }
-        mkUnit(res, Contains, "Array does not contain given elements", Nil, Arr.from(matched), Nil) // TODO: include if failed bc min/max
+        mkUnit(res, Contains, "Array does not contain given elements", Nil, Arr(matched.result()), Nil) // TODO: include if failed bc min/max
       }
     })
 
@@ -200,7 +200,7 @@ final class Applicator private(schema: ObjectSchema,
     val insVisitor: ArrVisitor[Seq[Nothing], Seq[OutputUnit]] = new CompositeArrVisitor(instanceVisitors)
     var childVisitor: ArrVisitor[?, ?] = null // to be assigned based on child
 
-    new ArrVisitor[Any, collection.Seq[OutputUnit]] {
+    new ArrVisitor[Any, Seq[OutputUnit]] {
       private var nextIdx = 0
 
       // returns subVisitor based on child index
@@ -235,13 +235,12 @@ final class Applicator private(schema: ObjectSchema,
         nextIdx += 1
       }
 
-      override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
+      override def visitEnd(index: Int): Seq[OutputUnit] = {
         val buff = new ListBuffer[OutputUnit]
-        val insVisResults = insVisitor.visitEnd(index)
         var iff: OutputUnit = null
         var thenn: OutputUnit = null
         var els: OutputUnit = null
-        insVisResults.foreach(unit => {
+        insVisitor.visitEnd(index).foreach(unit => {
           if (unit.kwLoc.refTokens.last == If) iff = unit
           else if (unit.kwLoc.refTokens.last == Then) thenn = unit
           else if (unit.kwLoc.refTokens.last == Else) els = unit
@@ -261,12 +260,12 @@ final class Applicator private(schema: ObjectSchema,
           }
         })
 
-        buff.result
+        buff.result()
       }
     }
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[Any, collection.Seq[OutputUnit]] = {
+  override def visitObject(length: Int, index: Int): ObjVisitor[Any, Seq[OutputUnit]] = {
     val propsVisited = mutable.ArrayBuffer[String]() // properties visited
 
     val insVisitors: mutable.ArrayBuffer[ObjVisitor[?, OutputUnit]] = new mutable.ArrayBuffer(6)
@@ -277,7 +276,6 @@ final class Applicator private(schema: ObjectSchema,
     ifVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
     thenVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
     elseVis.foreach(v => insVisitors.addOne(v.visitObject(length, true, index)))
-
     depSchsViss.map(viss => viss.map((key, v) => (key, MapObjContext(v.visitObject(length, true, index), unit => (key, unit.asInstanceOf[OutputUnit]))))) // Option[collection.Map[String, ObjVisitor[?, (String, OutputUnit)]]]
       .foreach(viss =>
         insVisitors.addOne(new MapCompositeObjContext[Nothing, (String, OutputUnit), OutputUnit](viss.values.toSeq, key_unit_tuples => { // Vis[Seq[Nothing], OUnit]
@@ -289,45 +287,42 @@ final class Applicator private(schema: ObjectSchema,
     val insVisitor: CompositeObjVisitor[Nothing, OutputUnit] = new CompositeObjVisitor(insVisitors.toSeq) // ObjVisitor[Seq[Nothing], Seq[OutputUnit]]
     var childVisitor: ObjVisitor[?, ?] = null // to be assigned based on child
 
-    new ObjVisitor[Any, collection.Seq[OutputUnit]] {
+    new ObjVisitor[Any, Seq[OutputUnit]] {
       private var propNamesValid = true
       private var currentKey: String = "?"
 
       // returns subVisitor based on currentKey
       val propsVisitor: Option[ObjVisitor[OutputUnit, OutputUnit]] = propsViss.map(vismap => new ObjVisitor[OutputUnit, OutputUnit] {
-        private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
-        private val annot: mutable.Buffer[Value] = new ArrayBuffer()
-
+        private val buff = new ListBuffer[OutputUnit]
+        private val annot = new ListBuffer[Value]
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
         override def subVisitor: Visitor[?, ?] = vismap(currentKey)
         override def visitValue(u: OutputUnit, index: Int): Unit =
-        { accumulate(units, u); if (u.vvalid) annot.addOne(Str(currentKey))}
-        override def visitEnd(index: Int): OutputUnit = compose(Properties, units, Arr.from(annot))
+        { accumulate(buff, u); if (u.vvalid) annot.addOne(Str(currentKey))}
+        override def visitEnd(index: Int): OutputUnit = compose(Properties, buff.result(), Arr(annot.result()))
       })
 
       private var matchedPatternSchs: Seq[(String, Visitor[?, OutputUnit])] = Nil // to be assigned based on key visited
       // returns subVisitor based on assigned matchedPatternSchs
       val patternPropsVisitor: Option[ObjVisitor[Seq[OutputUnit], OutputUnit]] = patternPropsViss.map(_ => new ObjVisitor[Seq[OutputUnit], OutputUnit] {
-        private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
-        private val annot: mutable.Buffer[Value] = new ArrayBuffer()
-
+        private val buff = new ListBuffer[OutputUnit]
+        private val annot = new ListBuffer[Value]
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
         override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map((_, v) => v))
-        override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { accumulate(units, u); if (u.vvalid) annot.addOne(Str(currentKey))})
-        override def visitEnd(index: Int): OutputUnit = compose(PatternProperties, units, Arr.from(annot))
+        override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { accumulate(buff, u); if (u.vvalid) annot.addOne(Str(currentKey))})
+        override def visitEnd(index: Int): OutputUnit = compose(PatternProperties, buff.result(), Arr(annot.result()))
       })
 
       val addlPropsObjVis: Option[ObjVisitor[OutputUnit, OutputUnit]] = addlPropsVis.map(schValidator => new ObjVisitor[OutputUnit, OutputUnit] {
-        private val units: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer
-        private val annot: mutable.Buffer[Value] = new ArrayBuffer()
-
+        private val buff = new ListBuffer[OutputUnit]
+        private val annot = new ListBuffer[Value]
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
         override def subVisitor: Visitor[?, ?] = schValidator
-        override def visitValue(u: OutputUnit, index: Int): Unit = { accumulate(units, u); if (u.vvalid) annot.addOne(Str(currentKey)) }
-        override def visitEnd(index: Int): OutputUnit = compose(AdditionalProperties, units, Arr.from(annot))
+        override def visitValue(u: OutputUnit, index: Int): Unit = { accumulate(buff, u); if (u.vvalid) annot.addOne(Str(currentKey)) }
+        override def visitEnd(index: Int): OutputUnit = compose(AdditionalProperties, buff.result(), Arr(annot.result()))
       })
 
       override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
@@ -365,54 +360,53 @@ final class Applicator private(schema: ObjectSchema,
 
       override def visitValue(v: Any, index: Int): Unit = childVisitor.narrow.visitValue(v, index)
 
-      override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val insUnits = insVisitor.visitEnd(index)
+      override def visitEnd(index: Int): Seq[OutputUnit] = {
+        val buff = new ListBuffer[OutputUnit]
         var iff: OutputUnit = null
         var thenn: OutputUnit = null
         var els: OutputUnit = null
-        val units: mutable.ArrayBuffer[OutputUnit] = new mutable.ArrayBuffer(insUnits.size + 7)
-        insUnits.foreach(u => {
+        insVisitor.visitEnd(index).foreach(u => {
           if (u.kwLoc.refTokens.last == If) iff = u
           else if (u.kwLoc.refTokens.last == Then) thenn = u
           else if (u.kwLoc.refTokens.last == Else) els = u
-          else accumulate(units, u)
+          else accumulate(buff, u)
         })
 
-        propsVisitor.foreach(v => accumulate(units, v.visitEnd(index)))
-        patternPropsVisitor.foreach(v => accumulate(units, v.visitEnd(index)))
-        addlPropsObjVis.foreach(v => accumulate(units, v.visitEnd(index)))
-        accumulate(units, mkUnit(propNamesValid, PropertyNames, ""))
+        propsVisitor.foreach(v => accumulate(buff, v.visitEnd(index)))
+        patternPropsVisitor.foreach(v => accumulate(buff, v.visitEnd(index)))
+        addlPropsObjVis.foreach(v => accumulate(buff, v.visitEnd(index)))
+        accumulate(buff, mkUnit(propNamesValid, PropertyNames, ""))
 
         ifVis.foreach(_ => {
-          val u = iff; accumulate(units, OutputUnit.info(u))
+          val u = iff; accumulate(buff, OutputUnit.info(u))
           if (u.vvalid) {
             if (elseVis.nonEmpty) ctx.notifyInvalid(Seq(els))
-            thenVis.foreach(_ => accumulate(units, thenn)) // warning these could fail if for some reason iff/thenn/els are not set
+            thenVis.foreach(_ => accumulate(buff, thenn)) // warning these could fail if for some reason iff/thenn/els are not set
           } else {
             if (thenVis.nonEmpty) ctx.notifyInvalid(Seq(thenn))
-            elseVis.foreach(_ => accumulate(units, els))
+            elseVis.foreach(_ => accumulate(buff, els))
           }
         })
 
-        units
+        buff.result()
       }
     }
   }
 
   /* helper methods */
-  private def allOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
+  private def allOf(kw: String, units: Seq[OutputUnit]): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
     mkUnit(invalid.isEmpty, kw, errors = invalid, verbose = valid)
   }
 
-  private def oneOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
+  private def oneOf(kw: String, units: Seq[OutputUnit]): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
     if (valid.size == 1) mkUnit(true, kw, verbose = units) // if one valid, no errors and all results are verbose
     else if (valid.size > 1) mkUnit(false, kw, errors = valid, verbose = invalid) // if 1+ valid, errors are all valid, and errors are verbose
     else mkUnit(false, kw, errors = units) // if none valid, all results are errors
   }
 
-  private def anyOf(kw: String, units: collection.Seq[OutputUnit]): OutputUnit = {
+  private def anyOf(kw: String, units: Seq[OutputUnit]): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
     if (valid.nonEmpty) mkUnit(true, kw, verbose = units) // if some succeeded, no errors and all results are verbose
     else mkUnit(false, kw, errors = units) // if none succeeded, all results are errors

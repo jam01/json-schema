@@ -13,9 +13,9 @@ final class Validation private(schema: ObjectSchema,
                          ctx: Context,
                          path: JsonPointer,
                          dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
-  private val tyype: collection.Seq[String] = schema.getAsStringArray(Tyype)
+  private val tyype: Seq[String] = schema.getAsStringArray(Tyype)
   private val const: Option[Value] = schema.get(Const)
-  private val enuum: Option[collection.Seq[Value]] = schema.getArrayOpt(Enuum)
+  private val enuum: Option[Seq[Value]] = schema.getArrayOpt(Enuum)
   private val maximum: Option[Long | Double] = schema.getNumber(Maximum)
   private val minimum: Option[Long | Double] = schema.getNumber(Minimum)
   private val exclusiveMax: Option[Long | Double] = schema.getNumber(ExclusiveMax)
@@ -32,9 +32,9 @@ final class Validation private(schema: ObjectSchema,
   private val maxProperties: Option[Int] = schema.getInt(MaxProperties)
   private val minContains: Option[Int] = schema.getInt(MinContains)
   private val minProperties: Option[Int] = schema.getInt(MinProperties)
-  private val required: collection.Seq[String] = schema.getStringArray(Required)
+  private val required: Seq[String] = schema.getStringArray(Required)
 
-  override def visitNull(index: Int): collection.Seq[OutputUnit] = {
+  override def visitNull(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("null"), Tyype, s"Expected $tyype, got null"))) &&
       accumulateOpt(buff, const.map(c => mkUnit(c == Null, Const, "null does not match expected constant"))) &&
@@ -42,7 +42,7 @@ final class Validation private(schema: ObjectSchema,
     buff.result()
   }
 
-  override def visitFalse(index: Int): collection.Seq[OutputUnit] = {
+  override def visitFalse(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("boolean"), Tyype, s"Expected $tyype, got false"))) &&
       accumulateOpt(buff, const.map(c => mkUnit(c == False, Const, "false does not match expected constant"))) &&
@@ -50,7 +50,7 @@ final class Validation private(schema: ObjectSchema,
     buff.result()
   }
 
-  override def visitTrue(index: Int): collection.Seq[OutputUnit] = {
+  override def visitTrue(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("boolean"), Tyype, s"Expected $tyype, got true"))) &&
       accumulateOpt(buff, const.map(c => mkUnit(c == True, Const, "true does not match expected constant"))) &&
@@ -58,7 +58,7 @@ final class Validation private(schema: ObjectSchema,
     buff.result()
   }
 
-  override def visitInt64(num: Long, index: Int): collection.Seq[OutputUnit] = {
+  override def visitInt64(num: Long, index: Int): Seq[OutputUnit] = {
     def isMultiple(mult: Long | Double) = {
       mult match
         case ml: Long => num % ml == 0
@@ -72,7 +72,7 @@ final class Validation private(schema: ObjectSchema,
     buff.result()
   }
 
-  override def visitFloat64(num: Double, index: Int): collection.Seq[OutputUnit] = {
+  override def visitFloat64(num: Double, index: Int): Seq[OutputUnit] = {
     def isMultiple(mult: Long | Double) = try {
       BigDecimal.valueOf(num)
         .remainder(asBigDec(mult))
@@ -95,7 +95,7 @@ final class Validation private(schema: ObjectSchema,
       accumulateOpt(buff, exclusiveMin.map(min => mkUnit(gt(num, min), ExclusiveMin, "Number is less than exclusive minimum")))
   }
 
-  override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
+  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, mkUnit(tyype.contains("string"), Tyype, s"Expected $tyype, got string"))) &&
       accumulateOpt(buff, const.map(c => mkUnit(c.value == s.toString, Const, "String does not match expected constant"))) &&
@@ -106,22 +106,21 @@ final class Validation private(schema: ObjectSchema,
     buff.result()
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, collection.Seq[OutputUnit]] = {
-    val insVisitor: ArrVisitor[Nothing, collection.Seq[OutputUnit]] =
+  override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, Seq[OutputUnit]] = {
+    val insVisitor: ArrVisitor[Nothing, Seq[OutputUnit]] =
       if (const.isEmpty && enuum.isEmpty && (uniqueItems.isEmpty || !uniqueItems.get)) NilArrayVis
       else new MapArrContext(LiteralVisitor.visitArray(length, index), jsVal => { // Vis[Value, coll.Seq[OUnit]]
-        val results: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(3) // perf: should be re-used?
-        const.foreach(c => accumulate(results, mkUnit(c == jsVal, Const, "Array does not match expected constant")))
-        enuum.foreach(e => accumulate(results, mkUnit(e.contains(jsVal), Enuum, "Array not found in enumeration")))
+        val buff = new ListBuffer[OutputUnit]
+        const.foreach(c => accumulate(buff, mkUnit(c == jsVal, Const, "Array does not match expected constant")))
+        enuum.foreach(e => accumulate(buff, mkUnit(e.contains(jsVal), Enuum, "Array not found in enumeration")))
         uniqueItems.foreach(b => {
           val set = new mutable.HashSet[Value](jsVal.arr.size, 1) // perf: avoid Set
-          accumulate(results, mkUnit(jsVal.arr.forall(e => set.add(e)), UniqueItems, "Values in array are not unique"))
+          accumulate(buff, mkUnit(jsVal.arr.forall(e => set.add(e)), UniqueItems, "Values in array are not unique"))
         })
-
-        results
+        buff.result()
       })
 
-    new ArrVisitor[Any, collection.Seq[OutputUnit]] {
+    new ArrVisitor[Any, Seq[OutputUnit]] {
       private var nextIdx = 0
 
       override def subVisitor: Visitor[?, ?] = insVisitor.subVisitor
@@ -131,30 +130,28 @@ final class Validation private(schema: ObjectSchema,
         nextIdx += 1
       }
 
-      override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val results: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
-        results.sizeHint(results.size + 3)
-        if (tyype.nonEmpty) accumulate(results, mkUnit(tyype.contains("array"), Tyype, s"Expected $tyype, got array"))
-        maxItems.foreach(max => accumulate(results, mkUnit(nextIdx <= max, MaxItems, "Array has more items than allowed")))
-        minItems.foreach(min => accumulate(results, mkUnit(nextIdx >= min, MinItems, "Array has less items than allowed")))
-
-        results
+      override def visitEnd(index: Int): Seq[OutputUnit] = {
+        val buff = ListBuffer.from(insVisitor.visitEnd(index))
+        if (tyype.nonEmpty) accumulate(buff, mkUnit(tyype.contains("array"), Tyype, s"Expected $tyype, got array"))
+        maxItems.foreach(max => accumulate(buff, mkUnit(nextIdx <= max, MaxItems, "Array has more items than allowed")))
+        minItems.foreach(min => accumulate(buff, mkUnit(nextIdx >= min, MinItems, "Array has less items than allowed")))
+        buff.result()
       }
     }
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, collection.Seq[OutputUnit]] =  {
+  override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, Seq[OutputUnit]] =  {
     val propsVisited: mutable.ArrayBuffer[String] = mutable.ArrayBuffer.empty
-    val insVisitor: ObjVisitor[?, collection.Seq[OutputUnit]] =
+    val insVisitor: ObjVisitor[?, Seq[OutputUnit]] =
       if (const.isEmpty && enuum.isEmpty && (uniqueItems.isEmpty || !uniqueItems.get)) NilObjVis
       else new MapObjContext(LiteralVisitor.visitObject(length, index), obj => { // Vis[Value, coll.Seq[OUnit]]
-        val results: mutable.ArrayBuffer[OutputUnit] = new ArrayBuffer(2) // perf: should be re-used?
-        const.foreach(c => accumulate(results, mkUnit(c == obj, Const, "Object does not match expected constant")))
-        enuum.foreach(e => accumulate(results, mkUnit(e.contains(obj), Enuum, "Object not found in enumeration")))
-        results
+        val buff = new ListBuffer[OutputUnit]
+        const.foreach(c => accumulate(buff, mkUnit(c == obj, Const, "Object does not match expected constant")))
+        enuum.foreach(e => accumulate(buff, mkUnit(e.contains(obj), Enuum, "Object not found in enumeration")))
+        buff.result()
       })
 
-    new ObjVisitor[Any, collection.Seq[OutputUnit]] {
+    new ObjVisitor[Any, Seq[OutputUnit]] {
       private var currentKey: String = "?"
 
       override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
@@ -172,20 +169,16 @@ final class Validation private(schema: ObjectSchema,
 
       override def visitValue(v: Any, index: Int): Unit = insVisitor.narrow.visitValue(v, index)
 
-      override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
-        val results: mutable.ArrayBuffer[OutputUnit] = mutable.ArrayBuffer.from(insVisitor.visitEnd(index))
-        results.sizeHint(results.size + 5)
-
-        if (tyype.nonEmpty) accumulate(results, mkUnit(tyype.contains("object"), Tyype, s"Expected $tyype, got object"))
-        required.foreach(req => accumulate(results, mkUnit(propsVisited.contains(req), Required, s"Object does not contain required property $req")))
-        maxProperties.foreach(max => accumulate(results, mkUnit(propsVisited.size <= max, MaxProperties, "Object has more properties than allowed")))
-        minProperties.foreach(min => accumulate(results, mkUnit(propsVisited.size >= min, MinProperties, "Object has less properties than allowed")))
-        depReq.foreach(depReqs => accumulate(results, mkUnit(depReqs.filter((k, reqs) => propsVisited.contains(k)) // all depRequired that apply (found in obj) as (dependent key, required)
+      override def visitEnd(index: Int): Seq[OutputUnit] = {
+        val buff = ListBuffer.from(insVisitor.visitEnd(index))
+        if (tyype.nonEmpty) accumulate(buff, mkUnit(tyype.contains("object"), Tyype, s"Expected $tyype, got object"))
+        required.foreach(req => accumulate(buff, mkUnit(propsVisited.contains(req), Required, s"Object does not contain required property $req")))
+        maxProperties.foreach(max => accumulate(buff, mkUnit(propsVisited.size <= max, MaxProperties, "Object has more properties than allowed")))
+        minProperties.foreach(min => accumulate(buff, mkUnit(propsVisited.size >= min, MinProperties, "Object has less properties than allowed")))
+        depReq.foreach(depReqs => accumulate(buff, mkUnit(depReqs.filter((k, reqs) => propsVisited.contains(k)) // all depRequired that apply (found in obj) as (dependent key, required)
           .map((k, reqs) => reqs.arr.forall(rreq => propsVisited.contains(rreq.str))) // whether the required props were found
           .forall(identity), DepRequired, "Object does not contain dependent required properties"))) // whether all entries were satisfied
-
-
-        results
+        buff.result()
       }
     }
   }
@@ -234,18 +227,18 @@ object Validation extends VocabBaseFactory {
         case d2: Double => d1 >= d2
   }
 
-  private val NilArrayVis = new ArrVisitor[Any, collection.Seq[OutputUnit]] { // TODO: make object
+  private val NilArrayVis = new ArrVisitor[Any, Seq[OutputUnit]] { // TODO: make object
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): collection.Seq[OutputUnit] = Nil
+    override def visitEnd(index: Int): Seq[OutputUnit] = Nil
   }
 
-  private val NilObjVis = new ObjVisitor[Any, collection.Seq[OutputUnit]] { // TODO: make object
+  private val NilObjVis = new ObjVisitor[Any, Seq[OutputUnit]] { // TODO: make object
     override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
     override def visitKeyValue(v: Any): Unit = ()
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): collection.Seq[OutputUnit] = Nil
+    override def visitEnd(index: Int): Seq[OutputUnit] = Nil
   }
 
   private val Tyype = "type"

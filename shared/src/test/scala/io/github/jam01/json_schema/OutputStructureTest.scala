@@ -4,6 +4,7 @@ import io.github.jam01.json_schema.OutputStructureTest.*
 import org.junit.jupiter.api.Test
 import org.skyscreamer.jsonassert.JSONAssert
 import ujson.StringRenderer
+import upickle.core.LinkedHashMap
 
 import java.nio.file.{Files, Paths}
 import scala.language.implicitConversions
@@ -13,10 +14,11 @@ class OutputStructureTest {
   def main(): Unit = {
     val base = Uri("mem://test")
 
-    val osch = ObjectSchema(LinkedHashMapFactory(
+    val oschmap: LinkedHashMap[String, Value] = LinkedHashMapFactory(
       "type" -> "object",
-      "$ref" -> "str"), base)
-    osch.value.addOne(
+      "$ref" -> "str")
+    val osch = ObjectSchema(oschmap, base)
+    oschmap.addOne(
       "items" -> new ObjectSchema(LinkedHashMapFactory("type" -> "number", "maximum" -> 3), base, Some(osch), Some("/items")))
     val r = ujson.Readable
       .fromString("""["", "", 1, 2, 3, "", 4, 5]""")
@@ -30,8 +32,9 @@ class OutputStructureTest {
 
 object OutputStructureTest {
   val refBase: Uri = Uri("mem://ref")
-  val RefSch3: ObjectSchema = ObjectSchema(LinkedHashMapFactory("type" -> Str("string")), refBase)
-  RefSch3.value.addOne("items" -> new ObjectSchema(LinkedHashMapFactory("type" -> "number", "minimum" -> 5), refBase, Some(RefSch3), Some("/items")))
+  private val refsch3map: LinkedHashMap[String, Value] = LinkedHashMapFactory("type" -> Str("string"))
+  val RefSch3: ObjectSchema = ObjectSchema(refsch3map, refBase)
+  refsch3map.addOne("items" -> new ObjectSchema(LinkedHashMapFactory("type" -> "number", "minimum" -> 5), refBase, Some(RefSch3), Some("/items")))
 
   def resourceAsString(s: String): String =
     Files.readString(Paths.get(getClass.getClassLoader.getResource(s).toURI))

@@ -3,6 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visitor}
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 class CompositeVisitor[-T, +J](delegates: Seq[Visitor[T, J]]) extends JsonVisitor[Seq[T], Seq[J]] {
   override def visitNull(index: Int): Seq[J] = delegates.map(_.visitNull(index))
@@ -100,24 +101,22 @@ object LiteralVisitor extends JsonVisitor[Value, Value] {
 class CollectObjVisitor(val vis: Visitor[Value, Value], length: Int, index: Int) extends ObjVisitor[Value, Obj] {
   def this(vis: Visitor[Value, Value]) = this(vis, -1, -1)
   
-  private val lhm: LinkedHashMap[String, Value] = LinkedHashMap() // perf: no initial capacity constructor
+  private val map: LinkedHashMap[String, Value] = LinkedHashMap() // perf: no initial capacity constructor
   protected var _key: String = "?"
-
   override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
   override def visitKeyValue(v: Any): Unit = _key = v.asInstanceOf[String]
   override def subVisitor: Visitor[?, ?] = vis
-  override def visitValue(v: Value, index: Int): Unit = lhm.addOne(_key, v)
-  override def visitEnd(index: Int): Obj = Obj(lhm)
+  override def visitValue(v: Value, index: Int): Unit = map.addOne(_key, v)
+  override def visitEnd(index: Int): Obj = Obj(map)
 }
 
 class CollectArrVisitor(val vis: Visitor[Value, Value], length: Int, index: Int) extends ArrVisitor[Value, Arr] {
   def this(vis: Visitor[Value, Value]) = this(vis, -1, -1)
-  
-  private val arr: mutable.ArrayBuffer[Value] = new mutable.ArrayBuffer(length)
 
+  private val buff = new ListBuffer[Value]
   override def subVisitor: Visitor[?, ?] = vis
-  override def visitValue(v: Value, index: Int): Unit = arr.append(v)
-  override def visitEnd(index: Int): Arr = Arr(arr)
+  override def visitValue(v: Value, index: Int): Unit = buff.addOne(v)
+  override def visitEnd(index: Int): Arr = Arr(buff.result())
 }
 
 

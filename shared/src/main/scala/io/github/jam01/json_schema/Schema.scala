@@ -3,6 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.LinkedHashMap
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.util.hashing.MurmurHash3
 
 /**
@@ -35,7 +36,7 @@ sealed trait Value {
    * Returns the elements of this [[Value]], fails if it is not
    * a [[Arr]]
    */
-  def arr: collection.Seq[Value] = this match {
+  def arr: Seq[Value] = this match {
     case Arr(value) => value
     case _ => throw IllegalStateException("Expected Array")
   }
@@ -70,7 +71,7 @@ sealed trait Value {
 
 object Value {
   given iterable2Arr[T](using f: T => Value): Conversion[IterableOnce[T], Arr] with
-    override def apply(x: IterableOnce[T]): Arr = Arr.from(x.iterator.map(f))
+    override def apply(it: IterableOnce[T]): Arr = Arr(it.iterator.map(x => f(x)).toSeq)
   given iterable2Obj[T](using f: T => Value): Conversion[IterableOnce[(String, T)], Obj] with
     override def apply(it: IterableOnce[(String, T)]): Obj = Obj(LinkedHashMap(it.iterator.map(x => (x._1, f(x._2)))))
   given Conversion[Boolean, Bool] = (i: Boolean) => if (i) True else False
@@ -84,7 +85,7 @@ object Value {
 
 case class Str(value: String) extends Value
 
-case class Obj(value: LinkedHashMap[String, Value]) extends Value // TODO: make collection.Map 
+case class Obj(value: collection.Map[String, Value]) extends Value // TODO: make collection.Map
 
 object Obj {
   def apply[V](item: (String, V),
@@ -98,24 +99,18 @@ object Obj {
   def apply(): Obj = Obj(LinkedHashMap[String, Value]())
 }
 
-case class Arr(value: mutable.ArrayBuffer[Value]) extends Value // TODO: make collection.Seq 
+case class Arr(value: Seq[Value]) extends Value
 
 object Arr {
-  def from[T](items: IterableOnce[T])(using conv: T => Value): Arr = {
-    val buf = new mutable.ArrayBuffer[Value]()
-    items.iterator.foreach{ item =>
-      buf += (conv(item): Value)
-    }
-    Arr(buf)
-  }
-  
-  def apply(items: Value*): Arr = {
-    val buf = new mutable.ArrayBuffer[Value](items.length)
-    items.foreach { item =>
+  def apply[T](head: T, tail: Value*)(using conv: T => Value): Arr = {
+    val buf = ListBuffer(conv(head))
+    tail.iterator.foreach{ item =>
       buf += item
     }
-    Arr(buf)
-  }
+    new Arr(buf.result())
+ }
+
+  def apply(): Arr = new Arr(Nil)
 }
 
 // TODO: make part of ADT
@@ -193,7 +188,7 @@ case object FalseSchema extends BooleanSchema {
  * @param parent optionally the lexical parent schema
  * @param prel optionally the JSON Pointer relative to the lexical parent schema
  */
-final class ObjectSchema private[json_schema](val value: LinkedHashMap[String, Value], // TODO: make collection.Map 
+final class ObjectSchema private[json_schema](val value: collection.Map[String, Value], // TODO: make collection.Map
                         protected val docbase: Uri,
                         protected val parent: Option[ObjectSchema] = None,
                         protected val prel: Option[String] = None) extends ObjSchema with Schema {
@@ -226,7 +221,7 @@ final class ObjectSchema private[json_schema](val value: LinkedHashMap[String, V
 object ObjectSchema {
   def empty(docbase: Uri = Uri.random): ObjectSchema = new ObjectSchema(LinkedHashMap(), docbase)
 
-  def unapply(arg: ObjectSchema): Some[LinkedHashMap[String, Value]] = {
+  def unapply(arg: ObjectSchema): Some[collection.Map[String, Value]] = {
     Some(arg.value)
   }
 }

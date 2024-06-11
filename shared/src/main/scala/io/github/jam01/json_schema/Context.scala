@@ -89,7 +89,7 @@ trait Context {
    * @param schLocation location of the schema where dependants may be found
    * @return the collection of annotation [[OutputUnit]]s that satisfy some dependant in the given schema location
    */
-  def getDependenciesFor(schLocation: JsonPointer): collection.Seq[(JsonPointer, Value)]
+  def getDependenciesFor(schLocation: JsonPointer): Seq[(JsonPointer, Value)]
 
   /**
    * Publish output units produced for the given schema location.
@@ -100,7 +100,7 @@ trait Context {
    * @param schLocation of the schema where the units were produced
    * @param units that were produced
    */
-  def onVocabResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit
+  def onVocabResults(schLocation: JsonPointer, units: Seq[OutputUnit]): Unit
 
 
   def offerAnnotation(location: JsonPointer, value: Value): Unit
@@ -118,7 +118,7 @@ trait Context {
    *
    * @param invalid units
    */
-  def notifyInvalid(invalid: collection.Seq[OutputUnit]): Unit
+  def notifyInvalid(invalid: Seq[OutputUnit]): Unit
 
   /**
    * Signal the end of a schema scope.
@@ -127,6 +127,10 @@ trait Context {
    * @param result of the validation
    */
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit // should be internal?
+}
+
+object Context {
+  def get: Context = null.asInstanceOf[ScopedValue[Context]].get
 }
 
 case class DefaultContext(private val reg: collection.Map[Uri, Schema],
@@ -181,8 +185,8 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
   override def registerDependant(schLocation: JsonPointer, kwLocation: JsonPointer, predicate: JsonPointer => Boolean): Unit =
     dependents.getOrElseUpdate(schLocation, new mutable.ArrayBuffer(1)).addOne((kwLocation, predicate)) // perf: chances of there being 2 dependant kws in one sch
 
-  override def getDependenciesFor(kwLocation: JsonPointer): collection.Seq[(JsonPointer, Value)] =
-    dependencies.getOrElse(kwLocation, Nil)
+  override def getDependenciesFor(kwLocation: JsonPointer): Seq[(JsonPointer, Value)] =
+    dependencies.getOrElse(kwLocation, Nil).toSeq
 
   override def offerAnnotation(location: JsonPointer, value: Value): Unit = {
     if (dependents.isEmpty) return
@@ -199,12 +203,12 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
     }
   }
 
-  override def onVocabResults(schLocation: JsonPointer, units: collection.Seq[OutputUnit]): Unit = {
+  override def onVocabResults(schLocation: JsonPointer, units: Seq[OutputUnit]): Unit = {
     if (dependencies.nonEmpty && units.nonEmpty) 
       notifyInvalid(units.filter(u => !u.vvalid)) // discard dependencies relative to an error
   }
 
-  override def notifyInvalid(invalid: collection.Seq[OutputUnit]): Unit = {
+  override def notifyInvalid(invalid: Seq[OutputUnit]): Unit = {
     dependencies.values.foreach(deps => 
       deps.filterInPlace((kwLoc, _) => !invalid.exists(inv => inv.kwLoc.isRelativeTo(kwLoc))))
   }

@@ -14,17 +14,17 @@ abstract class Format(schema: ObjectSchema,
 
   private val format: Option[String] = schema.getString("format")
 
-  override def visitNull(index: Int): collection.Seq[OutputUnit] = ???
+  override def visitNull(index: Int): Seq[OutputUnit] = ???
 
-  override def visitFalse(index: Int): collection.Seq[OutputUnit] = ???
+  override def visitFalse(index: Int): Seq[OutputUnit] = ???
 
-  override def visitTrue(index: Int): collection.Seq[OutputUnit] = ???
+  override def visitTrue(index: Int): Seq[OutputUnit] = ???
 
-  override def visitInt64(l: Long, index: Int): collection.Seq[OutputUnit] = ???
+  override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = ???
 
-  override def visitFloat64(d: Double, index: Int): collection.Seq[OutputUnit] = ???
+  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = ???
 
-  override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = {
+  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     ???
     
 //    format.forall(_ match // TODO: use regexs
@@ -51,9 +51,9 @@ abstract class Format(schema: ObjectSchema,
 //      case _ => true) // TODO: throw unsupported exc
   }
 
-  override def visitArray(length: Int, index: Int): ArrVisitor[?, collection.Seq[OutputUnit]] =
+  override def visitArray(length: Int, index: Int): ArrVisitor[?, Seq[OutputUnit]] =
     ??? //BooleanSchemaValidator.True.visitArray(length, index)
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[?, collection.Seq[OutputUnit]] =
+  override def visitObject(length: Int, index: Int): ObjVisitor[?, Seq[OutputUnit]] =
     ??? //BooleanSchemaValidator.True.visitObject(length, index)}
 }

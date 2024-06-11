@@ -2,7 +2,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
 
-import scala.collection.{Map, Seq}
+import scala.collection.Map
 
 // see: https://docs.scala-lang.org/tour/self-types.html
 private[json_schema] trait ObjSchema { this: ObjectSchema =>
@@ -165,7 +165,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
    * @param k the entry key
    * @return the Seq[String] value, possibly wrapping a string, or an empty Seq if the entry does not exist
    */
-  def getAsStringArray(k: String): collection.Seq[String] = {
+  def getAsStringArray(k: String): Seq[String] = {
     value.get(k) match
       case None => Nil
       case Some(unk) => unk match

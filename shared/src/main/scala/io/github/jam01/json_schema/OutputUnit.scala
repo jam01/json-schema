@@ -22,7 +22,7 @@ sealed class OutputUnit(val valid: Boolean,
                         val insLoc: JsonPointer,
                         val error: String | Null = null,
                         val annotation: Value | Null = null,
-                        val details: collection.Seq[OutputUnit] = Nil) {
+                        val details: Seq[OutputUnit] = Nil) {
 
   def hasAnnotations: Boolean = annotation != null ||
     (details.nonEmpty && details.exists(u => u.hasAnnotations))
@@ -94,7 +94,7 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
  * JSON Schema validation output format
  */
 sealed abstract class OutputFormat {
-  def compose(path: JsonPointer, units: collection.Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
+  def compose(path: JsonPointer, units: Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
     val (valid, invalid) = units.partition(_.vvalid)
     make(invalid.isEmpty, path, null, insLoc, null, invalid, null, valid)
 
@@ -103,9 +103,9 @@ sealed abstract class OutputFormat {
            absKwLoc: Uri | Null = null,
            insLoc: JsonPointer,
            error: String | Null = null,
-           errors: collection.Seq[OutputUnit] = Nil,
+           errors: Seq[OutputUnit] = Nil,
            annotation: Value | Null = null,
-           verbose: collection.Seq[OutputUnit] = Nil): OutputUnit
+           verbose: Seq[OutputUnit] = Nil): OutputUnit
 
   def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
     if (!unit.vvalid) results.addOne(unit)
@@ -115,26 +115,26 @@ sealed abstract class OutputFormat {
 
 object OutputFormat {
   val Flag: OutputFormat = new OutputFormat {
-    override def compose(path: JsonPointer, units: collection.Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
       OutputUnit(units.forall(_.vvalid), path, null, insLoc)
 
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: collection.Seq[OutputUnit], annotation: Value | Null, verbose: collection.Seq[OutputUnit]): OutputUnit =
+    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       OutputUnit(isValid, kwLoc, null, insLoc)
   }
 
   val Basic: OutputFormat = new OutputFormat{
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: collection.Seq[OutputUnit], annotation: Value | Null, verbose: collection.Seq[OutputUnit]): OutputUnit =
+    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       ???
   }
 
   val Detailed: OutputFormat = new OutputFormat {
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: collection.Seq[OutputUnit], annotation: Value | Null, verbose: collection.Seq[OutputUnit]): OutputUnit =
+    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
       else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors)
   }
 
   val Verbose: OutputFormat = new OutputFormat {
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: collection.Seq[OutputUnit], annotation: Value | Null, verbose: collection.Seq[OutputUnit]): OutputUnit =
+    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, errors ++: verbose)
       else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors ++: verbose)
 

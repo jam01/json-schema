@@ -27,32 +27,32 @@ final class Unevaluated private(schema: ObjectSchema,
       other.refTokens.drop(path.refTokens.size).count(anns.contains) == 1 // perf: use an iterator to do drop + count
   }
 
-  override def visitNull(index: Int): collection.Seq[OutputUnit] = Nil
-  override def visitFalse(index: Int): collection.Seq[OutputUnit] = Nil
-  override def visitTrue(index: Int): collection.Seq[OutputUnit] = Nil
-  override def visitInt64(i: Long, index: Int): collection.Seq[OutputUnit] = Nil
-  override def visitFloat64(d: Double, index: Int): collection.Seq[OutputUnit] = Nil
-  override def visitString(s: CharSequence, index: Int): collection.Seq[OutputUnit] = Nil
-  override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, collection.Seq[OutputUnit]] = {
+  override def visitNull(index: Int): Seq[OutputUnit] = Nil
+  override def visitFalse(index: Int): Seq[OutputUnit] = Nil
+  override def visitTrue(index: Int): Seq[OutputUnit] = Nil
+  override def visitInt64(i: Long, index: Int): Seq[OutputUnit] = Nil
+  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = Nil
+  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = Nil
+  override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, Seq[OutputUnit]] = {
     if (itemsVis.isEmpty) return NilArrayVis
-    new ArrVisitor[OutputUnit, collection.Seq[OutputUnit]] {
-      private val results = new ListBuffer[OutputUnit]
+    new ArrVisitor[OutputUnit, Seq[OutputUnit]] {
+      private val buff = new ListBuffer[OutputUnit]
       private var nextIdx = 0
 
       override def subVisitor: Visitor[?, ?] = itemsVis.get
       override def visitValue(unit: OutputUnit, index: Int): Unit = {
-        results.addOne(unit)
+        buff.addOne(unit)
         nextIdx += 1
       }
 
-      override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
+      override def visitEnd(index: Int): Seq[OutputUnit] = {
         val kwLoc = path.appended(UnevaluatedItems)
-        val evalItems: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.Items)
-        val evalPrefixItems: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.PrefixItems)
-        val evalContains: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.Contains)
-        val evalUneval: collection.Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), UnevaluatedItems)
+        val evalItems: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.Items)
+        val evalPrefixItems: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.PrefixItems)
+        val evalContains: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.Contains)
+        val evalUneval: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), UnevaluatedItems)
 
-        val (applied, invalid) = results.result.partition(unit => ! {
+        val (applied, invalid) = buff.result().partition(unit => ! {
           evalItems.contains(True) || evalUneval.contains(True)
             || evalPrefixItems.exists(n => Validation.gteq(n.num, unit.insLoc.refTokens.last.toLong))
             || evalContains.exists(is => is.arr.contains(Num(unit.insLoc.refTokens.last.toInt)))
@@ -64,62 +64,58 @@ final class Unevaluated private(schema: ObjectSchema,
     }
   }
 
-  private def getItemsAnnotations(annotations: collection.Seq[(JsonPointer, Value)], annotName: String): collection.Seq[Value] =
+  private def getItemsAnnotations(annotations: Seq[(JsonPointer, Value)], annotName: String): Seq[Value] =
     annotations.withFilter((kwLoc, _) => annotName == kwLoc.refTokens.last)
       .map((_, value) => value)
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, collection.Seq[OutputUnit]] = {
+  override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, Seq[OutputUnit]] = {
     if (propsVis.isEmpty) return NilObjVis
-    new ObjVisitor[OutputUnit, collection.Seq[OutputUnit]] {
-      private val results = new ListBuffer[OutputUnit]
+    new ObjVisitor[OutputUnit, Seq[OutputUnit]] {
+      private val buff = new ListBuffer[OutputUnit]
       private val annot = new ListBuffer[Value]
       private var currentKey: String = "?"
 
       override def visitKey(index: Int): Visitor[?, ?] = new SimpleVisitor[Nothing, Any] {
         def expectedMsg = "Expected string"
-
         override def visitString(s: CharSequence, index1: Int): Unit = currentKey = s.toString
       }
 
       override def visitKeyValue(v: Any): Unit = ()
-
       override def subVisitor: Visitor[?, ?] = propsVis.get
-
       override def visitValue(unit: OutputUnit, index: Int): Unit = {
-        results.addOne(unit)
+        buff.addOne(unit)
         if (unit.vvalid) annot.addOne(Str(currentKey))
       }
 
-      override def visitEnd(index: Int): collection.Seq[OutputUnit] = {
+      override def visitEnd(index: Int): Seq[OutputUnit] = {
         val evaluated = getPropsAnnotations(ctx.getDependenciesFor(path.appended(UnevaluatedProperties)))
-        val (applied, invalid) = results.partition(unit => !evaluated.contains(unit.insLoc.refTokens.last))
+        val (applied, invalid) = buff.result().partition(unit => !evaluated.contains(unit.insLoc.refTokens.last))
         ctx.notifyInvalid(invalid)
-
-        Seq(compose(UnevaluatedProperties, applied, Arr.from(annot)))
+        Seq(compose(UnevaluatedProperties, applied, Arr(annot.result())))
       }
     }
   }
 }
 
-private def getPropsAnnotations(annotations: collection.Seq[(JsonPointer, Value)]): collection.Seq[String] =
+private def getPropsAnnotations(annotations: Seq[(JsonPointer, Value)]): Seq[String] =
   annotations.flatMap((_, value) => value.arr.map(v => v.str))
 
 object Unevaluated extends VocabBaseFactory {
   val UnevaluatedItems = "unevaluatedItems"
   val UnevaluatedProperties = "unevaluatedProperties"
 
-  private val NilArrayVis = new ArrVisitor[Any, collection.Seq[OutputUnit]] {
+  private val NilArrayVis = new ArrVisitor[Any, Seq[OutputUnit]] {
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): collection.Seq[OutputUnit] = Nil
+    override def visitEnd(index: Int): Seq[OutputUnit] = Nil
   }
 
-  private val NilObjVis = new ObjVisitor[Any, collection.Seq[OutputUnit]] {
+  private val NilObjVis = new ObjVisitor[Any, Seq[OutputUnit]] {
     override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
     override def visitKeyValue(v: Any): Unit = ()
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): collection.Seq[OutputUnit] = Nil
+    override def visitEnd(index: Int): Seq[OutputUnit] = Nil
   }
 
   private val PropertiesAnnotations = Seq(Applicator.Properties,

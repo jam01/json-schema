@@ -12,14 +12,14 @@ object SchemaValidator {
           .map(vocabfact => vocabfact.create(osch, ctx, path, dynParent))
 
         new JsonVisitor[Seq[Nothing], OutputUnit] {
-          private def compose(units: collection.Seq[OutputUnit]): OutputUnit = {
+          private def compose(units: Seq[OutputUnit]): OutputUnit = {
             val result = ctx.config.format.compose(path, units, ctx.instanceLoc)
             ctx.onScopeEnd(path, result)
             result
           }
 
-          private def compose(f: Vocab[?] => collection.Seq[OutputUnit]): OutputUnit = {
-            var res0: collection.Seq[OutputUnit] = Nil
+          private def compose(f: Vocab[?] => Seq[OutputUnit]): OutputUnit = {
+            var res0: Seq[OutputUnit] = Nil
             val it = vocabs.iterator
             var continue = true
             while (it.hasNext && continue) {
@@ -39,9 +39,9 @@ object SchemaValidator {
           def visitInt64(i: Long, index: Int): OutputUnit = compose(v => v.visitInt64(i, index))
           def visitString(s: CharSequence, index: Int): OutputUnit = compose(v => v.visitString(s, index))
           override def visitArray(length: Int, index: Int): ArrVisitor[Seq[Nothing], OutputUnit] =
-            new MapCompositeArrContext[Nothing, collection.Seq[OutputUnit], OutputUnit](vocabs.map(_.visitArray(length, index)), units => compose(units.flatten))
+            new MapCompositeArrContext[Nothing, Seq[OutputUnit], OutputUnit](vocabs.map(_.visitArray(length, index)), units => compose(units.flatten))
           override def visitObject(length: Int, index: Int): ObjVisitor[Seq[Nothing], OutputUnit] =
-            new MapCompositeObjContext[Nothing, collection.Seq[OutputUnit], OutputUnit](vocabs.map(_.visitObject(length, index)), units => compose(units.flatten))
+            new MapCompositeObjContext[Nothing, Seq[OutputUnit], OutputUnit](vocabs.map(_.visitObject(length, index)), units => compose(units.flatten))
         }
   }
 }

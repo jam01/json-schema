@@ -2,6 +2,7 @@ package io.github.jam01.json_schema
 
 import org.junit.jupiter.api.{Assertions, Disabled, Test}
 import ujson.StringParser
+import upickle.core.LinkedHashMap
 
 class SchemaMapperTest {
   val uri: Uri = Uri("(test)")
@@ -51,21 +52,23 @@ class SchemaMapperTest {
                     |  }
                     |}""".stripMargin
 
-    val osch: ObjectSchema = ObjectSchema(LinkedHashMapFactory(
+    val oschmap = LinkedHashMapFactory(
       "type" -> Str("object"),
       "maxProperties" -> Num(2L),
       "minProperties" -> Num(1L),
-      "required" -> Arr(Str("foo"))), uri)
+      "required" -> Arr(Str("foo")))
+    val osch: ObjectSchema = ObjectSchema(oschmap, uri)
 
-    val arrsch: ObjectSchema = new ObjectSchema(LinkedHashMapFactory(
+    val arrschmap = LinkedHashMapFactory(
       "type" -> Str("array"),
       "maxItems" -> Num(4L),
-      "minItems" -> Num(2L)), uri, Some(osch), Some("/properties/arr"))
+      "minItems" -> Num(2L))
+    val arrsch: ObjectSchema = new ObjectSchema(arrschmap, uri, Some(osch), Some("/properties/arr"))
 
-    arrsch.value.addOne("items" -> new ObjectSchema(LinkedHashMapFactory(
+    arrschmap.addOne("items" -> new ObjectSchema(LinkedHashMapFactory(
       "type" -> Str("number")), uri, Some(arrsch), Some("/items")))
 
-    osch.value.addOne("properties" -> Obj(
+    oschmap.addOne("properties" -> Obj(
       "foo" -> new ObjectSchema(LinkedHashMapFactory(
         "type" -> Str("string"),
         "pattern" -> Str(".*"),
