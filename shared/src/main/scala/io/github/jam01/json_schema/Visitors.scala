@@ -101,13 +101,13 @@ object LiteralVisitor extends JsonVisitor[Value, Value] {
 class CollectObjVisitor(val vis: Visitor[Value, Value], length: Int, index: Int) extends ObjVisitor[Value, Obj] {
   def this(vis: Visitor[Value, Value]) = this(vis, -1, -1)
   
-  private val map: LinkedHashMap[String, Value] = LinkedHashMap() // perf: no initial capacity constructor
+  private val map = Map.newBuilder[String, Value]
   protected var _key: String = "?"
   override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
   override def visitKeyValue(v: Any): Unit = _key = v.asInstanceOf[String]
   override def subVisitor: Visitor[?, ?] = vis
   override def visitValue(v: Value, index: Int): Unit = map.addOne(_key, v)
-  override def visitEnd(index: Int): Obj = Obj(map)
+  override def visitEnd(index: Int): Obj = Obj(map.result())
 }
 
 class CollectArrVisitor(val vis: Visitor[Value, Value], length: Int, index: Int) extends ArrVisitor[Value, Arr] {

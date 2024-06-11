@@ -73,7 +73,7 @@ object Value {
   given iterable2Arr[T](using f: T => Value): Conversion[IterableOnce[T], Arr] with
     override def apply(it: IterableOnce[T]): Arr = Arr(it.iterator.map(x => f(x)).toSeq)
   given iterable2Obj[T](using f: T => Value): Conversion[IterableOnce[(String, T)], Obj] with
-    override def apply(it: IterableOnce[(String, T)]): Obj = Obj(LinkedHashMap(it.iterator.map(x => (x._1, f(x._2)))))
+    override def apply(it: IterableOnce[(String, T)]): Obj = Obj(Map.from(it.iterator.map(x => (x._1, f(x._2)))))
   given Conversion[Boolean, Bool] = (i: Boolean) => if (i) True else False
   given Conversion[Int, Num] = (i: Int) => Num(i: Long)
   given Conversion[Long, Num] = (i: Long) => Num(i)
@@ -85,18 +85,18 @@ object Value {
 
 case class Str(value: String) extends Value
 
-case class Obj(value: collection.Map[String, Value]) extends Value // TODO: make collection.Map
+case class Obj(value: Map[String, Value]) extends Value
 
 object Obj {
   def apply[V](item: (String, V),
                items: (String, Value)*)(using conv: V => Value): Obj = {
-    val map = LinkedHashMap[String, Value]()
-    map.put(item._1, conv(item._2))
-    for (i <- items) map.put(i._1, i._2)
-    Obj(map)
+    new Obj(Map.newBuilder
+      .addOne((item._1, conv(item._2)))
+      .addAll(items)
+      .result())
   }
 
-  def apply(): Obj = Obj(LinkedHashMap[String, Value]())
+  def apply(): Obj = new Obj(Map.empty)
 }
 
 case class Arr(value: Seq[Value]) extends Value
@@ -188,7 +188,10 @@ case object FalseSchema extends BooleanSchema {
  * @param parent optionally the lexical parent schema
  * @param prel optionally the JSON Pointer relative to the lexical parent schema
  */
-final class ObjectSchema private[json_schema](val value: collection.Map[String, Value], // TODO: make collection.Map
+final class ObjectSchema private[json_schema](val value: collection.Map[String, Value],
+                        // TODO: make immutable.Map
+                        //  only using coll.Map in order for SchemaR to create Schema for children schemas while still
+                        //  mutating the underlying map as it's being parsed. Could possibly create ObjSch builder class?
                         protected val docbase: Uri,
                         protected val parent: Option[ObjectSchema] = None,
                         protected val prel: Option[String] = None) extends ObjSchema with Schema {
