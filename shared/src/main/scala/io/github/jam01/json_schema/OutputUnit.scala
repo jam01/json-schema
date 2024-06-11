@@ -110,6 +110,19 @@ sealed abstract class OutputFormat {
     if (!unit.vvalid) results.addOne(unit)
     else results
   }
+
+  def accumulate(results: mutable.Growable[OutputUnit],
+                 isValid: Boolean,
+                 kwLoc: JsonPointer,
+                 absKwLoc: Uri | Null = null,
+                 insLoc: JsonPointer,
+                 error: String | Null = null,
+                 errors: Seq[OutputUnit] = Nil,
+                 annotation: Value | Null = null,
+                 verbose: Seq[OutputUnit] = Nil): mutable.Growable[OutputUnit] = {
+    if (!isValid) results.addOne(make(isValid, kwLoc, absKwLoc, insLoc, error, errors, annotation, verbose))
+    else results
+  }
 }
 
 object OutputFormat {
@@ -139,6 +152,18 @@ object OutputFormat {
 
     override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
       results.addOne(unit)
+    }
+
+    override def accumulate(results: mutable.Growable[OutputUnit],
+                            isValid: Boolean,
+                            kwLoc: JsonPointer,
+                            absKwLoc: Uri | Null = null,
+                            insLoc: JsonPointer,
+                            error: String | Null = null,
+                            errors: Seq[OutputUnit] = Nil,
+                            annotation: Value | Null = null,
+                            verbose: Seq[OutputUnit] = Nil): mutable.Growable[OutputUnit] = {
+      results.addOne(make(isValid, kwLoc, absKwLoc, insLoc, error, errors, annotation, verbose))
     }
   }
 }

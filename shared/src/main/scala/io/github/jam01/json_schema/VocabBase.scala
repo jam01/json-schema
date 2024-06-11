@@ -1,5 +1,6 @@
 package io.github.jam01.json_schema
 
+import io.github.jam01.InvalidVectorException
 import io.github.jam01.json_schema.vocab.Core
 
 import scala.collection.mutable
@@ -18,10 +19,8 @@ abstract class VocabBase(schema: ObjectSchema,
                          val ctx: Context,
                          val path: JsonPointer,
                          dynParent: Option[Vocab[?]]) extends Vocab[Nothing](schema, dynParent) {
-  
-  // TODO: reuse path.appended(kw) across implementations
 
-  protected def mkUnit(isValid: Boolean,
+  protected inline def mkUnit(isValid: Boolean,
              kw: String,
              error: String | Null = null,
              errors: Seq[OutputUnit] = Nil,
@@ -33,11 +32,62 @@ abstract class VocabBase(schema: ObjectSchema,
     ctx.config.format.make(isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.allowList.ifAllowed(kw, annotation), verbose)
   }
 
-  // perf: @inline?
-  protected def accumulate(buff: mutable.Growable[OutputUnit], unit: OutputUnit): Boolean = {
+  // returns if to continue
+  protected inline def accumulate(buff: mutable.Growable[OutputUnit], unit: OutputUnit): Boolean = {
     ctx.config.format.accumulate(buff, unit)
-    unit.vvalid || !ctx.config.ffast // perf: cost of boolean logic when config.ffast is unchanging
+    unit.vvalid || !ctx.config.ffast
   }
+
+  // returns if to continue
+  protected inline def accumulate(buff: mutable.Growable[OutputUnit],
+                           isValid: Boolean,
+                           kw: String,
+                           error: String | Null = null,
+                           errors: Seq[OutputUnit] = Nil,
+                           annotation: Value | Null = null,
+                           verbose: Seq[OutputUnit] = Nil): Boolean = {
+    val kwLoc = path.appended(kw)
+    val absKwLoc = if (hasRef) schema.location.appendedFragment(s"/$kw") else null
+    ctx.config.format.accumulate(buff, isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.allowList.ifAllowed(kw, annotation), verbose)
+    isValid || !ctx.config.ffast
+  }
+
+  /**
+   * Accumulate kw results for vectors, potentially throwing if the result is not valid and ffast is enabled. Should be
+   * called form visitArr/Obj implementations only.
+   * @param buff
+   * @param unit
+   * @return whether to continue
+   */
+  protected inline def accumulateVec(buff: mutable.Buffer[OutputUnit],
+                              isValid: Boolean,
+                              kw: String,
+                              error: String | Null = null,
+                              errors: Seq[OutputUnit] = Nil,
+                              annotation: Value | Null = null,
+                              verbose: Seq[OutputUnit] = Nil): Boolean = {
+    if (accumulate(buff, isValid, kw, error, errors, annotation, verbose)) true
+    else throw new InvalidVectorException(Seq.from(buff))
+  }
+
+  /**
+   * Accumulate and throw. Should be called when a vector's child is invalid, and from visitKey/Value methods only.
+   * @param buff
+   * @param unit
+   * @return
+   */
+  protected inline def ffastChild(buff: mutable.Buffer[OutputUnit],
+                                  isValid: Boolean,
+                                  kw: String,
+                                  error: String | Null = null,
+                                  errors: Seq[OutputUnit] = Nil,
+                                  annotation: Value | Null = null,
+                                  verbose: Seq[OutputUnit] = Nil): Boolean = {
+    if (isValid || !ctx.config.ffast) true
+    else {
+      accumulate(buff, isValid, kw, error, errors, annotation, verbose)
+      throw new InvalidVectorException(Seq.from(buff))
+    }
   }
 
   private def hasRef: Boolean = {
@@ -49,5 +99,3 @@ abstract class VocabBase(schema: ObjectSchema,
     mkUnit(invalid.isEmpty, kw, errors = invalid, annotation = ann, verbose = valid)
   }
 }
-
-trait VocabBaseFactory extends VocabFactory[VocabBase]

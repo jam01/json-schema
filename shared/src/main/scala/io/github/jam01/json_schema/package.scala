@@ -1,5 +1,6 @@
 package io.github.jam01
 
+import io.github.jam01.json_schema.OutputUnit
 import io.github.jam01.json_schema.SchemaValidator.of
 import upickle.core.Visitor
 
@@ -35,7 +36,7 @@ package object json_schema {
   case class Config(dialect: Dialect = Dialect._2020_12,
                     format: OutputFormat = OutputFormat.Flag,
                     ffast: Boolean = true,
-                    allowList: AllowList = AllowList.DenyAll) {
+                    allowList: AllowList = AllowList.DropAll) {
   }
 
   object Config {
@@ -52,15 +53,15 @@ package object json_schema {
       else null
   }
 
-  final class Deny(val list: Seq[String]) extends AllowList {
+  final class Drop(val list: Seq[String]) extends AllowList {
     override def ifAllowed(kw: String, ann: Value | Null): Value | Null =
       if (list.contains(kw)) null
       else ann
   }
 
   object AllowList {
-    val AllowAll: AllowList = (kw: String, ann: Value | Null) => ann
-    val DenyAll: AllowList = (kw: String, ann: Value | Null) => null
+    val KeepAll: AllowList = (kw: String, ann: Value | Null) => ann
+    val DropAll: AllowList = (kw: String, ann: Value | Null) => null
   }
 
   /**
@@ -94,8 +95,10 @@ package object json_schema {
     if (vocabs.isEmpty) return None
 
     val supported = dialects.flatMap(d => d.vocabularies)
-    val res = mutable.Buffer[VocabFactory[?]]()
-    for ((uri, req) <- vocabs) {
+    val res = new mutable.ListBuffer[VocabFactory[?]]
+    val it = vocabs.iterator
+    while (it.hasNext) {
+      val (uri, req) = it.next()
       val found0 = supported.find(vf => vf.uri == uri)
       if (found0.isEmpty && req) return None
       else if (found0.nonEmpty) res.addOne(found0.get)
@@ -104,3 +107,6 @@ package object json_schema {
     Some(Dialect(dialectUri.get, res.toSeq))
   }
 }
+
+class ValidationException(val result: OutputUnit) extends RuntimeException
+class InvalidVectorException(val results: Seq[OutputUnit]) extends RuntimeException

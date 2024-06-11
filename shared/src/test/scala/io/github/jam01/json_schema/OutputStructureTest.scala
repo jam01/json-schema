@@ -1,5 +1,6 @@
 package io.github.jam01.json_schema
 
+import io.github.jam01.json_schema
 import io.github.jam01.json_schema.OutputStructureTest.*
 import org.junit.jupiter.api.Test
 import org.skyscreamer.jsonassert.JSONAssert
@@ -22,7 +23,7 @@ class OutputStructureTest {
       "items" -> new ObjectSchema(LinkedHashMapFactory("type" -> "number", "maximum" -> 3), base, Some(osch), Some("/items")))
     val r = ujson.Readable
       .fromString("""["", "", 1, 2, 3, "", 4, 5]""")
-      .transform(io.github.jam01.json_schema.validator(osch, Config(format = OutputFormat.Detailed), Map(Uri("mem://test/str") -> RefSch3)))
+      .transform(json_schema.validator(osch, Config(format = OutputFormat.Detailed, ffast = false), Map(Uri("mem://test/str") -> RefSch3)))
 
     val res =  OutputUnitW.transform(r, StringRenderer()).toString
     //println(res)

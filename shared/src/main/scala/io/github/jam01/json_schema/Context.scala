@@ -126,7 +126,7 @@ trait Context {
    * @param schLocation the location of ending schema scope
    * @param result of the validation
    */
-  def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit // should be internal?
+  def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit
 }
 
 object Context {
@@ -213,11 +213,12 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
       deps.filterInPlace((kwLoc, _) => !invalid.exists(inv => inv.kwLoc.isRelativeTo(kwLoc))))
   }
 
-  override def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): Unit = {
+  override def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit = {
     dependents.remove(schLocation)
     dependencies.remove(schLocation)
 
     if (!result.vvalid) notifyInvalid(Seq(result))
+    result
   }
 }
 

@@ -77,7 +77,7 @@ final class Core private(schema: ObjectSchema,
   }
 }
 
-object Core extends VocabBaseFactory {
+object Core extends VocabFactory[Core] {
   val _Ref = "$ref"
   val _DynRef = "$dynamicRef"
   val Keys: Seq[String] = Seq(_Ref, _DynRef)
@@ -87,7 +87,7 @@ object Core extends VocabBaseFactory {
   override def create(schema: ObjectSchema,
                       ctx: Context,
                       path: JsonPointer,
-                      dynParent: Option[Vocab[?]]): VocabBase = new Core(schema, ctx, path, dynParent)
+                      dynParent: Option[Vocab[?]]): Core = new Core(schema, ctx, path, dynParent)
 
   override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
 }

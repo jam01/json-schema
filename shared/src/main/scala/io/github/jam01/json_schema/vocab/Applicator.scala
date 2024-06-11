@@ -375,7 +375,7 @@ final class Applicator private(schema: ObjectSchema,
         propsVisitor.foreach(v => accumulate(buff, v.visitEnd(index)))
         patternPropsVisitor.foreach(v => accumulate(buff, v.visitEnd(index)))
         addlPropsObjVis.foreach(v => accumulate(buff, v.visitEnd(index)))
-        accumulate(buff, mkUnit(propNamesValid, PropertyNames, ""))
+        accumulate(buff, propNamesValid, PropertyNames, "Object property name(s) are invalid")
 
         ifVis.foreach(_ => {
           val u = iff; accumulate(buff, OutputUnit.info(u))
@@ -418,7 +418,7 @@ final class Applicator private(schema: ObjectSchema,
   }
 }
 
-object Applicator extends VocabBaseFactory {
+object Applicator extends VocabFactory[Applicator] {
   val PrefixItems = "prefixItems"
   val Items = "items"
   val MaxContains = "maxContains"

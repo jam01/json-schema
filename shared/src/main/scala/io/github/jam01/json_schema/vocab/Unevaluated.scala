@@ -37,14 +37,9 @@ final class Unevaluated private(schema: ObjectSchema,
     if (itemsVis.isEmpty) return NilArrayVis
     new ArrVisitor[OutputUnit, Seq[OutputUnit]] {
       private val buff = new ListBuffer[OutputUnit]
-      private var nextIdx = 0
 
       override def subVisitor: Visitor[?, ?] = itemsVis.get
-      override def visitValue(unit: OutputUnit, index: Int): Unit = {
-        buff.addOne(unit)
-        nextIdx += 1
-      }
-
+      override def visitValue(unit: OutputUnit, index: Int): Unit = buff.addOne(unit)
       override def visitEnd(index: Int): Seq[OutputUnit] = {
         val kwLoc = path.appended(UnevaluatedItems)
         val evalItems: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.Items)
@@ -100,7 +95,7 @@ final class Unevaluated private(schema: ObjectSchema,
 private def getPropsAnnotations(annotations: Seq[(JsonPointer, Value)]): Seq[String] =
   annotations.flatMap((_, value) => value.arr.map(v => v.str))
 
-object Unevaluated extends VocabBaseFactory {
+object Unevaluated extends VocabFactory[Unevaluated] {
   val UnevaluatedItems = "unevaluatedItems"
   val UnevaluatedProperties = "unevaluatedProperties"
 

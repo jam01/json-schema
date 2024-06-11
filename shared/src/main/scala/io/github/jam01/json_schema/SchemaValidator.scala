@@ -1,5 +1,6 @@
 package io.github.jam01.json_schema
 
+import io.github.jam01.InvalidVectorException
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 object SchemaValidator {
@@ -13,38 +14,9 @@ object SchemaValidator {
           .filter(vocabfact => vocabfact.shouldApply(osch))
           .map(vocabfact => vocabfact.create(osch, ctx, path, dynParent))
 
-        new JsonVisitor[Seq[Nothing], OutputUnit] {
-          private def compose(units: Seq[OutputUnit]): OutputUnit = {
-            val result = ctx.config.format.compose(path, units, ctx.instanceLoc)
-            ctx.onScopeEnd(path, result)
-            result
-          }
-
-          private def compose(f: Vocab[?] => Seq[OutputUnit]): OutputUnit = {
-            var res0: Seq[OutputUnit] = Nil
-            val it = vocabs.iterator
-            var continue = true
-            while (it.hasNext && continue) {
-              val res1 = f(it.next())
-              ctx.onVocabResults(path, res1)
-              res0 = res0 :++ res1
-              if (ctx.config.ffast && res1.exists(u => !u.vvalid)) continue = false // perf: cost of boolean logic when config.ffast is unchanging
-            }
-
-            compose(res0)
-          }
-
-          def visitNull(index: Int): OutputUnit = compose(v => v.visitNull(index))
-          def visitFalse(index: Int): OutputUnit = compose(v => v.visitFalse(index))
-          def visitTrue(index: Int): OutputUnit = compose(v => v.visitTrue(index))
-          def visitFloat64(d: Double, index: Int): OutputUnit = compose(v => v.visitFloat64(d, index))
-          def visitInt64(i: Long, index: Int): OutputUnit = compose(v => v.visitInt64(i, index))
-          def visitString(s: CharSequence, index: Int): OutputUnit = compose(v => v.visitString(s, index))
-          override def visitArray(length: Int, index: Int): ArrVisitor[Seq[Nothing], OutputUnit] =
-            new MapCompositeArrContext[Nothing, Seq[OutputUnit], OutputUnit](vocabs.map(_.visitArray(length, index)), units => compose(units.flatten))
-          override def visitObject(length: Int, index: Int): ObjVisitor[Seq[Nothing], OutputUnit] =
-            new MapCompositeObjContext[Nothing, Seq[OutputUnit], OutputUnit](vocabs.map(_.visitObject(length, index)), units => compose(units.flatten))
-        }
+        if (ctx.config.ffast) new FFastObjectSchemaValidator[Nothing](vocabs, ctx, path)
+        else new MapCompositeVisitor[Nothing, Seq[OutputUnit], OutputUnit](vocabs,
+          unitss => ctx.onScopeEnd(path, ctx.config.format.compose(path, unitss.flatten, ctx.instanceLoc)))
   }
 }
 
@@ -84,4 +56,75 @@ final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) 
   override def subVisitor: Visitor[?, ?] = NoOpVisitor
   override def visitValue(v: Any, index: Int): Unit = ()
   override def visitEnd(index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
+}
+
+private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context, path: JsonPointer) extends JsonVisitor[Seq[T], OutputUnit] {
+  inline private def compose(units: Seq[OutputUnit]): OutputUnit =
+    ctx.onScopeEnd(path, ctx.config.format.compose(path, units, ctx.instanceLoc))
+  inline private def compose(f: Vocab[T] => Seq[OutputUnit]): OutputUnit = {
+    var res0: Seq[OutputUnit] = Nil
+    val it = vocabs.iterator
+    var continue = true
+    while (it.hasNext && continue) {
+      val res1 = f(it.next())
+      ctx.onVocabResults(path, res1)
+      res0 = res0 :++ res1
+      if (res1.exists(u => !u.vvalid)) continue = false
+    }
+
+    compose(res0)
+  }
+
+  override def visitNull(index: Int): OutputUnit = compose(v => v.visitNull(index))
+  override def visitFalse(index: Int): OutputUnit = compose(v => v.visitFalse(index))
+  override def visitTrue(index: Int): OutputUnit = compose(v => v.visitTrue(index))
+  override def visitFloat64(d: Double, index: Int): OutputUnit = compose(v => v.visitFloat64(d, index))
+  override def visitInt64(i: Long, index: Int): OutputUnit = compose(v => v.visitInt64(i, index))
+  override def visitString(s: CharSequence, index: Int): OutputUnit = compose(v => v.visitString(s, index))
+
+  override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], OutputUnit] = {
+    var ffast: Seq[OutputUnit] = Nil
+    val delegates: Seq[ArrVisitor[T, Seq[OutputUnit]]] =
+      try { vocabs.map(_.visitArray(length, index)) } catch
+        case e: InvalidVectorException => ffast = e.results; Nil
+
+    new MapCompositeArrContext[T, Seq[OutputUnit], OutputUnit](delegates, units => compose(units.flatten)) {
+      override def visitValue(v: Seq[T], index: Int): Unit =
+        if (ffast.nonEmpty) return
+        try { super.visitValue(v, index) } catch
+          case e: InvalidVectorException => ffast = e.results
+
+      override def visitEnd(index: Int): OutputUnit =
+        if (ffast.nonEmpty) return compose(ffast)
+        super.visitEnd(index)
+    }
+  }
+
+  override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], OutputUnit] = {
+    var ffast: Seq[OutputUnit] = Nil
+    val delegates: Seq[ObjVisitor[T, Seq[OutputUnit]]] =
+      try { vocabs.map(_.visitObject(length, index)) } catch
+        case e: InvalidVectorException => ffast = e.results; Nil
+
+    new MapCompositeObjContext[T, Seq[OutputUnit], OutputUnit](delegates, units => compose(units.flatten)) {
+      override def visitKey(index: Int): Visitor[?, ?] =
+        if (ffast.nonEmpty) return NoOpVisitor
+        try { super.visitKey(index) } catch
+          case e: InvalidVectorException => ffast = e.results; NoOpVisitor
+
+      override def visitKeyValue(v: Any): Unit =
+        if (ffast.nonEmpty) return
+        try { super.visitKeyValue(v) } catch
+          case e: InvalidVectorException => ffast = e.results
+
+      override def visitValue(v: Seq[T], index: Int): Unit =
+        if (ffast.nonEmpty) return
+        try { super.visitValue(v, index) } catch
+          case e: InvalidVectorException => ffast = e.results
+
+      override def visitEnd(index: Int): OutputUnit =
+        if (ffast.nonEmpty) return compose(ffast)
+        super.visitEnd(index)
+    }
+  }
 }
