@@ -7,7 +7,7 @@ object SchemaValidator {
     sch match
       case BooleanSchema(bool) => new BooleanSchemaValidator(bool, ctx, path)
       case osch: ObjectSchema =>
-        guardDepth(dynParent)
+        guardDepth(dynParent, ctx.config.maxDepth)
 
         val vocabs: Seq[Vocab[?]] = ctx.config.dialect.vocabularies
           .filter(vocabfact => vocabfact.shouldApply(osch))
@@ -17,19 +17,19 @@ object SchemaValidator {
         else new MapCompositeVisitor[Nothing, Seq[OutputUnit], OutputUnit](vocabs,
           unitss => ctx.onScopeEnd(path, ctx.config.format.compose(path, unitss.flatten, ctx.instanceLoc)))
   }
-}
 
-private def guardDepth(dynParent: Option[Vocab[?]]): Unit = {
-  if (dynParent.isEmpty) return  
-  var countRefs = 0
-  var head: Vocab[?] = dynParent.get
-  while (head.dynParent.nonEmpty) {
-    countRefs += 1
-    head = head.dynParent.get
+  private def guardDepth(dynParent: Option[Vocab[?]], depth: Int): Unit = {
+    if (dynParent.isEmpty) return
+    var countRefs = 0
+    var head: Vocab[?] = dynParent.get
+    while (head.dynParent.nonEmpty) {
+      countRefs += 1
+      head = head.dynParent.get
+    }
+
+    // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
+    if (countRefs > depth) throw new IllegalStateException("Depth limit exceeded")
   }
-
-  // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
-  if (countRefs > 32) throw new IllegalStateException("Depth limit exceeded")
 }
 
 final class BooleanSchemaValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends JsonVisitor[OutputUnit, OutputUnit] {

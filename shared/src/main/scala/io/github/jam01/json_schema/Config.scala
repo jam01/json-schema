@@ -11,7 +11,8 @@ package io.github.jam01.json_schema
 case class Config(dialect: Dialect = Dialect._2020_12,
                   format: OutputFormat = OutputFormat.Flag,
                   ffast: Boolean = true,
-                  allowList: AllowList = AllowList.DropAll) {
+                  allowList: AllowList = AllowList.DropAll,
+                  maxDepth: Int = 32) {
 }
 
 object Config {
