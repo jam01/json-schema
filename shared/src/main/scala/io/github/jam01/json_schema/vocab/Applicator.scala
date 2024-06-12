@@ -164,7 +164,6 @@ final class Applicator private(schema: ObjectSchema,
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Any, Seq[OutputUnit]] = {
     val containsArrVis = containsVis.map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
-      private val buff = new ListBuffer[OutputUnit]
       private var nextIdx = 0
       private val matched = new ListBuffer[Value]
 

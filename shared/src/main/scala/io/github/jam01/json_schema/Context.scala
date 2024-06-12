@@ -84,12 +84,12 @@ trait Context {
   def registerDependant(schLocation: JsonPointer, kwLocation: JsonPointer, predicate: JsonPointer => Boolean): Unit 
 
   /**
-   * Retrieve annotations that satisfy one or more dependants located within the given schema location.
+   * Retrieve annotations that satisfy the dependant at the given keyword location.
    *
-   * @param schLocation location of the schema where dependants may be found
-   * @return the collection of annotation [[OutputUnit]]s that satisfy some dependant in the given schema location
+   * @param kwLocation location of the keyword dependant
+   * @return the collection of annotation [[OutputUnit]]s that satisfy the dependant
    */
-  def getDependenciesFor(schLocation: JsonPointer): Seq[(JsonPointer, Value)]
+  def getDependenciesFor(kwLocation: JsonPointer): Seq[(JsonPointer, Value)]
 
   /**
    * Publish output units produced for the given schema location.
@@ -102,7 +102,12 @@ trait Context {
    */
   def onVocabResults(schLocation: JsonPointer, units: Seq[OutputUnit]): Unit
 
-
+  /**
+   * Offer a computed annotation to be used by any registered dependant based on location.
+   * 
+   * @param location the location of the candidate annotation
+   * @param value the annotation value
+   */
   def offerAnnotation(location: JsonPointer, value: Value): Unit
 
   /**
@@ -129,11 +134,7 @@ trait Context {
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit
 }
 
-object Context {
-  def get: Context = null.asInstanceOf[ScopedValue[Context]].get
-}
-
-case class DefaultContext(private val reg: collection.Map[Uri, Schema],
+final case class DefaultContext(private val reg: collection.Map[Uri, Schema],
                           config: Config = Config.Default) extends Context with Tracker {
 
   private val insloc = mutable.Stack[String]("")
@@ -149,7 +150,7 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
   }
   override def instanceLoc: JsonPointer = _pointer
 
-  def getSch(schemaUri: Uri): Option[Schema] = {
+  override def getSch(schemaUri: Uri): Option[Schema] = {
     val frag = schemaUri.getFragment // using decoded fragment as map keys would be unencoded
     if (frag == null) return reg.get(schemaUri)
 
@@ -158,7 +159,7 @@ case class DefaultContext(private val reg: collection.Map[Uri, Schema],
     else reg.get(schemaUri).orElse(reg.get(schemaUri.asDyn))
   }
 
-  def getDynSch(schemaUri: Uri, origin: Vocab[?]): Option[Schema] = {
+  override def getDynSch(schemaUri: Uri, origin: Vocab[?]): Option[Schema] = {
     val frag = schemaUri.getFragment
     if (frag == null) return None // expecting a fragment
     if (schemaUri.toString.contains("#/")) return getSch(schemaUri.asNonDyn) // anchor expected, try w/o dynamic

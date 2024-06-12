@@ -67,5 +67,10 @@ package object json_schema {
     Some(Dialect(dialectUri.get, res.toSeq))
   }
 
+  /**
+   * Exception thrown when validating with ffast.
+   * 
+   * @param result the validation result
+   */
   class ValidationException(val result: OutputUnit) extends RuntimeException
 }

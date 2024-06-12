@@ -233,13 +233,13 @@ object Validation extends VocabFactory[Validation] {
         case d2: Double => d1 >= d2
   }
 
-  private val NilArrayVis = new ArrVisitor[Any, Seq[OutputUnit]] { // TODO: make object
+  private val NilArrayVis = new ArrVisitor[Any, Seq[OutputUnit]] {
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
     override def visitEnd(index: Int): Seq[OutputUnit] = Nil
   }
 
-  private val NilObjVis = new ObjVisitor[Any, Seq[OutputUnit]] { // TODO: make object
+  private val NilObjVis = new ObjVisitor[Any, Seq[OutputUnit]] {
     override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
     override def visitKeyValue(v: Any): Unit = ()
     override def subVisitor: Visitor[?, ?] = NoOpVisitor

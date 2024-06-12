@@ -64,4 +64,9 @@ trait VocabFactory[B <: Vocab[?]] {
   def shouldApply(schema: ObjectSchema): Boolean
 }
 
+/**
+ * An exception to interrupt validation vector values, i.e.: as JSON arrays and objects.
+ * 
+ * @param results the accumulated results at the point of failure
+ */
 class InvalidVectorException(val results: Seq[OutputUnit]) extends RuntimeException
