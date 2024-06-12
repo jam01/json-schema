@@ -1,0 +1,43 @@
+[
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": ""
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/then",
+        "instanceLocation": ""
+      }
+    ]
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/then",
+        "instanceLocation": ""
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/if",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": true,
+            "keywordLocation": "/if/type",
+            "instanceLocation": ""
+          }
+        ]
+      }
+    ]
+  }
+]

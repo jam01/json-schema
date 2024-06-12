@@ -1,0 +1,15 @@
+{
+  "$defs": {
+    "strSch": {"type":"string","pattern":".*","maxLength":16,"minLength":3},
+    "arrSch": {"type":"array","maxItems":4,"minItems":2,"items":{"type":"string","pattern":".*","maxLength":16,"minLength":3}},
+    "arrSchNest0": {"type":"array","maxItems":4,"minItems":2,"items":{"type":["string","array"]}},
+    "arrSchNest1": {"type":"array","maxItems":4,"minItems":2,"items":{"type":["string","array"],"items":{"type":"string","pattern":".*","maxLength":16,"minLength":3}}},
+    "arrRefSch": {"type":"array","maxItems":4,"minItems":2,"items":{"type":"string","pattern":".*","maxLength":16,"minLength":3},"$ref":"str"},
+    "objSch": {"type":"object","maxProperties":2,"minProperties":1,"properties":{"foo":{"type":"string","pattern":".*","maxLength":16,"minLength":3},"arr":{"type":"array","maxItems":4,"minItems":2,"items":{"type":"string","pattern":".*","maxLength":16,"minLength":3}},"obj":{"type":"object","maxProperties":1}},"required":["foo"]},
+    "objRefSch0": {"type":"object","maxProperties":2,"minProperties":1,"properties":{"foo":{"type":"string","pattern":".*","maxLength":16,"minLength":3},"arr":{"type":"array","maxItems":4,"minItems":2,"items":{"type":"string","pattern":".*","maxLength":16,"minLength":3}},"obj":{"type":"object","maxProperties":1}},"required":["foo"],"$ref":"nullreq"},
+    "objRefSch1": {"type":"object","maxProperties":2,"minProperties":1,"properties":{"foo":{"type":"string","pattern":".*","maxLength":16,"minLength":3},"arr":{"type":"array","maxItems":4,"minItems":2,"items":{"type":"string","pattern":".*","maxLength":16,"minLength":3}},"obj":{"type":"object","maxProperties":1}},"required":["foo"],"$ref":"str"},
+    "refSch0": {"type": "array", "minITems": 1},
+    "refSch1": {"type": "string"},
+    "refSch2": {"required": ["null"]}
+  }
+}

@@ -1,0 +1,115 @@
+[
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": ""
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/not",
+        "instanceLocation": ""
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/allOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/allOf/0",
+            "instanceLocation": ""
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/anyOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/anyOf/0",
+            "instanceLocation": ""
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/oneOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/oneOf/0",
+            "instanceLocation": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/not",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": true,
+            "keywordLocation": "/not",
+            "instanceLocation": ""
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/allOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/allOf/0",
+            "instanceLocation": ""
+          },
+          {
+            "valid": true,
+            "keywordLocation": "/allOf/1",
+            "instanceLocation": ""
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/anyOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/anyOf/0",
+            "instanceLocation": ""
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/oneOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/oneOf/0",
+            "instanceLocation": ""
+          }
+        ]
+      }
+    ]
+  }
+]

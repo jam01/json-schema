@@ -91,8 +91,8 @@ object SchemaR {
    * A Schema reader.
    *
    * @param docbase the initial base for the schema
-   * @param reg     the schema registry to populate when traversing schemas
+   * @param registry     the schema registry to populate when traversing schemas
    */
-  def apply(docbase: Uri = Uri.random, 
-            reg: mutable.Map[Uri, Schema] = mutable.Map()): SchemaR = new SchemaR(docbase, reg)
+  def apply(docbase: Uri = Uri.random,
+            registry: mutable.Map[Uri, Schema] = mutable.Map()): SchemaR = new SchemaR(docbase, registry)
 }

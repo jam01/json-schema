@@ -1,8 +1,7 @@
 package io.github.jam01.json_schema
 
-import org.junit.jupiter.api.{Assertions, Disabled, Test}
+import org.junit.jupiter.api.{Assertions, Test}
 import ujson.StringParser
-import upickle.core.LinkedHashMap
 
 class SchemaMapperTest {
   val uri: Uri = Uri("(test)")

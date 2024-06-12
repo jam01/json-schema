@@ -68,6 +68,18 @@ abstract class VocabBase(schema: ObjectSchema,
     if (accumulate(buff, isValid, kw, error, errors, annotation, verbose)) true
     else throw new InvalidVectorException(Seq.from(buff))
   }
+  
+  /**
+   * Accumulate kw results for vectors, potentially throwing if the result is not valid and ffast is enabled. Should be
+   * called form visitArr/Obj implementations only.
+   * @param buff
+   * @param unit
+   * @return whether to continue
+   */
+  protected inline def accumulateVec(buff: mutable.Buffer[OutputUnit], unit: OutputUnit): Boolean = {
+    if (accumulate(buff, unit)) true
+    else throw new InvalidVectorException(Seq.from(buff))
+  }
 
   /**
    * Accumulate and throw. Should be called when a vector's child is invalid, and from visitKey/Value methods only.

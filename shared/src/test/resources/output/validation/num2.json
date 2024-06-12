@@ -1,0 +1,96 @@
+[
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": ""
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/type",
+        "instanceLocation": "",
+        "error": "Expected List(string), got number"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/const",
+        "instanceLocation": "",
+        "error": "Number does not match expected constant"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/enum",
+        "instanceLocation": "",
+        "error": "Number not found in enumeration"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/maximum",
+        "instanceLocation": "",
+        "error": "Number is greater than maximum"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/exclusiveMaximum",
+        "instanceLocation": "",
+        "error": "Number is greater than or equal to exclusive maximum"
+      }
+    ]
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/type",
+        "instanceLocation": "",
+        "error": "Expected List(string), got number"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/const",
+        "instanceLocation": "",
+        "error": "Number does not match expected constant"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/enum",
+        "instanceLocation": "",
+        "error": "Number not found in enumeration"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/maximum",
+        "instanceLocation": "",
+        "error": "Number is greater than maximum"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/exclusiveMaximum",
+        "instanceLocation": "",
+        "error": "Number is greater than or equal to exclusive maximum"
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/multipleOf",
+        "instanceLocation": ""
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/minimum",
+        "instanceLocation": ""
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/exclusiveMinimum",
+        "instanceLocation": ""
+      }
+    ]
+  }
+]

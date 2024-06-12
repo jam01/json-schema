@@ -1,0 +1,60 @@
+[
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": ""
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/oneOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": true,
+            "keywordLocation": "/oneOf/0",
+            "instanceLocation": ""
+          },
+          {
+            "valid": true,
+            "keywordLocation": "/oneOf/1",
+            "instanceLocation": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/oneOf",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": true,
+            "keywordLocation": "/oneOf/0",
+            "instanceLocation": ""
+          },
+          {
+            "valid": true,
+            "keywordLocation": "/oneOf/1",
+            "instanceLocation": ""
+          },
+          {
+            "valid": false,
+            "keywordLocation": "/oneOf/2",
+            "instanceLocation": ""
+          }
+        ]
+      }
+    ]
+  }
+]

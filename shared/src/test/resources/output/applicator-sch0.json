@@ -1,0 +1,13 @@
+{
+  "if": {"type": "number"},
+  "then": false,
+  "else": false,
+  "prefixItems": [true, false],
+  "items": {"type": "number"},
+  "contains": {"type": "string"},
+  "propertyNames": {"maxLength": 3},
+  "properties": {"foo": true, "bar": false},
+  "patternProperties": {"f.o": false},
+  "additionalProperties": false,
+  "dependentSchemas": {"foo": false}
+}

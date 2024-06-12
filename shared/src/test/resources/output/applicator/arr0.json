@@ -1,0 +1,125 @@
+[
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": ""
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/contains",
+        "instanceLocation": "",
+        "error": "Array does not contain given elements"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/prefixItems",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/prefixItems/1",
+            "instanceLocation": "/1"
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/items",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/items",
+            "instanceLocation": "/2",
+            "details": [
+              {
+                "valid": false,
+                "keywordLocation": "/items/type",
+                "instanceLocation": "/2",
+                "error": "Expected List(number), got null"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/else",
+        "instanceLocation": ""
+      }
+    ]
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/contains",
+        "instanceLocation": "",
+        "error": "Array does not contain given elements"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/prefixItems",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/prefixItems/1",
+            "instanceLocation": "/1"
+          },
+          {
+            "valid": true,
+            "keywordLocation": "/prefixItems/0",
+            "instanceLocation": "/0"
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/items",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/items",
+            "instanceLocation": "/2",
+            "details": [
+              {
+                "valid": false,
+                "keywordLocation": "/items/type",
+                "instanceLocation": "/2",
+                "error": "Expected List(number), got null"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/else",
+        "instanceLocation": ""
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/if",
+        "instanceLocation": "",
+        "details": [
+          {
+            "valid": false,
+            "keywordLocation": "/if/type",
+            "instanceLocation": "",
+            "error": "Expected List(number), got array"
+          }
+        ]
+      }
+    ]
+  }
+]

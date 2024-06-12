@@ -134,7 +134,7 @@ trait Context {
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit
 }
 
-final case class DefaultContext(private val reg: collection.Map[Uri, Schema],
+final case class DefaultContext(private val registry: collection.Map[Uri, Schema],
                           config: Config = Config.Default) extends Context with Tracker {
 
   private val insloc = mutable.Stack[String]("")
@@ -152,11 +152,11 @@ final case class DefaultContext(private val reg: collection.Map[Uri, Schema],
 
   override def getSch(schemaUri: Uri): Option[Schema] = {
     val frag = schemaUri.getFragment // using decoded fragment as map keys would be unencoded
-    if (frag == null) return reg.get(schemaUri)
+    if (frag == null) return registry.get(schemaUri)
 
-    if (frag.startsWith("/")) reg.get(schemaUri.withoutFragment)
+    if (frag.startsWith("/")) registry.get(schemaUri.withoutFragment)
       .map(sch => sch.schBy(JsonPointer(schemaUri.getFragment)))
-    else reg.get(schemaUri).orElse(reg.get(schemaUri.asDyn))
+    else registry.get(schemaUri).orElse(registry.get(schemaUri.asDyn))
   }
 
   override def getDynSch(schemaUri: Uri, origin: Vocab[?]): Option[Schema] = {
@@ -176,8 +176,8 @@ final case class DefaultContext(private val reg: collection.Map[Uri, Schema],
 
     dynScope.reverseIterator
       .map(osch => osch.base.withFragment(frag, true))
-      .find(dref => reg.contains(dref))
-      .flatMap(dref => reg.get(dref))
+      .find(dref => registry.contains(dref))
+      .flatMap(dref => registry.get(dref))
   }
 
   private val dependents: mutable.Map[JsonPointer, mutable.ArrayBuffer[(JsonPointer, JsonPointer => Boolean)]] = mutable.Map.empty // schLoc -> [(kwLoc, pred)]

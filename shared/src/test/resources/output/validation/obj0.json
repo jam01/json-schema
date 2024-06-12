@@ -1,0 +1,103 @@
+[
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": ""
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/type",
+        "instanceLocation": "",
+        "error": "Expected List(string), got object"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/const",
+        "instanceLocation": "",
+        "error": "Object does not match expected constant"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/enum",
+        "instanceLocation": "",
+        "error": "Object not found in enumeration"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/required",
+        "instanceLocation": "",
+        "error": "Object does not contain required property foo"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/minProperties",
+        "instanceLocation": "",
+        "error": "Object has less properties than allowed"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/dependentRequired",
+        "instanceLocation": "",
+        "error": "Object does not contain dependent required properties"
+      }
+    ]
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/type",
+        "instanceLocation": "",
+        "error": "Expected List(string), got object"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/const",
+        "instanceLocation": "",
+        "error": "Object does not match expected constant"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/enum",
+        "instanceLocation": "",
+        "error": "Object not found in enumeration"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/required",
+        "instanceLocation": "",
+        "error": "Object does not contain required property foo"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/minProperties",
+        "instanceLocation": "",
+        "error": "Object has less properties than allowed"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/dependentRequired",
+        "instanceLocation": "",
+        "error": "Object does not contain dependent required properties"
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/maxProperties",
+        "instanceLocation": ""
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/propertyNames",
+        "instanceLocation": ""
+      }
+    ]
+  }
+]

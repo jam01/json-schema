@@ -91,8 +91,8 @@ final class Validation private(schema: ObjectSchema,
       enuum.forall(e => accumulate(buff, e.exists(v => v.value == num), Enuum, "Number not found in enumeration")) &&
       maximum.forall(max => accumulate(buff, lteq(num, max), Maximum, "Number is greater than maximum")) &&
       minimum.forall(min => accumulate(buff, gteq(num, min), Minimum, "Number is less than minimum")) &&
-      exclusiveMax.forall(max => accumulate(buff, lt(num, max), ExclusiveMax, "Number is greater than exclusive maximum")) &&
-      exclusiveMin.forall(min => accumulate(buff, gt(num, min), ExclusiveMin, "Number is less than exclusive minimum"))
+      exclusiveMax.forall(max => accumulate(buff, lt(num, max), ExclusiveMax, "Number is greater than or equal to exclusive maximum")) &&
+      exclusiveMin.forall(min => accumulate(buff, gt(num, min), ExclusiveMin, "Number is less than or equal to exclusive minimum"))
   }
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {

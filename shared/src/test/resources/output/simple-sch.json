@@ -1,0 +1,6 @@
+{
+  "$defs": {
+    "simple": {"type":"object","$ref":"ref","items":{"type":"number","maximum":3}},
+    "refSch0": {"type":"string","items":{"type":"number","minimum":5}}
+  }
+}

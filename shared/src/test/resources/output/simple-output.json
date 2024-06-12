@@ -89,14 +89,14 @@
         {
           "valid": false,
           "keywordLocation": "/$ref/type",
-          "absoluteKeywordLocation": "mem://ref#/type",
+          "absoluteKeywordLocation": "mem://test#/$defs/refSch0/type",
           "instanceLocation": "",
           "error": "Expected List(string), got array"
         },
         {
           "valid": false,
           "keywordLocation": "/$ref/items",
-          "absoluteKeywordLocation": "mem://ref#/items",
+          "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items",
           "instanceLocation": "",
           "details": [
             {
@@ -107,7 +107,7 @@
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/type",
-                  "absoluteKeywordLocation": "mem://ref#/items/type",
+                  "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items/type",
                   "instanceLocation": "/0",
                   "error": "Expected List(number), got string"
                 }
@@ -121,7 +121,7 @@
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/type",
-                  "absoluteKeywordLocation": "mem://ref#/items/type",
+                  "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items/type",
                   "instanceLocation": "/1",
                   "error": "Expected List(number), got string"
                 }
@@ -135,7 +135,7 @@
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",
-                  "absoluteKeywordLocation": "mem://ref#/items/minimum",
+                  "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items/minimum",
                   "instanceLocation": "/2",
                   "error": "Number is less than minimum"
                 }
@@ -149,7 +149,7 @@
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",
-                  "absoluteKeywordLocation": "mem://ref#/items/minimum",
+                  "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items/minimum",
                   "instanceLocation": "/3",
                   "error": "Number is less than minimum"
                 }
@@ -163,7 +163,7 @@
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",
-                  "absoluteKeywordLocation": "mem://ref#/items/minimum",
+                  "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items/minimum",
                   "instanceLocation": "/4",
                   "error": "Number is less than minimum"
                 }
@@ -177,7 +177,7 @@
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/type",
-                  "absoluteKeywordLocation": "mem://ref#/items/type",
+                  "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items/type",
                   "instanceLocation": "/5",
                   "error": "Expected List(number), got string"
                 }
@@ -191,7 +191,7 @@
                 {
                   "valid": false,
                   "keywordLocation": "/$ref/items/minimum",
-                  "absoluteKeywordLocation": "mem://ref#/items/minimum",
+                  "absoluteKeywordLocation": "mem://test#/$defs/refSch0/items/minimum",
                   "instanceLocation": "/6",
                   "error": "Number is less than minimum"
                 }

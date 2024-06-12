@@ -27,14 +27,14 @@ object TestSuiteTest {
   val NotSupported: Seq[String] = Seq("refRemote.json")
 
   val Registry: mutable.Map[Uri, Schema] = {
-    val res = mutable.Map[Uri, Schema]()
+    val builder = mutable.Map[Uri, Schema]()
 
     // load remotes
     Using(Files.walk(resource("test-suite/remotes/draft2020-12/"), 1)) { remotes =>
       remotes.filter(Files.isRegularFile(_))
         .forEach(p => {
           //println(p.toString)
-          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri("file:" + p.toString), reg = res))
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri("file:" + p.toString), registry = builder))
         })
     }
 
@@ -43,11 +43,11 @@ object TestSuiteTest {
       meta.filter(Files.isRegularFile(_))
         .forEach(p => {
           //println(p.toString)
-          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri("file:" + p.toString), reg = res))
+          ujson.read(ujson.Readable.fromPath(p)).transform(SchemaR(Uri("file:" + p.toString), registry = builder))
         })
     }
 
-    res
+    builder
   }
 
   def args_provider: java.util.List[Arguments] = {
@@ -69,7 +69,7 @@ object TestSuiteTest {
 
     suite.foreach { testcase =>
       testcase.obj.get("tests").get.arr.foreach(test => {
-        val sch = testcase.obj.get("schema").get.transform(SchemaR(reg = Registry))
+        val sch = testcase.obj.get("schema").get.transform(SchemaR(registry = Registry))
         val dial = json_schema.tryDialect(sch, registry = Registry).getOrElse(Dialect._2020_12)
 
         args.add(Arguments.of(

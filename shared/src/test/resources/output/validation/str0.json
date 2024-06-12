@@ -1,0 +1,5 @@
+[
+  {"valid":false,"keywordLocation":"","instanceLocation":""},
+  {"valid":false,"keywordLocation":"","instanceLocation":"","details":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"String does not match expected constant"},{"valid":false,"keywordLocation":"/minLength","instanceLocation":"","error":"String is less than minimum length"},{"valid":false,"keywordLocation":"/pattern","instanceLocation":"","error":"String does not match pattern"}]},
+  {"valid":false,"keywordLocation":"","instanceLocation":"","details":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"String does not match expected constant"},{"valid":false,"keywordLocation":"/minLength","instanceLocation":"","error":"String is less than minimum length"},{"valid":false,"keywordLocation":"/pattern","instanceLocation":"","error":"String does not match pattern"},{"valid":true,"keywordLocation":"/type","instanceLocation":""},{"valid":true,"keywordLocation":"/enum","instanceLocation":""},{"valid":true,"keywordLocation":"/maxLength","instanceLocation":""}]}
+]

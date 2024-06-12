@@ -1,0 +1,5 @@
+{
+  "not": false,
+  "oneOf": [true, false],
+  "anyOf": [true, false]
+}

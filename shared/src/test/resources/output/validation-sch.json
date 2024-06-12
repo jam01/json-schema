@@ -1,0 +1,22 @@
+{
+    "type": "string",
+    "const": "abc",
+    "enum": [""],
+    "multipleOf": 2,
+    "maximum": 20,
+    "minimum": 10,
+    "exclusiveMaximum": 20,
+    "exclusiveMinimum": 10,
+    "maxLength": 5,
+    "minLength": 2,
+    "maxItems": 3,
+    "minItems": 2,
+    "maxContains": 5,
+    "minContains": 1,
+    "maxProperties": 2,
+    "minProperties": 2,
+    "pattern": "ab.",
+    "uniqueItems": true,
+    "required": ["foo"],
+    "dependentRequired": { "bar": ["foo"] }
+}

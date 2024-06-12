@@ -207,14 +207,14 @@ final class Applicator private(schema: ObjectSchema,
         private val buff = ListBuffer[OutputUnit]()
         private var idx = -1
         override def subVisitor: Visitor[?, ?] = vismap(nextIdx)
-        override def visitValue(u: OutputUnit, index: Int): Unit = { accumulate(buff, u); if (u.vvalid) idx = nextIdx }
+        override def visitValue(u: OutputUnit, index: Int): Unit = { accumulateVec(buff, u); if (u.vvalid) idx = nextIdx }
         override def visitEnd(index: Int): OutputUnit = compose(PrefixItems, buff.result, Num(idx))
       })
 
       val itemsArrVis: Option[ArrVisitor[OutputUnit, OutputUnit]] = itemsVis.map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {
         private val buff = ListBuffer[OutputUnit]()
         override def subVisitor: Visitor[?, ?] = schValidator
-        override def visitValue(u: OutputUnit, index: Int): Unit = accumulate(buff, u)
+        override def visitValue(u: OutputUnit, index: Int): Unit = accumulateVec(buff, u)
         override def visitEnd(index: Int): OutputUnit = compose(Items, buff.result, True)
       })
 
@@ -297,8 +297,7 @@ final class Applicator private(schema: ObjectSchema,
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
         override def subVisitor: Visitor[?, ?] = vismap(currentKey)
-        override def visitValue(u: OutputUnit, index: Int): Unit =
-        { accumulate(buff, u); if (u.vvalid) annot.addOne(Str(currentKey))}
+        override def visitValue(u: OutputUnit, index: Int): Unit = { accumulateVec(buff, u); if (u.vvalid) annot.addOne(Str(currentKey))}
         override def visitEnd(index: Int): OutputUnit = compose(Properties, buff.result(), Arr(annot.result()))
       })
 
@@ -310,7 +309,7 @@ final class Applicator private(schema: ObjectSchema,
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
         override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map((_, v) => v))
-        override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { accumulate(buff, u); if (u.vvalid) annot.addOne(Str(currentKey))})
+        override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { accumulateVec(buff, u); if (u.vvalid) annot.addOne(Str(currentKey))})
         override def visitEnd(index: Int): OutputUnit = compose(PatternProperties, buff.result(), Arr(annot.result()))
       })
 
@@ -320,7 +319,7 @@ final class Applicator private(schema: ObjectSchema,
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
         override def subVisitor: Visitor[?, ?] = schValidator
-        override def visitValue(u: OutputUnit, index: Int): Unit = { accumulate(buff, u); if (u.vvalid) annot.addOne(Str(currentKey)) }
+        override def visitValue(u: OutputUnit, index: Int): Unit = { accumulateVec(buff, u); if (u.vvalid) annot.addOne(Str(currentKey)) }
         override def visitEnd(index: Int): OutputUnit = compose(AdditionalProperties, buff.result(), Arr(annot.result()))
       })
 

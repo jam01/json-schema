@@ -1,0 +1,79 @@
+[
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": ""
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/type",
+        "instanceLocation": "",
+        "error": "Expected List(string), got array"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/const",
+        "instanceLocation": "",
+        "error": "Array does not match expected constant"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/enum",
+        "instanceLocation": "",
+        "error": "Array not found in enumeration"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/minItems",
+        "instanceLocation": "",
+        "error": "Array has less items than allowed"
+      }
+    ]
+  },
+  {
+    "valid": false,
+    "keywordLocation": "",
+    "instanceLocation": "",
+    "details": [
+      {
+        "valid": false,
+        "keywordLocation": "/type",
+        "instanceLocation": "",
+        "error": "Expected List(string), got array"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/const",
+        "instanceLocation": "",
+        "error": "Array does not match expected constant"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/enum",
+        "instanceLocation": "",
+        "error": "Array not found in enumeration"
+      },
+      {
+        "valid": false,
+        "keywordLocation": "/minItems",
+        "instanceLocation": "",
+        "error": "Array has less items than allowed"
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/uniqueItems",
+        "instanceLocation": ""
+      },
+      {
+        "valid": true,
+        "keywordLocation": "/maxItems",
+        "instanceLocation": ""
+      }
+    ]
+  }
+]
