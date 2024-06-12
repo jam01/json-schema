@@ -23,6 +23,11 @@ package object json_schema {
     val ctx = DefaultContext(schemaRegistry, config)
     PointerDelegate(ctx, SchemaValidator.of(schema, ctx))
   }
+  
+  def from[I](reader: upickle.core.Transformer[I], readable: I, 
+                docbase: Uri = Uri.random, registry: mutable.Map[Uri, Schema] = mutable.Map()): Schema = {
+    reader.transform(readable, SchemaR(docbase, registry))
+  }
 
   /**
    * Creates a dialect for the given schema.
