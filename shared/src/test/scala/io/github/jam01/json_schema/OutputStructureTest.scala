@@ -2,7 +2,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
 import io.github.jam01.json_schema.OutputStructureTest.*
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.{Assertions, Test}
 import org.skyscreamer.jsonassert.JSONAssert
 import ujson.StringRenderer
 
@@ -69,6 +69,13 @@ class OutputStructureTest {
     testOutput(applSch1, ujson.Null, "output/applicator/null0.json") // not, allof, oneof, anyof
     testOutput(applSch2, ujson.Null, "output/applicator/null1.json") // not, allof, oneof, anyof
     testOutput(applSch3, ujson.Null, "output/applicator/null2.json") // not, allof, oneof, anyof
+  }
+
+  @Test
+  def annotations(): Unit = {
+    val sch = json_schema.from(ujson.Readable, ujson.Readable.fromString("""{"prefixItems":[true, true, true]}"""))
+    val res = sch.validate(ujson.Value, ujson.Arr(0, 1, 2), Config(format = OutputFormat.Detailed, allowList = AllowList.KeepAll))
+    Assertions.assertEquals(2L, res.details.head.annotation.value)
   }
 }
 

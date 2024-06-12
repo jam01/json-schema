@@ -23,7 +23,7 @@ sealed class OutputUnit(val valid: Boolean,
                         val annotation: Value | Null = null,
                         val details: Seq[OutputUnit] = Nil) {
 
-  def hasAnnotations: Boolean = annotation != null ||
+  val hasAnnotations: Boolean = annotation != null ||
     (details.nonEmpty && details.exists(u => u.hasAnnotations))
 
   def vvalid: Boolean = valid
@@ -143,6 +143,11 @@ object OutputFormat {
     inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
       else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors)
+
+    inline override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] =
+      if (!unit.vvalid) results.addOne(unit)
+      else if (unit.hasAnnotations) results.addOne(unit)
+      else results
   }
 
   val Verbose: OutputFormat = new OutputFormat {
