@@ -1,6 +1,5 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.InvalidVectorException
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 object SchemaValidator {
@@ -14,7 +13,7 @@ object SchemaValidator {
           .filter(vocabfact => vocabfact.shouldApply(osch))
           .map(vocabfact => vocabfact.create(osch, ctx, path, dynParent))
 
-        if (ctx.config.ffast) new FFastObjectSchemaValidator[Nothing](vocabs, ctx, path)
+        if (ctx.config.ffast) new FFastObjectSchemaValidator[Nothing](vocabs, ctx, path, dynParent)
         else new MapCompositeVisitor[Nothing, Seq[OutputUnit], OutputUnit](vocabs,
           unitss => ctx.onScopeEnd(path, ctx.config.format.compose(path, unitss.flatten, ctx.instanceLoc)))
   }
@@ -58,9 +57,12 @@ final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) 
   override def visitEnd(index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
 }
 
-private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context, path: JsonPointer) extends JsonVisitor[Seq[T], OutputUnit] {
-  inline private def compose(units: Seq[OutputUnit]): OutputUnit =
-    ctx.onScopeEnd(path, ctx.config.format.compose(path, units, ctx.instanceLoc))
+private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]) extends JsonVisitor[Seq[T], OutputUnit] {
+  inline private def compose(units: Seq[OutputUnit]): OutputUnit = {
+    val result = ctx.onScopeEnd(path, ctx.config.format.compose(path, units, ctx.instanceLoc))
+    if (dynParent.isEmpty && !result.vvalid) throw new ValidationException(result)
+    result
+  }
   inline private def compose(f: Vocab[T] => Seq[OutputUnit]): OutputUnit = {
     var res0: Seq[OutputUnit] = Nil
     val it = vocabs.iterator
@@ -74,6 +76,10 @@ private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context,
 
     compose(res0)
   }
+  inline private def ffast(exc: InvalidVectorException): Seq[OutputUnit] = {
+    if (dynParent.isEmpty) throw new ValidationException(compose(exc.results))
+    exc.results
+  }
 
   override def visitNull(index: Int): OutputUnit = compose(v => v.visitNull(index))
   override def visitFalse(index: Int): OutputUnit = compose(v => v.visitFalse(index))
@@ -83,47 +89,47 @@ private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context,
   override def visitString(s: CharSequence, index: Int): OutputUnit = compose(v => v.visitString(s, index))
 
   override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], OutputUnit] = {
-    var ffast: Seq[OutputUnit] = Nil
+    var failed: Seq[OutputUnit] = Nil
     val delegates: Seq[ArrVisitor[T, Seq[OutputUnit]]] =
       try { vocabs.map(_.visitArray(length, index)) } catch
-        case e: InvalidVectorException => ffast = e.results; Nil
+        case e: InvalidVectorException => failed = ffast(e); Nil
 
     new MapCompositeArrContext[T, Seq[OutputUnit], OutputUnit](delegates, units => compose(units.flatten)) {
       override def visitValue(v: Seq[T], index: Int): Unit =
-        if (ffast.nonEmpty) return
+        if (failed.nonEmpty) return
         try { super.visitValue(v, index) } catch
-          case e: InvalidVectorException => ffast = e.results
+          case e: InvalidVectorException => failed = ffast(e)
 
       override def visitEnd(index: Int): OutputUnit =
-        if (ffast.nonEmpty) return compose(ffast)
+        if (failed.nonEmpty) return compose(failed)
         super.visitEnd(index)
     }
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], OutputUnit] = {
-    var ffast: Seq[OutputUnit] = Nil
+    var failed: Seq[OutputUnit] = Nil
     val delegates: Seq[ObjVisitor[T, Seq[OutputUnit]]] =
       try { vocabs.map(_.visitObject(length, index)) } catch
-        case e: InvalidVectorException => ffast = e.results; Nil
+        case e: InvalidVectorException => failed = ffast(e); Nil
 
     new MapCompositeObjContext[T, Seq[OutputUnit], OutputUnit](delegates, units => compose(units.flatten)) {
       override def visitKey(index: Int): Visitor[?, ?] =
-        if (ffast.nonEmpty) return NoOpVisitor
+        if (failed.nonEmpty) return NoOpVisitor
         try { super.visitKey(index) } catch
-          case e: InvalidVectorException => ffast = e.results; NoOpVisitor
+          case e: InvalidVectorException => failed = ffast(e); NoOpVisitor
 
       override def visitKeyValue(v: Any): Unit =
-        if (ffast.nonEmpty) return
+        if (failed.nonEmpty) return
         try { super.visitKeyValue(v) } catch
-          case e: InvalidVectorException => ffast = e.results
+          case e: InvalidVectorException => failed = ffast(e)
 
       override def visitValue(v: Seq[T], index: Int): Unit =
-        if (ffast.nonEmpty) return
+        if (failed.nonEmpty) return
         try { super.visitValue(v, index) } catch
-          case e: InvalidVectorException => ffast = e.results
+          case e: InvalidVectorException => failed = ffast(e)
 
       override def visitEnd(index: Int): OutputUnit =
-        if (ffast.nonEmpty) return compose(ffast)
+        if (failed.nonEmpty) return compose(failed)
         super.visitEnd(index)
     }
   }

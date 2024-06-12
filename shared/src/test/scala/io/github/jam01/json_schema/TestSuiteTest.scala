@@ -16,7 +16,8 @@ class TestSuiteTest {
   @MethodSource(value = Array("args_provider"))
   def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
 
-    val res = data.transform(vis)
+    val res = try { data.transform(vis) } catch
+      case exc: ValidationException => exc.result
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }

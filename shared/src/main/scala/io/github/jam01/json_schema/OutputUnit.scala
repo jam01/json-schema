@@ -92,7 +92,7 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
 /**
  * JSON Schema validation output format
  */
-sealed abstract class OutputFormat {
+abstract class OutputFormat {
   def compose(path: JsonPointer, units: Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
     val (valid, invalid) = units.partition(_.vvalid)
     make(invalid.isEmpty, path, null, insLoc, null, invalid, null, valid)
@@ -130,7 +130,7 @@ object OutputFormat {
     override def compose(path: JsonPointer, units: Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
       OutputUnit(units.forall(_.vvalid), path, null, insLoc)
 
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
+    inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       OutputUnit(isValid, kwLoc, null, insLoc)
   }
 
@@ -140,21 +140,21 @@ object OutputFormat {
   }
 
   val Detailed: OutputFormat = new OutputFormat {
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
+    inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
       else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors)
   }
 
   val Verbose: OutputFormat = new OutputFormat {
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
+    inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, errors ++: verbose)
       else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors ++: verbose)
 
-    override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
+    inline override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
       results.addOne(unit)
     }
 
-    override def accumulate(results: mutable.Growable[OutputUnit],
+    inline override def accumulate(results: mutable.Growable[OutputUnit],
                             isValid: Boolean,
                             kwLoc: JsonPointer,
                             absKwLoc: Uri | Null = null,

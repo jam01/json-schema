@@ -63,3 +63,5 @@ trait VocabFactory[B <: Vocab[?]] {
    */
   def shouldApply(schema: ObjectSchema): Boolean
 }
+
+class InvalidVectorException(val results: Seq[OutputUnit]) extends RuntimeException

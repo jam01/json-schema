@@ -1,6 +1,5 @@
 package io.github.jam01.json_schema
 
-import io.github.jam01.InvalidVectorException
 import io.github.jam01.json_schema.vocab.Core
 
 import scala.collection.mutable
