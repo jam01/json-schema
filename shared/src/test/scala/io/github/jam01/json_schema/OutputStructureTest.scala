@@ -60,21 +60,20 @@ class OutputStructureTest {
 
   @Test
   def applicator(): Unit = {
-    // TODO: if/then/else verbose should have details
-    // TODO: not needs details inlined
-    // TODO: propertyNames should have verbose details 
+    // TODO: propertyNames should have verbose details?
     testOutput(applSch0, ujson.Num(1), "output/applicator/num0.json") // then
     testOutput(applSch0, ujson.Arr(1, 2, ujson.Null), "output/applicator/arr0.json") // else, preItems, items, contains
     testOutput(applSch0, ujson.Obj("12345" -> 0, "foo" -> 1, "bar" -> 2), "output/applicator/obj0.json") // propNames, props, patternProps, addlProps, depSchs
     testOutput(applSch1, ujson.Null, "output/applicator/null0.json") // not, allof, oneof, anyof
-    testOutput(applSch2, ujson.Null, "output/applicator/null1.json") // not, allof, oneof, anyof
-    testOutput(applSch3, ujson.Null, "output/applicator/null2.json") // not, allof, oneof, anyof
+    testOutput(applSch2, ujson.Null, "output/applicator/null1.json") // not, oneof, anyof
+    testOutput(applSch3, ujson.Null, "output/applicator/null2.json") // oneOf
   }
 
   @Test
   def annotations(): Unit = {
-    val sch = json_schema.from(ujson.Readable, ujson.Readable.fromString("""{"prefixItems":[true, true, true]}"""))
-    val res = sch.validate(ujson.Value, ujson.Arr(0, 1, 2), Config(format = OutputFormat.Detailed, allowList = AllowList.KeepAll))
+    val res =json_schema
+      .from(ujson.Readable, ujson.Readable.fromString("""{"prefixItems":[true, true, true]}"""))
+      .validate(ujson.Value, ujson.Arr(0, 1, 2), Config(format = OutputFormat.Detailed, allowList = AllowList.KeepAll))
     Assertions.assertEquals(2L, res.details.head.annotation.value)
   }
 }

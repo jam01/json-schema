@@ -1,5 +1,5 @@
 {
-  "not": true,
+  "not": {"type": "null", "const":  null},
   "allOf": [false, true],
   "oneOf": [false],
   "anyOf": [false]

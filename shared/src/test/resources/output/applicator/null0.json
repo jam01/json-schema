@@ -64,7 +64,12 @@
         "details": [
           {
             "valid": true,
-            "keywordLocation": "/not",
+            "keywordLocation": "/not/type",
+            "instanceLocation": ""
+          },
+          {
+            "valid": true,
+            "keywordLocation": "/not/const",
             "instanceLocation": ""
           }
         ]

@@ -400,7 +400,7 @@ final class Applicator private(schema: ObjectSchema,
   private def oneOf(kw: String, units: Seq[OutputUnit]): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
     if (valid.size == 1) mkUnit(true, kw, verbose = units) // if one valid, no errors and all results are verbose
-    else if (valid.size > 1) mkUnit(false, kw, errors = valid, verbose = invalid) // if 1+ valid, errors are all valid, and errors are verbose
+    else if (valid.size > 1) mkUnit(false, kw, errors = valid, verbose = invalid) // if 1+ valid, errors are all valid, and invalid are verbose
     else mkUnit(false, kw, errors = units) // if none valid, all results are errors
   }
 
@@ -411,8 +411,11 @@ final class Applicator private(schema: ObjectSchema,
   }
 
   private def not(n: OutputUnit): OutputUnit = {
-    if (n.vvalid) mkUnit(false, Not, verbose = Seq(n)) // if valid, no errors and result is verbose
-    else mkUnit(true, Not, errors = Seq(n)) // if invalid, error is result and no verbose
+    if (n.vvalid) {
+      val (valid, invalid) = n.details.partition(_.vvalid)
+      mkUnit(false, Not, errors = valid, verbose = invalid) // if invvalid, errors are all valid, and invalid are verbose
+    } 
+    else mkUnit(true, Not, verbose = n.details) // if vvalid, all results are verbose
   }
 }
 

@@ -21,7 +21,13 @@
         "details": [
           {
             "valid": false,
-            "keywordLocation": "/not",
+            "keywordLocation": "/not/const",
+            "instanceLocation": "",
+            "error": "null does not match expected constant"
+          },
+          {
+            "valid": true,
+            "keywordLocation": "/not/type",
             "instanceLocation": ""
           }
         ]
