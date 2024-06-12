@@ -21,7 +21,7 @@ package object json_schema {
                 config: Config = Config.Default,
                 schemaRegistry: collection.Map[Uri, Schema] = Map.empty): Visitor[?, OutputUnit] = {
     val ctx = DefaultContext(schemaRegistry, config)
-    PointerDelegate(ctx, SchemaValidator.of(schema, ctx, JsonPointer.Root, None))
+    PointerDelegate(ctx, SchemaValidator.of(schema, ctx))
   }
 
   /**

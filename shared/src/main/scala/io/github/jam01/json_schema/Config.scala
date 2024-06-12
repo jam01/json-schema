@@ -22,19 +22,21 @@ abstract class AllowList {
   def ifAllowed(kw: String, ann: Value | Null): Value | Null
 }
 
-final class Keep(val list: Seq[String]) extends AllowList {
+final class Keep(val list: Set[String]) extends AllowList {
   override def ifAllowed(kw: String, ann: Value | Null): Value | Null =
     if (list.contains(kw)) ann
     else null
 }
 
-final class Drop(val list: Seq[String]) extends AllowList {
+final class Drop(val list: Set[String]) extends AllowList {
   override def ifAllowed(kw: String, ann: Value | Null): Value | Null =
     if (list.contains(kw)) null
     else ann
 }
 
 object AllowList {
-  val KeepAll: AllowList = (kw: String, ann: Value | Null) => ann
-  val DropAll: AllowList = (kw: String, ann: Value | Null) => null
+  val KeepAll: AllowList = new AllowList:
+    inline override def ifAllowed(kw: String, ann: Value | Null): Value | Null = ann
+  val DropAll: AllowList = new AllowList:
+    inline override def ifAllowed(kw: String, ann: Value | Null): Value | Null = null
 }
