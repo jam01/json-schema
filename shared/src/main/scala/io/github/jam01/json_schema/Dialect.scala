@@ -22,6 +22,9 @@ object Dialect {
   val _2020_12_Basic: Dialect = Dialect(Uri("https://github.io/jam01/json_schema/2012-10/basic"),
     Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated))
 
+  val _2020_12_FormatAssertion: Dialect = Dialect(Uri("https://github.io/jam01/json_schema/2012-10/format-assertion"),
+    Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated, vocab.FormatAssertion))
+
   val _2020_12_Full: Dialect = Dialect(Uri("https://json-schema.org/draft/2020-12/schema"),
     Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated, vocab.Format, vocab.Metadata, vocab.Content))
 

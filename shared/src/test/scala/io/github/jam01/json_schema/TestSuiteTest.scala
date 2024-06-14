@@ -1,7 +1,7 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.{Assertions, Disabled}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 import ujson.StringRenderer
@@ -14,8 +14,17 @@ import scala.util.Using
 class TestSuiteTest {
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
-  def test(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
+  def test_suite(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
+    val res = try { data.transform(vis) } catch
+      case exc: ValidationException => exc.result
+    //println(OutputUnitW.transform(res, StringRenderer()).toString)
+    Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
+  }
 
+  @Disabled
+  @ParameterizedTest
+  @MethodSource(value = Array("args_provider_format"))
+  def optional_format(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
     val res = try { data.transform(vis) } catch
       case exc: ValidationException => exc.result
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
@@ -25,6 +34,11 @@ class TestSuiteTest {
 
 object TestSuiteTest {
   val NotSupported: Seq[String] = Seq("refRemote.json")
+  val NotSupportedFormat: Seq[String] = Seq(
+    "ipv6.json",
+    "idn-hostname.json",
+    "email.json",
+    "idn-email.json")
 
   val Registry: mutable.Map[Uri, Schema] = {
     val builder = mutable.Map[Uri, Schema]()
@@ -55,6 +69,19 @@ object TestSuiteTest {
     Using(Files.walk(resource("test-suite/tests/draft2020-12/"), 1)) { tests =>
         tests.filter(Files.isRegularFile(_))
           .filter(p => !NotSupported.contains(p.getFileName.toString))
+          //.peek(println)
+          .forEach(p => args.addAll(args_provider(p)))
+    }
+    //args.addAll(args_provider(resource("test-suite/tests/draft2020-12/defs.json")))
+
+    args
+  }
+
+  def args_provider_format: java.util.List[Arguments] = {
+    val args = new java.util.ArrayList[Arguments]()
+    Using(Files.walk(resource("test-suite/tests/draft2020-12/optional/format/"), 1)) { tests =>
+        tests.filter(Files.isRegularFile(_))
+          .filter(p => !NotSupportedFormat.contains(p.getFileName.toString))
           //.peek(println)
           .forEach(p => args.addAll(args_provider(p)))
     }
