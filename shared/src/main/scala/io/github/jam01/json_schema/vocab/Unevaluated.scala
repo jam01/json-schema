@@ -49,7 +49,7 @@ final class Unevaluated private(schema: ObjectSchema,
 
         val (applied, invalid) = buff.result().partition(unit => ! {
           evalItems.contains(True) || evalUneval.contains(True)
-            || evalPrefixItems.exists(n => Validation.gteq(n.num, unit.insLoc.refTokens.last.toLong))
+            || evalPrefixItems.exists(n => gteq(n.num, unit.insLoc.refTokens.last.toLong))
             || evalContains.exists(is => is.arr.contains(Num(unit.insLoc.refTokens.last.toInt)))
         })
 
@@ -62,6 +62,8 @@ final class Unevaluated private(schema: ObjectSchema,
   private def getItemsAnnotations(annotations: Seq[(JsonPointer, Value)], annotName: String): Seq[Value] =
     annotations.withFilter((kwLoc, _) => annotName == kwLoc.refTokens.last)
       .map((_, value) => value)
+  private def getPropsAnnotations(annotations: Seq[(JsonPointer, Value)]): Seq[String] =
+    annotations.flatMap((_, value) => value.arr.map(v => v.str))
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, Seq[OutputUnit]] = {
     if (propsVis.isEmpty) return NilObjVis
@@ -92,9 +94,6 @@ final class Unevaluated private(schema: ObjectSchema,
   }
 }
 
-private def getPropsAnnotations(annotations: Seq[(JsonPointer, Value)]): Seq[String] =
-  annotations.flatMap((_, value) => value.arr.map(v => v.str))
-
 object Unevaluated extends VocabFactory[Unevaluated] {
   val UnevaluatedItems = "unevaluatedItems"
   val UnevaluatedProperties = "unevaluatedProperties"
@@ -112,6 +111,16 @@ object Unevaluated extends VocabFactory[Unevaluated] {
     override def visitValue(v: Any, index: Int): Unit = ()
     override def visitEnd(index: Int): Seq[OutputUnit] = Nil
   }
+  
+  private def gteq(n1: Long | Double, n2: Long | Double): Boolean = {
+    n1 match
+      case l1: Long => n2 match
+        case l2: Long => l1 >= l2
+        case d2: Double => l1 >= d2
+      case d1: Double => n2 match
+        case l2: Long => d1 >= l2
+        case d2: Double => d1 >= d2
+  }
 
   private val PropertiesAnnotations = Seq(Applicator.Properties,
     Applicator.PatternProperties,
@@ -123,14 +132,10 @@ object Unevaluated extends VocabFactory[Unevaluated] {
     Applicator.Contains,
     UnevaluatedItems)
   
-  val Keys: Seq[String] = Seq(UnevaluatedItems, UnevaluatedProperties)
+  val Keys: Set[String] = Set(UnevaluatedItems, UnevaluatedProperties)
 
   override def uri: String = "https://json-schema.org/draft/2020-12/vocab/unevaluated"
-
-  override def create(schema: ObjectSchema,
-                      ctx: Context,
-                      path: JsonPointer,
-                      dynParent: Option[Vocab[?]]): Unevaluated = new Unevaluated(schema, ctx, path, dynParent)
-
   override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
+  override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Unevaluated = 
+    new Unevaluated(schema, ctx, path, dynParent)
 }

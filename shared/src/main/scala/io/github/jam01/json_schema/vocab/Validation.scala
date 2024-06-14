@@ -223,7 +223,7 @@ object Validation extends VocabFactory[Validation] {
         case l2: Long => d1 <= l2
         case d2: Double => d1 <= d2
   }
-  def gteq(n1: Long | Double, n2: Long | Double): Boolean = {
+  private def gteq(n1: Long | Double, n2: Long | Double): Boolean = {
     n1 match
       case l1: Long => n2 match
         case l2: Long => l1 >= l2
@@ -268,16 +268,12 @@ object Validation extends VocabFactory[Validation] {
   private val Required = "required"
   private val DepRequired = "dependentRequired"
   
-  val Keys: Seq[String] = Seq(Tyype, Const, Enuum, MultipleOf, Maximum, Minimum, ExclusiveMax, ExclusiveMin, MaxLength,
+  val Keys: Set[String] = Set(Tyype, Const, Enuum, MultipleOf, Maximum, Minimum, ExclusiveMax, ExclusiveMin, MaxLength,
     MinLength, MaxItems, MinItems, MaxContains, MinContains, MaxProperties, MinProperties, Pattern, UniqueItems,
     Required, DepRequired)
 
   override def uri: String = "https://json-schema.org/draft/2020-12/vocab/validation"
-
-  override def create(schema: ObjectSchema,
-                      ctx: Context,
-                      path: JsonPointer,
-                      dynParent: Option[Vocab[?]]): Validation = new Validation(schema, ctx, path, dynParent)
-
   override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
+  override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Validation = 
+    new Validation(schema, ctx, path, dynParent)
 }

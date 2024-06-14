@@ -438,15 +438,11 @@ object Applicator extends VocabFactory[Applicator] {
   val AnyOf = "anyOf"
   val OneOf = "oneOf"
 
-  val Keys: Seq[String] = Seq(PrefixItems, Items, MaxContains, MinContains, Contains, AdditionalProperties,
+  val Keys: Set[String] = Set(PrefixItems, Items, MaxContains, MinContains, Contains, AdditionalProperties,
     PatternProperties, DependentSchemas, PropertyNames, Properties, If, Then, Else, Not, AllOf, AnyOf, OneOf)
 
   override def uri: String = "https://json-schema.org/draft/2020-12/vocab/applicator"
-
-  override def create(schema: ObjectSchema,
-                      ctx: Context,
-                      path: JsonPointer,
-                      dynParent: Option[Vocab[?]]): Applicator = new Applicator(schema, ctx, path, dynParent)
-
   override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
+  override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Applicator = 
+    new Applicator(schema, ctx, path, dynParent)
 }

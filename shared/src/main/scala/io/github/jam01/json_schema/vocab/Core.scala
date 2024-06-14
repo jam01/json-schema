@@ -80,14 +80,10 @@ final class Core private(schema: ObjectSchema,
 object Core extends VocabFactory[Core] {
   val _Ref = "$ref"
   val _DynRef = "$dynamicRef"
-  val Keys: Seq[String] = Seq(_Ref, _DynRef)
+  val Keys: Set[String] = Set(_Ref, _DynRef)
 
   override def uri: String = "https://json-schema.org/draft/2020-12/vocab/core"
-
-  override def create(schema: ObjectSchema,
-                      ctx: Context,
-                      path: JsonPointer,
-                      dynParent: Option[Vocab[?]]): Core = new Core(schema, ctx, path, dynParent)
-
   override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
+  override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Core = 
+    new Core(schema, ctx, path, dynParent)
 }

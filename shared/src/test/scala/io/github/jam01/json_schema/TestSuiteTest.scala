@@ -70,7 +70,7 @@ object TestSuiteTest {
     suite.foreach { testcase =>
       testcase.obj.get("tests").get.arr.foreach(test => {
         val sch = testcase.obj.get("schema").get.transform(SchemaR(registry = Registry))
-        val dial = json_schema.tryDialect(sch, registry = Registry).getOrElse(Dialect._2020_12)
+        val dial = Dialect.tryDialect(sch, registry = Registry).getOrElse(Dialect._2020_12_Basic)
 
         args.add(Arguments.of(
           resource("test-suite/tests/draft2020-12/").relativize(path).toString,

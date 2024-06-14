@@ -19,6 +19,7 @@ abstract class VocabBase(schema: ObjectSchema,
                          val path: JsonPointer,
                          dynParent: Option[Vocab[?]]) extends Vocab[Nothing](schema, dynParent) {
 
+  // perf: kwLoc and absKwLoc may be computed and discarded, inline?
   protected inline def mkUnit(isValid: Boolean,
              kw: String,
              error: String | Null = null,
