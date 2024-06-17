@@ -37,7 +37,6 @@ object TestSuiteTest {
   val NotSupportedFormat: Seq[String] = Seq(
     "ipv6.json",
     "idn-hostname.json",
-    "email.json",
     "idn-email.json")
 
   val Registry: mutable.Map[Uri, Schema] = {

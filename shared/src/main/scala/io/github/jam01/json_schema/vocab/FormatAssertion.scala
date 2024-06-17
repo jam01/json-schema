@@ -7,10 +7,11 @@ import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 import java.net.{URI, URISyntaxException}
 import java.util.regex.{Pattern, PatternSyntaxException}
 import java.util.UUID
+import scala.annotation.tailrec
 
 // unavailable in scala js/native
-import java.time.Duration
-import java.time.format.DateTimeFormatter
+import java.time.{Duration, OffsetDateTime, Period}
+import java.time.format.DateTimeFormatter.{ISO_INSTANT, ISO_LOCAL_DATE, ISO_OFFSET_DATE_TIME, ISO_OFFSET_TIME}
 import java.time.format.DateTimeParseException
 
 final class FormatAssertion private(schema: ObjectSchema,
@@ -19,31 +20,40 @@ final class FormatAssertion private(schema: ObjectSchema,
                            dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
   private val format = schema.get(FormatKw).get
   private val valid = Seq(mkUnit(true, FormatKw, annotation = schema.get(FormatKw).get.asInstanceOf[Str]))
-  private val invalid = Seq(mkUnit(false, FormatKw, s"String value does not conform to $format format", annotation = format))
+  private val invalid = Seq(mkUnit(false, FormatKw, s"String does not conform to $format format", annotation = format))
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
+    println()
     val isValid = format.str match
-      case "date-time" => try { DateTimeFormatter.ISO_OFFSET_DATE_TIME.parse(s); true } catch
+      case "date-time" => isDt(s)
+      case "date" => try { ISO_LOCAL_DATE.parse(s); true } catch
         case _: DateTimeParseException => false
-      case "date" => try { DateTimeFormatter.ISO_LOCAL_DATE.parse(s); true } catch
+      case "time" => try { ISO_OFFSET_TIME.parse(s); true } catch
         case _: DateTimeParseException => false
-      case "time" => try { DateTimeFormatter.ISO_OFFSET_TIME.parse(s); true } catch
-        case _: DateTimeParseException => false
-      case "duration" => try { Duration.parse(s); true } catch
-        case _: DateTimeParseException => false
-      case "email" => true
+      case "duration" => s.length() > 1 && s.charAt(0) == 'P' && { try {
+          val str = s.toString; val t = str.indexOf('T')
+          if (t == -1) { Period.parse(s); true }
+          else {
+            val date = str.substring(0, t); val time = str.substring(t)
+            (date.length == 1 || { Period.parse(date); true }) &&
+              { Duration.parse("P" + str.substring(t)); true }
+          }
+        } catch
+          case _: DateTimeParseException => false
+      }
+      case "email" => Email_r.matches(s)
       case "idn-email" => true
-      case "hostname" => Hostname_r.matches(s)
+      case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
       case "ipv4" => IPv4_r.matches(s)
       case "ipv6" => true
-      case "uuid" => try { UUID.fromString(s.toString); true } catch
+      case "uuid" => try { s.length() == 36 && { UUID.fromString(s.toString); true }} catch // https://bugs.openjdk.org/browse/JDK-8202760
         case _: IllegalArgumentException => false
       case "uri" => try { new URI(s.toString).isAbsolute && s.chars().allMatch(c => c < 0x7F) } catch // https://stackoverflow.com/a/3585791/4814697
         case _: URISyntaxException => false
       case "uri-reference" => try { new URI(s.toString); s.chars().allMatch(c => c < 0x7F) } catch
         case _: URISyntaxException => false
-      case "iri" => try { new URI(s.toString).isAbsolute; true } catch
+      case "iri" => try { new URI(s.toString).isAbsolute } catch
         case _: URISyntaxException => false
       case "iri-reference" => try { new URI(s.toString); true } catch
         case _: URISyntaxException => false
@@ -58,14 +68,14 @@ final class FormatAssertion private(schema: ObjectSchema,
           while (i < s.length() && Character.isDigit(s.charAt(i))) { i += 1 }
         }
 
-        if (i == s.length() && hasInt) true
-        else if (!hasInt) false
+        if (!hasInt) false
+        else if (i == s.length()) true
         else {
           c = s.charAt(i)
           (c == '#' && i == s.length() - 1) || (c == '/' && isJsPtr(s.subSequence(i, s.length())))
         }
       }
-      case "regex" => try { Pattern.compile(s.toString); true } catch // perf: compiled then discarded
+      case "regex" => try { Pattern.compile(s.toString); true } catch // perf: compiled then discarded, sec: ?
         case _: PatternSyntaxException => false
         case _: UnsupportedOperationException => false // as thrown by scala native implementation
       case unk => true
@@ -109,9 +119,24 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
       i == s.length() - 1 && continue && s.charAt(i) != '~'
     }))
   }
-  private val IPv4_r = "^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)(\\.(?!$)|$)){4}$".r // https://stackoverflow.com/a/36760050/4814697
+
+  @tailrec
+  private def isDt(s: CharSequence, rec: Boolean = false): Boolean = {
+    try { ISO_INSTANT.parse(s); true } catch // handles leap second, but only in UTC
+      case e: DateTimeParseException =>
+        if (rec) return false
+        val str = s.toString
+        if (str.contains(":59:60")) // Remove leap, make UTC, add leap, try again
+          isDt(OffsetDateTime.parse(str.replace(":59:60", ":59:59"))
+            .toInstant.toString.replace(":59:59", ":59:60"), true)
+        else false
+  }
+
+  private val IPv4_r = "^(?:(?:25[0-5]|(?:2[0-4]|1\\d|[1-9]|)\\d)(?:\\.(?!$)|$)){4}$".r // https://stackoverflow.com/a/36760050/4814697
   private val UriTemplate_r = "^([^\\x00-\\x20\\x7f\"'%<>\\\\^`{|}]|%[0-9A-Fa-f]{2}|\\{[+#./;?&=,!@|]?((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
-  private val Hostname_r = "(?=^.{1,253}$)(^(((?!-)[a-zA-Z0-9-]{1,63}(?<!-))|((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\\.)+[a-zA-Z]{2,63})$)".r // https://stackoverflow.com/a/20204811/4814697
+  // https://stackoverflow.com/a/58347192/4814697
+  private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 // https://stackoverflow.com/a/1418724/4814697
+  private val Email_r = "^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // based on https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address on 2024-06-17
 
   override def uri: String = "https://json-schema.org/draft/2020-12/meta/format-assertion"
   override def shouldApply(schema: ObjectSchema): Boolean = schema.value.contains(FormatKw)
