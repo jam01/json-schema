@@ -7,12 +7,12 @@ import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 import java.net.{URI, URISyntaxException}
 import java.util.regex.{Pattern, PatternSyntaxException}
 import java.util.UUID
-import scala.annotation.tailrec
 
 // unavailable in scala js/native
-import java.time.{Duration, OffsetDateTime, Period}
-import java.time.format.DateTimeFormatter.{ISO_INSTANT, ISO_LOCAL_DATE, ISO_OFFSET_DATE_TIME, ISO_OFFSET_TIME}
+import java.time.{Duration, Period, LocalDateTime, LocalTime}
+import java.time.format.DateTimeFormatter.{ISO_LOCAL_DATE, ISO_OFFSET_DATE_TIME, ISO_OFFSET_TIME}
 import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoField
 
 final class FormatAssertion private(schema: ObjectSchema,
                            ctx: Context,
@@ -23,25 +23,14 @@ final class FormatAssertion private(schema: ObjectSchema,
   private val invalid = Seq(mkUnit(false, FormatKw, s"String does not conform to $format format", annotation = format))
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
-    println()
     val isValid = format.str match
-      case "date-time" => isDt(s)
+      case "date-time" => try { ISO_OFFSET_DATE_TIME.parse(s); true } catch // supports +HH:MM:ss
+        case e: DateTimeParseException => isLeapDateTime(s, e)
       case "date" => try { ISO_LOCAL_DATE.parse(s); true } catch
         case _: DateTimeParseException => false
-      case "time" => try { ISO_OFFSET_TIME.parse(s); true } catch
-        case _: DateTimeParseException => false
-      case "duration" => s.length() > 1 && s.charAt(0) == 'P' && { try {
-          val str = s.toString; val t = str.indexOf('T')
-          if (t == -1) { Period.parse(s); true }
-          else {
-            val date = str.substring(0, t); val time = str.substring(t)
-            (date.length == 1 || { Period.parse(date); true }) &&
-              { Duration.parse("P" + str.substring(t)); true }
-          }
-        } catch
-          case _: DateTimeParseException => false
-      }
-      case "email" => Email_r.matches(s)
+      case "time" => try { ISO_OFFSET_TIME.parse(s); true } catch // supports +HH:MM:ss
+        case e: DateTimeParseException => isLeapTime(s, e)
+      case "duration" => s.length() > 1 && s.charAt(0) == 'P' && isDuration(s)
       case "idn-email" => true
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
@@ -120,17 +109,54 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     }))
   }
 
-  @tailrec
-  private def isDt(s: CharSequence, rec: Boolean = false): Boolean = {
-    try { ISO_INSTANT.parse(s); true } catch // handles leap second, but only in UTC
-      case e: DateTimeParseException =>
-        if (rec) return false
-        val str = s.toString
-        if (str.contains(":59:60")) // Remove leap, make UTC, add leap, try again
-          isDt(OffsetDateTime.parse(str.replace(":59:60", ":59:59"))
-            .toInstant.toString.replace(":59:59", ":59:60"), true)
-        else false
+  private def isLeapDateTime(s: CharSequence, e: DateTimeParseException): Boolean = {
+    val str = s.toString
+    if (!(e.getMessage.nn.contains("Invalid value for SecondOfMinute") && str.contains(":60")))
+      return false
+
+    try {
+      val accessor = ISO_OFFSET_DATE_TIME.parse(str.replace(":60", ":59"))
+      val offsetSecs = accessor.getLong(ChronoField.OFFSET_SECONDS)
+      if (Math.abs(offsetSecs) > 86399) // 24:00 - 1s
+        return false
+
+      val date = accessor.query(LocalDateTime.from).minusSeconds(offsetSecs) // make UTC
+      date.get(ChronoField.HOUR_OF_DAY) == 23 &&
+        date.get(ChronoField.MINUTE_OF_HOUR) == 59 &&
+        date.get(ChronoField.SECOND_OF_MINUTE) == 59
+    } catch
+      case _: RuntimeException => false
   }
+
+  private def isLeapTime(s: CharSequence, e: DateTimeParseException): Boolean = {
+    val str = s.toString
+    if (!(e.nn.getMessage.contains("Invalid value for SecondOfMinute") && str.contains(":60")))
+      return false
+
+    try {
+      val accessor = ISO_OFFSET_TIME.parse(str.replace(":60", ":59"))
+      val offsetSecs = accessor.getLong(ChronoField.OFFSET_SECONDS)
+      if (Math.abs(offsetSecs) > 86399) // 24:00 - 1s
+        return false
+
+      val time = accessor.query(LocalTime.from).minusSeconds(offsetSecs) // make UTC
+      time.get(ChronoField.HOUR_OF_DAY) == 23 &&
+        time.get(ChronoField.MINUTE_OF_HOUR) == 59 &&
+        time.get(ChronoField.SECOND_OF_MINUTE) == 59
+    } catch
+      case _: RuntimeException => false
+  }
+
+  private def isDuration(s: CharSequence): Boolean = try {
+    val str = s.toString; val t = str.indexOf('T')
+    if (t == -1) { Period.parse(s); true }
+    else {
+      val date = str.substring(0, t); val time = str.substring(t)
+      (date.length == 1 || { Period.parse(date); true }) &&
+        { Duration.parse("P" + str.substring(t)); true }
+    }
+  } catch
+    case _: DateTimeParseException => false
 
   private val IPv4_r = "^(?:(?:25[0-5]|(?:2[0-4]|1\\d|[1-9]|)\\d)(?:\\.(?!$)|$)){4}$".r // https://stackoverflow.com/a/36760050/4814697
   private val UriTemplate_r = "^([^\\x00-\\x20\\x7f\"'%<>\\\\^`{|}]|%[0-9A-Fa-f]{2}|\\{[+#./;?&=,!@|]?((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
