@@ -31,6 +31,7 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "time" => try { ISO_OFFSET_TIME.parse(s); true } catch // supports +HH:MM:ss
         case e: DateTimeParseException => isLeapTime(s, e)
       case "duration" => s.length() > 1 && s.charAt(0) == 'P' && isDuration(s)
+      case "email" => s.length() >= 3 && Email_r.matches(s)
       case "idn-email" => true
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
@@ -54,7 +55,7 @@ final class FormatAssertion private(schema: ObjectSchema,
         if (c == '0') { i += 1; hasInt = true }
         else if (Character.isDigit(c)) {
           i += 1; hasInt = true
-          while (i < s.length() && Character.isDigit(s.charAt(i))) { i += 1 }
+          while (i < s.length() && Character.isDigit(s.charAt(i))) i += 1
         }
 
         if (!hasInt) false
@@ -187,7 +188,8 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   }
 
   private val IPv4_r = "^(?:(?:25[0-5]|(?:2[0-4]|1\\d|[1-9]|)\\d)(?:\\.(?!$)|$)){4}$".r // https://stackoverflow.com/a/36760050/4814697
-  private val UriTemplate_r = "^([^\\x00-\\x20\\x7f\"'%<>\\\\^`{|}]|%[0-9A-Fa-f]{2}|\\{[+#./;?&=,!@|]?((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
+  private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
+
   // https://stackoverflow.com/a/58347192/4814697
   private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 // https://stackoverflow.com/a/1418724/4814697
   private val Email_r = "^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // based on https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address on 2024-06-17
