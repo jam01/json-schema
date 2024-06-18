@@ -31,7 +31,7 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "time" => try { ISO_OFFSET_TIME.parse(s); true } catch // supports +HH:MM:ss
         case e: DateTimeParseException => isLeapTime(s, e)
       case "duration" => s.length() > 1 && s.charAt(0) == 'P' && isDuration(s)
-      case "email" => s.length() >= 3 && Email_r.matches(s)
+      case "email" => s.length() >= 3 && isEmail(s)
       case "idn-email" => true
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
@@ -175,14 +175,26 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
 
   //private val emailChars = Array()
   private def isEmail(s: CharSequence): Boolean = {
-    var i = 0; var continue = true
-    while (i < s.length() && continue) {
+    val str = s.toString
 
-
-      i += 1
+    var parts = Array.empty[String]
+    if (str.charAt(0) == '"') { // quoted-string local part
+      val at = str.lastIndexOf('@')
+      if (at == -1) return false
+      parts = Array(str.substring(0, at), str.substring(at + 1))
+      if (!EmailLocalQuote_r.matches(parts(0))) return false
+    } else {
+      parts = str.split("@", -1)
+      if (parts.length != 2) return false
+      if (!EmailLocalDot_r.matches(parts(0))) return false
     }
 
-    ???
+    val auth = parts(1)
+    if (auth.charAt(0) != '[') return Hostname_r.matches(auth)  // hostname
+    if (auth.charAt(auth.length - 1) != ']') return false       // invalid address literal
+
+    if (auth.startsWith("[IPv6:")) isIPv6(auth.substring(6, auth.length - 1))
+    else isIPv4(auth.substring(1, auth.length - 1))
   }
   
   private def isIPv4(s: CharSequence): Boolean = {
@@ -245,8 +257,8 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
 
   private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
   private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 // https://stackoverflow.com/a/1418724/4814697
-  private val Email_r = "^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // based on https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address on 2024-06-17
-
+  private val EmailLocalDot_r = "^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*$".r // based on https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address on 2024-06-17
+  private val EmailLocalQuote_r = "^\"(?:\\\\[a-zA-Z0-9 !\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~]|[a-zA-Z0-9 !#$%&'()*+,\\-./:;<=>?@\\[\\]^_`{|}~])*\"$".r
   override def uri: String = "https://json-schema.org/draft/2020-12/meta/format-assertion"
   override def shouldApply(schema: ObjectSchema): Boolean = schema.value.contains(FormatKw)
   override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): FormatAssertion =
