@@ -30,18 +30,17 @@ final case class JsonPointer(refTokens: Seq[String] = Seq("")) {
 
 object JsonPointer {
   val Root: JsonPointer = JsonPointer()
-  private val chs = Array('0', '1')
-
   def apply(s: String): JsonPointer = {
     if (s.isEmpty) return Root
-    if (s.charAt(0) != '/') throw new IllegalArgumentException(s"Invalid JSON Poitner $s")
+    if (s.charAt(0) != '/') throw new IllegalArgumentException(s"Invalid JSON Poitner '$s''")
 
     val refs = ListBuffer("")
     var i = 1; var continue = true
     var currRef = 1
     while (i < s.length() - 1 && continue) {
-      if (s.charAt(i) == '/') { refs.addOne(escape(s.substring(currRef, i))); currRef = i + 1 }
-      else if (s.charAt(i) == '~' && !chs.contains(s.charAt(i + 1))) continue = false
+      val char = s.charAt(i)
+      if (char == '/') { refs.addOne(escape(s.substring(currRef, i))); currRef = i + 1 }
+      else if (char == '~' && (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) continue = false
       i += 1
     }
 

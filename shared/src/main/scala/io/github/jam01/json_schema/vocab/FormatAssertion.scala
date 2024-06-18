@@ -19,7 +19,7 @@ final class FormatAssertion private(schema: ObjectSchema,
                            path: JsonPointer,
                            dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
   private val format = schema.get(FormatKw).get
-  private val valid = Seq(mkUnit(true, FormatKw, annotation = schema.get(FormatKw).get.asInstanceOf[Str]))
+  private val valid = Seq(mkUnit(true, FormatKw, annotation = format))
   private val invalid = Seq(mkUnit(false, FormatKw, s"String does not conform to $format format", annotation = format))
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
@@ -35,27 +35,36 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "idn-email" => true
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
-      case "ipv4" => s.length() >= 7 && s.length() <= 15 && IPv4_r.matches(s)
+      case "ipv4" => s.length() >= 7 && s.length() <= 15 && isIPv4(s)
       case "ipv6" => (s.length() >= 2 || s.length() <= 45) && isIPv6(s)
       case "uuid" => try { s.length() == 36 && { UUID.fromString(s.toString); true }} catch // https://bugs.openjdk.org/browse/JDK-8202760
         case _: IllegalArgumentException => false
-      case "uri" => try { new URI(s.toString).isAbsolute && s.chars().allMatch(c => c < 0x7F) } catch // https://stackoverflow.com/a/3585791/4814697
+      case "uri" => try { // https://stackoverflow.com/a/3585791/4814697
+        val uri = new URI(s.toString)
+        uri.isAbsolute && s.chars().allMatch(c => c < 0x7F) && !hasBareIPv6(uri)
+      } catch
         case _: URISyntaxException => false
-      case "uri-reference" => try { new URI(s.toString); s.chars().allMatch(c => c < 0x7F) } catch
+      case "uri-reference" => try {
+        val uri = new URI(s.toString)
+        s.chars().allMatch(c => c < 0x7F) && !hasBareIPv6(uri)
+      } catch
         case _: URISyntaxException => false
-      case "iri" => try { new URI(s.toString).isAbsolute } catch
+      case "iri" => try {
+        val uri = new URI(s.toString)
+        uri.isAbsolute && !hasBareIPv6(uri)
+      } catch
         case _: URISyntaxException => false
-      case "iri-reference" => try { new URI(s.toString); true } catch
+      case "iri-reference" => try { !hasBareIPv6(URI(s.toString)) } catch
         case _: URISyntaxException => false
       case "uri-template" => UriTemplate_r.matches(s)
       case "json-pointer" => isJsPtr(s)
-      case "relative-json-pointer" => s.length() > 0 && !RelJsPtrInvChs.contains(s.charAt(0)) && {
+      case "relative-json-pointer" => s.length() > 0 && (s.charAt(0) != '-' && s.charAt(0) != '+') && {
         var i = 0; var c = s.charAt(0)
         var hasInt = false
         if (c == '0') { i += 1; hasInt = true }
-        else if (Character.isDigit(c)) {
+        else if (isNumeric(c)) {
           i += 1; hasInt = true
-          while (i < s.length() && Character.isDigit(s.charAt(i))) i += 1
+          while (i < s.length() && isNumeric(s.charAt(i))) i += 1
         }
 
         if (!hasInt) false
@@ -97,13 +106,11 @@ final class FormatAssertion private(schema: ObjectSchema,
 object FormatAssertion extends VocabFactory[FormatAssertion] {
   val FormatKw: String = "format"
 
-  private val JsPtrEscChs = Array('0', '1')
-  private val RelJsPtrInvChs = Array('+', '-')
   private def isJsPtr(s: CharSequence): Boolean = {
     s.length() == 0 || (s.charAt(0) == '/' && (s.length() == 1 || {
       var i = 1; var continue = true
       while (i < s.length() - 1 && continue) {
-        if (s.charAt(i) == '~' && !JsPtrEscChs.contains(s.charAt(i + 1))) continue = false
+        if (s.charAt(i) == '~' && (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) continue = false
         i += 1
       }
       i == s.length() - 1 && continue && s.charAt(i) != '~'
@@ -159,38 +166,84 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   } catch
     case _: DateTimeParseException => false
 
-  private val Hex = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
-  def isIPv6(s: CharSequence): Boolean = {
+  private def hasBareIPv6(uri: URI): Boolean = {
+    val auth = uri.getRawAuthority
+    if (auth == null || auth.isEmpty) false
+    else if (auth.charAt(0) == '[' && auth.charAt(auth.length - 1) == ']') false
+    else isIPv6(auth)
+  }
+
+  //private val emailChars = Array()
+  private def isEmail(s: CharSequence): Boolean = {
+    var i = 0; var continue = true
+    while (i < s.length() && continue) {
+
+
+      i += 1
+    }
+
+    ???
+  }
+  
+  private def isIPv4(s: CharSequence): Boolean = {
+    val str = s.toString
+    val octets = str.split("\\.", -1)
+    if (octets.length != 4) return false // must be 4
+    
+    var i = 0; var valid = true
+    while (i < octets.length && valid) {
+      val octet = octets(i)
+      if (octet.isEmpty || octet.length > 3) return false // must be 3 chars
+
+      valid = if (octet.length == 1) isNumeric(octet.charAt(0))                                       // any
+        else if (octet.length == 2) between(octet.charAt(0), '1', '9') && isNumeric(octet.charAt(1))  // 1-9, any
+        else if (octet.length == 3) {
+          val first = octet.charAt(0); val second = octet.charAt(1)
+          if (first == '1') isNumeric(second) && isNumeric(octet.charAt(2))                           // 1, any, any
+          else if (first == '2') {
+            if (between(second, '0', '4')) isNumeric(octet.charAt(2))                                 // 2, 0-4, any
+            else if (second == '5') between(octet.charAt(2), '0', '5')                                // 2, 5, 0-5
+            else false
+          } else false
+        } else false
+
+      i += 1
+    }
+
+    valid
+  }
+
+  private def isIPv6(s: CharSequence): Boolean = {
     if (s == "::") return true
 
     val str = s.toString
-
     val compact = str.contains("::")
     if (compact && (str.indexOf("::") != str.lastIndexOf("::"))) return false // not more than 1 compact
     if (str.startsWith(":") && !str.startsWith("::")                          // no single empty prefix
       || str.endsWith(":") && !str.endsWith("::")) return false               // no single empty suffix
 
     val groups = str.split(":", -1)
-    if (groups.length < 3 || groups.length > 8) return false  // between 3 and 8 groups
+    if (groups.length < 3 || groups.length > 8) return false // between 3 and 8 groups
 
     var i = 0; var valid = true
     while (i < groups.length && valid) {
       val group = groups(i)
-      valid = group.length <= 4 && group.forall(Hex.contains)
+      valid = group.length <= 4 && group.forall(isHex)
       i += 1
     }
 
     if (valid) groups.length == 8 || (groups.length < 8 && compact) // groups are valid and is full, or compact
     else if (i == groups.length &&                                  // last group is invalid
       (groups.length == 7 || (groups.length < 7 && compact)) &&     // and 7 groups, or less and compact
-      groups.last.contains('.')) IPv4_r.matches(groups.last)        // and last group is IPv4
+      groups.last.contains('.')) isIPv4(groups.last)                // and last group is IPv4
     else false
   }
 
-  private val IPv4_r = "^(?:(?:25[0-5]|(?:2[0-4]|1\\d|[1-9]|)\\d)(?:\\.(?!$)|$)){4}$".r // https://stackoverflow.com/a/36760050/4814697
-  private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
+  private inline def between(c: Character, floor: Int, ceil: Int): Boolean = c >= floor && c <= ceil
+  private inline def isHex(c: Character): Boolean = isNumeric(c) || (c >= 0x61 && c <= 0x66)
+  private inline def isNumeric(c: Character): Boolean = c >= 0x30 && c <= 0x39
 
-  // https://stackoverflow.com/a/58347192/4814697
+  private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
   private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 // https://stackoverflow.com/a/1418724/4814697
   private val Email_r = "^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // based on https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address on 2024-06-17
 
