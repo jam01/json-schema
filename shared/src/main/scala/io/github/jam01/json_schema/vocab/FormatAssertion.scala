@@ -34,8 +34,8 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "idn-email" => true
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
-      case "ipv4" => IPv4_r.matches(s)
-      case "ipv6" => true
+      case "ipv4" => s.length() >= 7 && s.length() <= 15 && IPv4_r.matches(s)
+      case "ipv6" => (s.length() >= 2 || s.length() <= 45) && isIPv6(s)
       case "uuid" => try { s.length() == 36 && { UUID.fromString(s.toString); true }} catch // https://bugs.openjdk.org/browse/JDK-8202760
         case _: IllegalArgumentException => false
       case "uri" => try { new URI(s.toString).isAbsolute && s.chars().allMatch(c => c < 0x7F) } catch // https://stackoverflow.com/a/3585791/4814697
@@ -157,6 +157,34 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     }
   } catch
     case _: DateTimeParseException => false
+
+  private val Hex = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
+  def isIPv6(s: CharSequence): Boolean = {
+    if (s == "::") return true
+
+    val str = s.toString
+
+    val compact = str.contains("::")
+    if (compact && (str.indexOf("::") != str.lastIndexOf("::"))) return false // not more than 1 compact
+    if (str.startsWith(":") && !str.startsWith("::")                          // no single empty prefix
+      || str.endsWith(":") && !str.endsWith("::")) return false               // no single empty suffix
+
+    val groups = str.split(":", -1)
+    if (groups.length < 3 || groups.length > 8) return false  // between 3 and 8 groups
+
+    var i = 0; var valid = true
+    while (i < groups.length && valid) {
+      val group = groups(i)
+      valid = group.length <= 4 && group.forall(Hex.contains)
+      i += 1
+    }
+
+    if (valid) groups.length == 8 || (groups.length < 8 && compact) // groups are valid and is full, or compact
+    else if (i == groups.length &&                                  // last group is invalid
+      (groups.length == 7 || (groups.length < 7 && compact)) &&     // and 7 groups, or less and compact
+      groups.last.contains('.')) IPv4_r.matches(groups.last)        // and last group is IPv4
+    else false
+  }
 
   private val IPv4_r = "^(?:(?:25[0-5]|(?:2[0-4]|1\\d|[1-9]|)\\d)(?:\\.(?!$)|$)){4}$".r // https://stackoverflow.com/a/36760050/4814697
   private val UriTemplate_r = "^([^\\x00-\\x20\\x7f\"'%<>\\\\^`{|}]|%[0-9A-Fa-f]{2}|\\{[+#./;?&=,!@|]?((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%[0-9A-Fa-f]{2})(\\.?(\\w|%[0-9A-Fa-f]{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697

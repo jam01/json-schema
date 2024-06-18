@@ -34,10 +34,7 @@ class TestSuiteTest {
 
 object TestSuiteTest {
   val NotSupported: Seq[String] = Seq("refRemote.json")
-  val NotSupportedFormat: Seq[String] = Seq(
-    "ipv6.json",
-    "idn-hostname.json",
-    "idn-email.json")
+  val NotSupportedFormat: Seq[String] = Seq("idn-hostname.json", "idn-email.json")
 
   val Registry: mutable.Map[Uri, Schema] = {
     val builder = mutable.Map[Uri, Schema]()
