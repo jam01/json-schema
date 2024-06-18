@@ -21,7 +21,6 @@ class TestSuiteTest {
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
 
-  @Disabled
   @ParameterizedTest
   @MethodSource(value = Array("args_provider_format"))
   def optional_format(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
@@ -35,6 +34,7 @@ class TestSuiteTest {
 object TestSuiteTest {
   val NotSupported: Seq[String] = Seq("refRemote.json")
   val NotSupportedFormat: Seq[String] = Seq("idn-hostname.json", "idn-email.json")
+  val NotSupportedFormatTests: Seq[String] = Seq("weeks cannot be combined with other units")
 
   val Registry: mutable.Map[Uri, Schema] = {
     val builder = mutable.Map[Uri, Schema]()
@@ -79,14 +79,18 @@ object TestSuiteTest {
         tests.filter(Files.isRegularFile(_))
           .filter(p => !NotSupportedFormat.contains(p.getFileName.toString))
           //.peek(println)
-          .forEach(p => args.addAll(args_provider(p)))
+          .forEach(p => {
+            args_provider(p, Dialect._2020_12_FormatAssertion).stream()
+              .filter(args => !NotSupportedFormatTests.contains(args.get()(2)))
+              .forEach(args0 => args.add(args0))
+          })
     }
     //args.addAll(args_provider(resource("test-suite/tests/draft2020-12/defs.json")))
 
     args
   }
 
-  def args_provider(path: Path): java.util.List[Arguments] = {
+  def args_provider(path: Path, dial0: Dialect = null): java.util.List[Arguments] = {
     val suite = ujson.read(ujson.Readable.fromPath(path)).arr
     val args = new java.util.ArrayList[Arguments]()
 
@@ -101,7 +105,7 @@ object TestSuiteTest {
           test.obj.get("description").get.str,
           test.obj.get("data").get,
           test.obj.get("valid").get.bool,
-          json_schema.validator(sch, Config(dial), Registry)))
+          json_schema.validator(sch, Config(if (dial0 != null) dial0 else dial), Registry)))
       })
     }
 
