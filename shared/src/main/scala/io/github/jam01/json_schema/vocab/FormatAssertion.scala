@@ -19,8 +19,6 @@ final class FormatAssertion private(schema: ObjectSchema,
                            path: JsonPointer,
                            dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
   private val format = schema.get(FormatKw).get
-  private val valid = Seq(mkUnit(true, FormatKw, annotation = format))
-  private val invalid = Seq(mkUnit(false, FormatKw, s"String does not conform to $format format", annotation = format))
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val isValid = format.str match
@@ -79,19 +77,20 @@ final class FormatAssertion private(schema: ObjectSchema,
         case _: UnsupportedOperationException => false // as thrown by scala native implementation
       case unk => true
 
-    if (isValid) valid else invalid
+    if (isValid) Seq(mkUnit(true, FormatKw, annotation = format))
+    else Seq(mkUnit(false, FormatKw, s"String does not conform to $format format", annotation = format))
   }
 
-  override def visitNull(index: Int): Seq[OutputUnit] = valid
-  override def visitFalse(index: Int): Seq[OutputUnit] = valid
-  override def visitTrue(index: Int): Seq[OutputUnit] = valid
-  override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = valid
-  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = valid
+  override def visitNull(index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
+  override def visitFalse(index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
+  override def visitTrue(index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
+  override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
+  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
   override def visitArray(length: Int, index: Int): ArrVisitor[?, Seq[OutputUnit]] = constArrVis
   private val constArrVis = new ArrVisitor[Any, Seq[OutputUnit]] {
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): Seq[OutputUnit] = valid
+    override def visitEnd(index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
   }
   override def visitObject(length: Int, index: Int): ObjVisitor[?, Seq[OutputUnit]] = constObjVis
   private val constObjVis = new ObjVisitor[Any, Seq[OutputUnit]] {
@@ -99,7 +98,7 @@ final class FormatAssertion private(schema: ObjectSchema,
     override def visitKeyValue(v: Any): Unit = ()
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): Seq[OutputUnit] = valid
+    override def visitEnd(index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
   }
 }
 
