@@ -5,7 +5,7 @@ import io.github.jam01.json_schema.vocab.Core.*
 import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ListBuffer
 
 final class Core private(schema: ObjectSchema,
                    ctx: Context,

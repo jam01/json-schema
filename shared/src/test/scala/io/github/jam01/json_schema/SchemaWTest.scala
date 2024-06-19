@@ -5,7 +5,7 @@ import upickle.core.NoOpVisitor
 
 import scala.language.implicitConversions
 
-class TransformerTest {
+class SchemaWTest {
   val arr: Arr =
     Arr(0, 1, "bloop",
       3, null, 5.5d,
@@ -18,6 +18,6 @@ class TransformerTest {
   
   @Test
   def transformer(): Unit = {
-    Transformer.transform(arr, NoOpVisitor)
+    SchemaW.transform(arr, NoOpVisitor)
   }
 }

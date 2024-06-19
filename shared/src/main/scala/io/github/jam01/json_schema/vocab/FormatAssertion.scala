@@ -5,14 +5,14 @@ import io.github.jam01.json_schema.vocab.FormatAssertion.*
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 import java.net.{URI, URISyntaxException}
-import java.util.regex.{Pattern, PatternSyntaxException}
 import java.util.UUID
+import java.util.regex.{Pattern, PatternSyntaxException}
 
 // unavailable in scala js/native
-import java.time.{Duration, Period, LocalDateTime, LocalTime}
 import java.time.format.DateTimeFormatter.{ISO_LOCAL_DATE, ISO_OFFSET_DATE_TIME, ISO_OFFSET_TIME}
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoField
+import java.time.{Duration, LocalDateTime, LocalTime, Period}
 
 final class FormatAssertion private(schema: ObjectSchema,
                            ctx: Context,
@@ -28,13 +28,13 @@ final class FormatAssertion private(schema: ObjectSchema,
         case _: DateTimeParseException => false
       case "time" => try { ISO_OFFSET_TIME.parse(s); true } catch // supports +HH:MM:ss
         case e: DateTimeParseException => isLeapTime(s, e)
-      case "duration" => s.length() > 1 && s.charAt(0) == 'P' && isDuration(s)
-      case "email" => s.length() >= 3 && isEmail(s)
+      case "duration" => isDuration(s)
+      case "email" => isEmail(s)
       case "idn-email" => true
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
-      case "ipv4" => s.length() >= 7 && s.length() <= 15 && isIPv4(s)
-      case "ipv6" => (s.length() >= 2 || s.length() <= 45) && isIPv6(s)
+      case "ipv4" => isIPv4(s)
+      case "ipv6" => isIPv6(s)
       case "uuid" => try { s.length() == 36 && { UUID.fromString(s.toString); true }} catch // https://bugs.openjdk.org/browse/JDK-8202760
         case _: IllegalArgumentException => false
       case "uri" => try { // https://stackoverflow.com/a/3585791/4814697
@@ -56,22 +56,7 @@ final class FormatAssertion private(schema: ObjectSchema,
         case _: URISyntaxException => false
       case "uri-template" => UriTemplate_r.matches(s)
       case "json-pointer" => isJsPtr(s)
-      case "relative-json-pointer" => s.length() > 0 && (s.charAt(0) != '-' && s.charAt(0) != '+') && {
-        var i = 0; var c = s.charAt(0)
-        var hasInt = false
-        if (c == '0') { i += 1; hasInt = true }
-        else if (isNumeric(c)) {
-          i += 1; hasInt = true
-          while (i < s.length() && isNumeric(s.charAt(i))) i += 1
-        }
-
-        if (!hasInt) false
-        else if (i == s.length()) true
-        else {
-          c = s.charAt(i)
-          (c == '#' && i == s.length() - 1) || (c == '/' && isJsPtr(s.subSequence(i, s.length())))
-        }
-      }
+      case "relative-json-pointer" => isRelJsPtr(s)
       case "regex" => try { Pattern.compile(s.toString); true } catch // perf: compiled then discarded, sec: ?
         case _: PatternSyntaxException => false
         case _: UnsupportedOperationException => false // as thrown by scala native implementation
@@ -106,14 +91,36 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   val FormatKw: String = "format"
 
   private def isJsPtr(s: CharSequence): Boolean = {
-    s.length() == 0 || (s.charAt(0) == '/' && (s.length() == 1 || {
-      var i = 1; var continue = true
-      while (i < s.length() - 1 && continue) {
-        if (s.charAt(i) == '~' && (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) continue = false
-        i += 1
-      }
-      i == s.length() - 1 && continue && s.charAt(i) != '~'
-    }))
+    if (s.length() == 0 || (s.length() == 1 && s.charAt(0) == '/')) return true
+    if (s.charAt(0) != '/') return false
+
+    var i = 1; var valid = true
+    while (i < s.length() - 1 && valid) {
+      if (s.charAt(i) == '~' && (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) valid = false
+      i += 1
+    }
+
+    i == s.length() - 1 && valid && s.charAt(i) != '~'
+  }
+  private def isRelJsPtr(s: CharSequence): Boolean = {
+    if (s.isEmpty) return false
+
+    var c = s.charAt(0)
+    if (c == '-' && c == '+') return false
+
+    var i = 0; var hasInt = false
+    if (c == '0') { i += 1; hasInt = true }
+    else if (isNumeric(c)) {
+      i += 1; hasInt = true
+      while (i < s.length() && isNumeric(s.charAt(i))) i += 1
+    }
+
+    if (!hasInt) false
+    else if (i == s.length()) true
+    else {
+      c = s.charAt(i)
+      (c == '#' && i == s.length() - 1) || (c == '/' && isJsPtr(s.subSequence(i, s.length())))
+    }
   }
 
   private def isLeapDateTime(s: CharSequence, e: DateTimeParseException): Boolean = {
@@ -155,6 +162,8 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   }
 
   private def isDuration(s: CharSequence): Boolean = try {
+    if (s.length() ==0 || s.charAt(0) != 'P') return false
+
     val str = s.toString; val t = str.indexOf('T')
     if (t == -1) { Period.parse(s); true }
     else {
@@ -169,11 +178,12 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     val auth = uri.getRawAuthority
     if (auth == null || auth.isEmpty) false
     else if (auth.charAt(0) == '[' && auth.charAt(auth.length - 1) == ']') false
+    else if (!auth.contains(':')) false
     else isIPv6(auth)
   }
 
-  //private val emailChars = Array()
   private def isEmail(s: CharSequence): Boolean = {
+    if (s.length() < 3) return false
     val str = s.toString
 
     var parts = Array.empty[String]
@@ -189,15 +199,17 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     }
 
     val auth = parts(1)
-    if (auth.charAt(0) != '[') return Hostname_r.matches(auth)  // hostname
-    if (auth.charAt(auth.length - 1) != ']') return false       // invalid address literal
+    if (auth.charAt(0) != '[') return auth.length() <= 255 && Hostname_r.matches(auth)  // hostname
+    if (auth.charAt(auth.length - 1) != ']') return false                               // invalid address literal
 
     if (auth.startsWith("[IPv6:")) isIPv6(auth.substring(6, auth.length - 1))
     else isIPv4(auth.substring(1, auth.length - 1))
   }
   
   private def isIPv4(s: CharSequence): Boolean = {
+    if (s.length() < 7 || s.length() > 15) return false
     val str = s.toString
+
     val octets = str.split("\\.", -1)
     if (octets.length != 4) return false // must be 4
     
@@ -225,6 +237,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   }
 
   private def isIPv6(s: CharSequence): Boolean = {
+    if (s.length() < 2 || s.length() > 45) return false
     if (s == "::") return true
 
     val str = s.toString
@@ -255,9 +268,10 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   private inline def isNumeric(c: Character): Boolean = c >= 0x30 && c <= 0x39
 
   private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
-  private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 // https://stackoverflow.com/a/1418724/4814697
+  private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 https://stackoverflow.com/a/1418724/4814697
   private val EmailLocalDot_r = "^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*$".r // based on https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address on 2024-06-17
-  private val EmailLocalQuote_r = "^\"(?:\\\\[a-zA-Z0-9 !\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~]|[a-zA-Z0-9 !#$%&'()*+,\\-./:;<=>?@\\[\\]^_`{|}~])*\"$".r
+  private val EmailLocalQuote_r = "^\"(?:\\\\[a-zA-Z0-9 !\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~]|[a-zA-Z0-9 !#$%&'()*+,\\-./:;<=>?@\\[\\]^_`{|}~])*\"$".r // based on apache:commons-validator:1.9.0:EmailValidator using explicit allowed chars https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.2
+
   override def uri: String = "https://json-schema.org/draft/2020-12/meta/format-assertion"
   override def shouldApply(schema: ObjectSchema): Boolean = schema.value.contains(FormatKw)
   override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): FormatAssertion =

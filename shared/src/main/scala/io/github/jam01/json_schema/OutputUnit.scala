@@ -75,7 +75,7 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
 
     if (unit.annotation != null) {
       ov.visitKeyValue(ov.visitKey(-1).visitString("annotation", -1))
-      Transformer.transform(unit.annotation, ov.subVisitor)
+      SchemaW.transform(unit.annotation, ov.subVisitor)
     }
 
     if (unit.details.nonEmpty) {

@@ -6,7 +6,7 @@ import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
 final class Validation private(schema: ObjectSchema,
@@ -148,7 +148,7 @@ final class Validation private(schema: ObjectSchema,
     val buff = new ListBuffer[OutputUnit]
     if (tyype.nonEmpty) accumulateVec(buff, tyype.contains("object"), Tyype, s"Expected $tyype, got object")
 
-    val propsVisited: mutable.ArrayBuffer[String] = mutable.ArrayBuffer.empty
+    val propsVisited = new ListBuffer[String]
     val insVisitor: ObjVisitor[?, Seq[OutputUnit]] =
       if (const.isEmpty && enuum.isEmpty && (uniqueItems.isEmpty || !uniqueItems.get)) NilObjVis
       else new MapObjContext(LiteralVisitor.visitObject(length, index), obj => { // Vis[Value, coll.Seq[OUnit]]

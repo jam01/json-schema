@@ -9,20 +9,20 @@ final class Content private(schema: ObjectSchema,
                            path: JsonPointer,
                            dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
   
-  private val result = Seq(mkUnit(true, ContentKw, annotation = schema.get(ContentKw).get))
-    // perf: could not compute if gonna be dropped
+  private def result() = Seq(mkUnit(true, ContentKw, annotation = schema.get(ContentKw).get))
+  // perf: could not compute if gonna be dropped
 
-  override def visitNull(index: Int): Seq[OutputUnit] = result
-  override def visitFalse(index: Int): Seq[OutputUnit] = result
-  override def visitTrue(index: Int): Seq[OutputUnit] = result
-  override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = result
-  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = result
-  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = result
+  override def visitNull(index: Int): Seq[OutputUnit] = result()
+  override def visitFalse(index: Int): Seq[OutputUnit] = result()
+  override def visitTrue(index: Int): Seq[OutputUnit] = result()
+  override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = result()
+  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = result()
+  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = result()
   override def visitArray(length: Int, index: Int): ArrVisitor[?, Seq[OutputUnit]] = constArrVis
   private val constArrVis = new ArrVisitor[Any, Seq[OutputUnit]] {
     override def subVisitor: Visitor[_, _] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): Seq[OutputUnit] = result
+    override def visitEnd(index: Int): Seq[OutputUnit] = result()
   }
   override def visitObject(length: Int, index: Int): ObjVisitor[?, Seq[OutputUnit]] = constObjVis
   private val constObjVis = new ObjVisitor[Any, Seq[OutputUnit]] {
@@ -30,7 +30,7 @@ final class Content private(schema: ObjectSchema,
     override def visitKeyValue(v: Any): Unit = ()
     override def subVisitor: Visitor[_, _] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): Seq[OutputUnit] = result
+    override def visitEnd(index: Int): Seq[OutputUnit] = result()
   }
 }
 

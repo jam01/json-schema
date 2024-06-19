@@ -28,7 +28,7 @@ class PointerDelegate[T, V](tracker: Tracker, delegate: Visitor[T, V]) extends D
       nextIdx += 1
     }
 
-    override def visitEnd(index: Int): V = { arrVis.visitEnd(index) }
+    override def visitEnd(index: Int): V = arrVis.visitEnd(index)
   }
 
   override def visitObject(length: Int, jsonablekeys: Boolean, index: Int): ObjVisitor[T, V] = new ObjVisitor[T, V] {
@@ -48,7 +48,7 @@ class PointerDelegate[T, V](tracker: Tracker, delegate: Visitor[T, V]) extends D
 
     override def visitValue(v: T, index: Int): Unit = { objVis.visitValue(v, index); tracker.pop }
 
-    override def visitEnd(index: Int): V = { objVis.visitEnd(index) }
+    override def visitEnd(index: Int): V = objVis.visitEnd(index)
   }
 }
 

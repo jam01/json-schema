@@ -7,7 +7,6 @@ import upickle.core.{Abort, ObjVisitor, Visitor}
  */
 trait JsonVisitor[-T, +J] extends Visitor[T, J] {
   protected def expectedMsg = "Expected null, boolean, number, string, object or array"
-
   override def visitUInt64(i: Long, index: Int): J = {
     if (i < 0) visitString(java.lang.Long.toUnsignedString(i), index) // TODO: eventually fwd to visBigInt
     else visitInt64(i, index)

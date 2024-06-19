@@ -11,29 +11,29 @@ final class Metadata private(schema: ObjectSchema,
                            path: JsonPointer,
                            dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
   
-  private val result: Seq[OutputUnit] = {
+  private def result(): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
-    schema.get(Title).forall(t => accumulate(buff, true, Title, annotation = t))
-    schema.get(Description).forall(t => accumulate(buff, true, Description, annotation = t))
-    schema.get(Default).forall(t => accumulate(buff, true, Default, annotation = t))
-    schema.get(Deprecated).forall(t => accumulate(buff, true, Deprecated, annotation = t))
-    schema.get(ReadOnly).forall(t => accumulate(buff, true, ReadOnly, annotation = t))
-    schema.get(WriteOnly).forall(t => accumulate(buff, true, WriteOnly, annotation = t))
-    schema.get(Examples).forall(t => accumulate(buff, true, Examples, annotation = t))
+    schema.get(Title).forall(title => accumulate(buff, true, Title, annotation = title))
+    schema.get(Description).forall(desc => accumulate(buff, true, Description, annotation = desc))
+    schema.get(Default).forall(defa => accumulate(buff, true, Default, annotation = defa))
+    schema.get(Deprecated).forall(depr => accumulate(buff, true, Deprecated, annotation = depr))
+    schema.get(ReadOnly).forall(r => accumulate(buff, true, ReadOnly, annotation = r))
+    schema.get(WriteOnly).forall(w => accumulate(buff, true, WriteOnly, annotation = w))
+    schema.get(Examples).forall(ex => accumulate(buff, true, Examples, annotation = ex))
     buff.result()
   }
 
-  override def visitNull(index: Int): Seq[OutputUnit] = result
-  override def visitFalse(index: Int): Seq[OutputUnit] = result
-  override def visitTrue(index: Int): Seq[OutputUnit] = result
-  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = result
-  override def visitInt64(i: Long, index: Int): Seq[OutputUnit] = result
-  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = result
+  override def visitNull(index: Int): Seq[OutputUnit] = result()
+  override def visitFalse(index: Int): Seq[OutputUnit] = result()
+  override def visitTrue(index: Int): Seq[OutputUnit] = result()
+  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = result()
+  override def visitInt64(i: Long, index: Int): Seq[OutputUnit] = result()
+  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = result()
   override def visitArray(length: Int, index: Int): ArrVisitor[?, Seq[OutputUnit]] = constArrVis
   private val constArrVis = new ArrVisitor[Any, Seq[OutputUnit]] {
     override def subVisitor: Visitor[_, _] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): Seq[OutputUnit] = result
+    override def visitEnd(index: Int): Seq[OutputUnit] = result()
   }
   override def visitObject(length: Int, index: Int): ObjVisitor[?, Seq[OutputUnit]] = constObjVis
   private val constObjVis = new ObjVisitor[Any, Seq[OutputUnit]] {
@@ -41,7 +41,7 @@ final class Metadata private(schema: ObjectSchema,
     override def visitKeyValue(v: Any): Unit = ()
     override def subVisitor: Visitor[_, _] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
-    override def visitEnd(index: Int): Seq[OutputUnit] = result
+    override def visitEnd(index: Int): Seq[OutputUnit] = result()
   }
 }
 

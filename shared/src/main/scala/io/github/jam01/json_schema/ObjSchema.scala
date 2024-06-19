@@ -10,16 +10,22 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
     getString("$id")
   }
 
-  lazy val location: Uri = { 
-    getId.map(id => base.resolve(id))
+  private var _loc: Uri = _ // lazy val is overkill
+  def location: Uri = {
+    if (_loc != null) return _loc
+    _loc = getId.map(id => base.resolve(id))
       .getOrElse(parent.map(p => p.location)
         .map(u => u.appendedFragment(prel.get))
-        .getOrElse(base)) 
+        .getOrElse(base))
+    _loc
   }
 
-  lazy val base: Uri = {
+  private var _base: Uri = _ // lazy val is overkill
+  def base: Uri = {
+    if (_base != null) return _base
     val effbase = parent.map(_.base).getOrElse(docbase)
-    getId.map(id => effbase.resolve(id)).getOrElse(effbase)
+    _base = getId.map(id => effbase.resolve(id)).getOrElse(effbase)
+    _base
   }
 
   def getRef: Option[Uri] = {
@@ -36,6 +42,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   def getMetaSchema: Option[Uri] = getString("$schema").map(s => Uri(s))
+
   def getVocabularies: Map[String, Boolean] =
     value.get("$vocabulary") match
       case None => Map.empty

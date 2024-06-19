@@ -16,7 +16,7 @@ class SecurityConsiderationsTest {
       .transform(SchemaR(registry = reg))
 
     val ex1 = assertThrows(classOf[IllegalStateException],
-      () => Transformer.transform(Null, SchemaValidator.of(sch, DefaultContext(reg), JsonPointer.Root, None)))
+      () => SchemaW.transform(Null, SchemaValidator.of(sch, DefaultContext(reg), JsonPointer.Root, None)))
 
     assertTrue(ex1.getMessage.contains("Depth limit exceeded"))
   }

@@ -32,24 +32,24 @@ object JsonPointer {
   val Root: JsonPointer = JsonPointer()
   def apply(s: String): JsonPointer = {
     if (s.isEmpty) return Root
-    if (s.charAt(0) != '/') throw new IllegalArgumentException(s"Invalid JSON Poitner '$s''")
+    if (s.charAt(0) != '/') throw new IllegalArgumentException(s"Invalid JSON Poitner '$s'")
 
     val refs = ListBuffer("")
-    var i = 1; var continue = true
+    var i = 1; var valid = true
     var currRef = 1
-    while (i < s.length() - 1 && continue) {
-      val char = s.charAt(i)
-      if (char == '/') { refs.addOne(escape(s.substring(currRef, i))); currRef = i + 1 }
-      else if (char == '~' && (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) continue = false
+    while (i < s.length() - 1 && valid) {
+      val c = s.charAt(i)
+      if (c == '/') { refs.addOne(escape(s.substring(currRef, i))); currRef = i + 1 }
+      else if (c == '~' && (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) valid = false
       i += 1
     }
 
-    if (i == s.length() - 1 && continue && s.charAt(i) != '~') {
+    if (i == s.length() - 1 && valid && s.charAt(i) != '~') {
       if (s.charAt(i) == '/') { refs.addOne(escape(s.substring(currRef, i))); refs.addOne("") }
       else refs.addOne(escape(s.substring(currRef)))
       JsonPointer(refs.toList)
     }
-    else throw new IllegalArgumentException(s"Invalid JSON Pointer $s")
+    else throw new IllegalArgumentException(s"Invalid JSON Pointer '$s'")
   }
 
   private def escape(ref: String): String = {
