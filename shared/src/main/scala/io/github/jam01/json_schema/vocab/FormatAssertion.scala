@@ -39,12 +39,12 @@ final class FormatAssertion private(schema: ObjectSchema,
         case _: IllegalArgumentException => false
       case "uri" => try { // https://stackoverflow.com/a/3585791/4814697 https://stackoverflow.com/a/14066594/4814697
         val uri = new URI(s.toString)
-        uri.isAbsolute && s.chars().noneMatch(c => c > 0x7F) && !hasBareIPv6(uri)
+        uri.isAbsolute && s.chars().allMatch(isAscii) && !hasBareIPv6(uri)
       } catch
         case _: URISyntaxException => false
       case "uri-reference" => try {
         val uri = new URI(s.toString)
-        s.chars().noneMatch(c => c > 0x7F) && !hasBareIPv6(uri)
+        s.chars().allMatch(isAscii) && !hasBareIPv6(uri)
       } catch
         case _: URISyntaxException => false
       case "iri" => try {
@@ -94,13 +94,14 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     if (s.length() == 0 || (s.length() == 1 && s.charAt(0) == '/')) return true
     if (s.charAt(0) != '/') return false
 
-    var i = 1; var valid = true
-    while (i < s.length() - 1 && valid) {
-      if (s.charAt(i) == '~' && (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) valid = false
+    var i = 1;
+    while (i < s.length() - 1) {
+      if (s.charAt(i) == '~' &&
+        (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) return false  // '~` must be proceeded by 0-1
       i += 1
     }
 
-    i == s.length() - 1 && valid && s.charAt(i) != '~'
+    i == s.length() - 1 && s.charAt(i) != '~'
   }
   private def isRelJsPtr(s: CharSequence): Boolean = {
     if (s.isEmpty) return false
@@ -125,7 +126,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
 
   private def isLeapDateTime(s: CharSequence, e: DateTimeParseException): Boolean = {
     val str = s.toString
-    if (!(e.getMessage.nn.contains("Invalid value for SecondOfMinute") && str.contains(":60")))
+    if (e.getMessage == null || !e.getMessage.endsWith("Invalid value for SecondOfMinute (valid values 0 - 59): 60"))
       return false
 
     try {
@@ -144,7 +145,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
 
   private def isLeapTime(s: CharSequence, e: DateTimeParseException): Boolean = {
     val str = s.toString
-    if (!(e.nn.getMessage.contains("Invalid value for SecondOfMinute") && str.contains(":60")))
+    if (e.getMessage == null || !e.getMessage.endsWith("Invalid value for SecondOfMinute (valid values 0 - 59): 60"))
       return false
 
     try {
@@ -201,14 +202,14 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
       while (i < qstr.length) {
         c = qstr.charAt(i)
 
-        if (!i18n && !between(c, ' ', '~')) return false             // must be printable
-        if (i18n && c <= 0x7F && !between(c, ' ', '~')) return false // must be printable or non-ASCII
+        if (!i18n && !between(c, ' ', '~')) return false              // must be printable
+        if (i18n && isAscii(c) && !between(c, ' ', '~')) return false // must be printable or non-ASCII
 
         if (c == '"' && i != qstr.length - 1)           // if DQUOTE in the middle
           if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
-        else if (c == '/' && i == qstr.length - 2)      // if backslash at end of quoted-string
+        else if (c == '\\' && i == qstr.length - 2)     // if backslash at end of quoted-string
           if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
-        else if (i18n && c > 0x7F)                      // if non-ASCII
+        else if (i18n && !isAscii(c))                   // if non-ASCII
           if (qstr.charAt(i - 1) == '\\') return false  //   preceding char must not be a backslash
 
         i += 1
@@ -223,9 +224,9 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
       var i = 1; var c = dstr.charAt(1)
       while (i < dstr.length) {
         c = dstr.charAt(i)
-        if (!i18n && (!between(c, '!', '~') || in(c, AtomSpecials))) return false             // must be printable except Specials
-        if (i18n && c <= 0x7F && (!between(c, '!', '~') || in(c, AtomSpecials))) return false // must be printable except Specials or non-ASCII
-        if (c == '.' && dstr.charAt(i - 1) == '.') return false                               // dot must be preceded by atext
+        if (!i18n && (!between(c, '!', '~') || in(c, AtomSpecials))) return false               // must be printable except Specials
+        if (i18n && isAscii(c) && (!between(c, '!', '~') || in(c, AtomSpecials))) return false  // must be printable except Specials or non-ASCII
+        if (c == '.' && dstr.charAt(i - 1) == '.') return false                                 // dot must be preceded by atext
 
         i += 1
       }
@@ -258,7 +259,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
           if (first == '1') isNumeric(second) && isNumeric(octet.charAt(2))                           // 1, any, any
           else if (first == '2') {
             if (between(second, '0', '4')) isNumeric(octet.charAt(2))                                 // 2, 0-4, any
-            else if (second == '5') between(octet.charAt(2), '0', '5')                                // 2, 5, 0-5
+            else if (second == '5') between(octet.charAt(2), '0', '5')                                // 2,   5, 0-5
             else false
           } else false
         } else false
@@ -291,8 +292,8 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
 
     if (valid) groups.length == 8 || (groups.length < 8 && compact) // groups are valid and is full, or compact
     else if (i == groups.length &&                                  // last group is invalid
-      (groups.length == 7 || (groups.length < 7 && compact)) &&     // and 7 groups, or less and compact
-      groups.last.contains('.')) isIPv4(groups.last)                // and last group is IPv4
+      (groups.length == 7 || (groups.length < 7 && compact)) &&     //  and 7 groups, or less and compact
+      groups.last.contains('.')) isIPv4(groups.last)                //  and last group is IPv4
     else false
   }
 
@@ -300,6 +301,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   private inline def isHex(c: Int): Boolean = isNumeric(c) || (c >= 0x61 && c <= 0x66)
   private inline def isNumeric(c: Int): Boolean = c >= 0x30 && c <= 0x39
   private inline def in(c: Int, arr: Array[Int]): Boolean = arr.contains(c)
+  private inline def isAscii(c: Int): Boolean = c <= 0x7F
 
   private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
   private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 https://stackoverflow.com/a/1418724/4814697
