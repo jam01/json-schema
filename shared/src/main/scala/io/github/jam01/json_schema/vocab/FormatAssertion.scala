@@ -30,7 +30,7 @@ final class FormatAssertion private(schema: ObjectSchema,
         case e: DateTimeParseException => isLeapTime(s, e)
       case "duration" => isDuration(s)
       case "email" => isEmail(s)
-      case "idn-email" => true
+      case "idn-email" => isEmail(s, true)
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
       case "idn-hostname" => true
       case "ipv4" => isIPv4(s)
@@ -184,7 +184,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
 
   // https://www.rfc-editor.org/rfc/rfc5321#section-4.1.2 https://www.rfc-editor.org/rfc/rfc5322.html#section-3.2.3
   private val AtomSpecials: Array[Int] = Array('"', '(', ')', ',', ':', ';', '<', '>', '@', '[', ']', '\\') // excluding SP & DEL at ends, and '.' (checked manually)
-  private def isEmail(s: CharSequence): Boolean = {
+  private def isEmail(s: CharSequence, i18n: Boolean = false): Boolean = {
     if (s.length() < 3) return false
     val str = s.toString
     var parts = Array.empty[String] // perf: unnecessary if checks are by index
@@ -200,11 +200,17 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
       var i = 1; var c = qstr.charAt(1)
       while (i < qstr.length) {
         c = qstr.charAt(i)
-        if (!between(c, ' ', '~')) return false         // must be printable ASCII
+
+        if (!i18n && !between(c, ' ', '~')) return false             // must be printable
+        if (i18n && c <= 0x7F && !between(c, ' ', '~')) return false // must be printable or non-ASCII
+
         if (c == '"' && i != qstr.length - 1)           // if DQUOTE in the middle
           if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
         else if (c == '/' && i == qstr.length - 2)      // if backslash at end of quoted-string
           if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
+        else if (i18n && c > 0x7F)                      // if non-ASCII
+          if (qstr.charAt(i - 1) == '\\') return false  //   preceding char must not be a backslash
+
         i += 1
       }
     } else { // dot-string local part
@@ -217,8 +223,9 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
       var i = 1; var c = dstr.charAt(1)
       while (i < dstr.length) {
         c = dstr.charAt(i)
-        if (!between(c, '!', '~') || in(c, AtomSpecials)) return false  // must be printable ASCII except Specials
-        if (c == '.' && dstr.charAt(i - 1) == '.') return false         // dot must be preceded by atext
+        if (!i18n && (!between(c, '!', '~') || in(c, AtomSpecials))) return false             // must be printable except Specials
+        if (i18n && c <= 0x7F && (!between(c, '!', '~') || in(c, AtomSpecials))) return false // must be printable except Specials or non-ASCII
+        if (c == '.' && dstr.charAt(i - 1) == '.') return false                               // dot must be preceded by atext
 
         i += 1
       }
