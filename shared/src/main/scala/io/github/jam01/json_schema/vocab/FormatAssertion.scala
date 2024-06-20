@@ -37,14 +37,14 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "ipv6" => isIPv6(s)
       case "uuid" => try { s.length() == 36 && { UUID.fromString(s.toString); true }} catch // https://bugs.openjdk.org/browse/JDK-8202760
         case _: IllegalArgumentException => false
-      case "uri" => try { // https://stackoverflow.com/a/3585791/4814697
+      case "uri" => try { // https://stackoverflow.com/a/3585791/4814697 https://stackoverflow.com/a/14066594/4814697
         val uri = new URI(s.toString)
-        uri.isAbsolute && s.chars().allMatch(c => c < 0x7F) && !hasBareIPv6(uri)
+        uri.isAbsolute && s.chars().noneMatch(c => c > 0x7F) && !hasBareIPv6(uri)
       } catch
         case _: URISyntaxException => false
       case "uri-reference" => try {
         val uri = new URI(s.toString)
-        s.chars().allMatch(c => c < 0x7F) && !hasBareIPv6(uri)
+        s.chars().noneMatch(c => c > 0x7F) && !hasBareIPv6(uri)
       } catch
         case _: URISyntaxException => false
       case "iri" => try {
@@ -182,20 +182,46 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     else isIPv6(auth)
   }
 
+  // https://www.rfc-editor.org/rfc/rfc5321#section-4.1.2 https://www.rfc-editor.org/rfc/rfc5322.html#section-3.2.3
+  private val AtomSpecials: Array[Int] = Array('"', '(', ')', ',', ':', ';', '<', '>', '@', '[', ']', '\\') // excluding SP & DEL at ends, and '.' (checked manually)
   private def isEmail(s: CharSequence): Boolean = {
     if (s.length() < 3) return false
     val str = s.toString
+    var parts = Array.empty[String] // perf: unnecessary if checks are by index
 
-    var parts = Array.empty[String]
     if (str.charAt(0) == '"') { // quoted-string local part
-      val at = str.lastIndexOf('@')
+      val at = str.lastIndexOf('@')                         // may have multiple @
       if (at == -1) return false
       parts = Array(str.substring(0, at), str.substring(at + 1))
-      if (!EmailLocalQuote_r.matches(parts(0))) return false
-    } else {
+
+      val qstr = parts(0)
+      if (qstr.charAt(qstr.length - 1) != '"') return false // must end with DQUOTE
+
+      var i = 1; var c = qstr.charAt(1)
+      while (i < qstr.length) {
+        c = qstr.charAt(i)
+        if (!between(c, ' ', '~')) return false         // must be printable ASCII
+        if (c == '"' && i != qstr.length - 1)           // if DQUOTE in the middle
+          if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
+        else if (c == '/' && i == qstr.length - 2)      // if backslash at end of quoted-string
+          if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
+        i += 1
+      }
+    } else { // dot-string local part
       parts = str.split("@", -1)
-      if (parts.length != 2) return false
-      if (!EmailLocalDot_r.matches(parts(0))) return false
+      if (parts.length != 2) return false // must have single @
+
+      val dstr = parts(0)
+      if (dstr.charAt(0) == '.' || dstr.charAt(dstr.length - 1) == '.') return false // must start/end with atext
+
+      var i = 1; var c = dstr.charAt(1)
+      while (i < dstr.length) {
+        c = dstr.charAt(i)
+        if (!between(c, '!', '~') || in(c, AtomSpecials)) return false  // must be printable ASCII except Specials
+        if (c == '.' && dstr.charAt(i - 1) == '.') return false         // dot must be preceded by atext
+
+        i += 1
+      }
     }
 
     val auth = parts(1)
@@ -263,14 +289,13 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     else false
   }
 
-  private inline def between(c: Character, floor: Int, ceil: Int): Boolean = c >= floor && c <= ceil
-  private inline def isHex(c: Character): Boolean = isNumeric(c) || (c >= 0x61 && c <= 0x66)
-  private inline def isNumeric(c: Character): Boolean = c >= 0x30 && c <= 0x39
+  private inline def between(c: Int, floor: Int, ceil: Int): Boolean = c >= floor && c <= ceil
+  private inline def isHex(c: Int): Boolean = isNumeric(c) || (c >= 0x61 && c <= 0x66)
+  private inline def isNumeric(c: Int): Boolean = c >= 0x30 && c <= 0x39
+  private inline def in(c: Int, arr: Array[Int]): Boolean = arr.contains(c)
 
   private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
   private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 https://stackoverflow.com/a/1418724/4814697
-  private val EmailLocalDot_r = "^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*$".r // based on https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address on 2024-06-17
-  private val EmailLocalQuote_r = "^\"(?:\\\\[a-zA-Z0-9 !\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~]|[a-zA-Z0-9 !#$%&'()*+,\\-./:;<=>?@\\[\\]^_`{|}~])*\"$".r // based on apache:commons-validator:1.9.0:EmailValidator using explicit allowed chars https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.2
 
   override def uri: String = "https://json-schema.org/draft/2020-12/meta/format-assertion"
   override def shouldApply(schema: ObjectSchema): Boolean = schema.value.contains(FormatKw)
