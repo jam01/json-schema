@@ -1,11 +1,10 @@
 package upickle.jsoniter
 
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonWriter
-import io.github.jam01.json_schema.JsonVisitor
 import upickle.core.{ArrVisitor, ObjVisitor, StringVisitor, Visitor}
 
 // see: https://github.com/rallyhealth/weePickle/pull/105
-class JsonWriterVisitor(writer: JsonWriter) extends JsonVisitor[Any, JsonWriter] {
+class JsonWriterVisitor(writer: JsonWriter) extends Visitor[Any, JsonWriter] {
   
   override def visitNull(index: Int): JsonWriter = {
     writer.writeNull()
@@ -68,7 +67,7 @@ class JsonWriterVisitor(writer: JsonWriter) extends JsonVisitor[Any, JsonWriter]
     }
   }
 
-  override def visitObject(length: Int, index: Int): ObjVisitor[Any, JsonWriter] = {
+  override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Any, JsonWriter] = {
     writer.writeObjectStart()
     new ObjVisitor[Any, JsonWriter] {
       override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
@@ -81,4 +80,27 @@ class JsonWriterVisitor(writer: JsonWriter) extends JsonVisitor[Any, JsonWriter]
       }
     }
   }
+
+  override def visitFloat32(d: Float, index: Int): JsonWriter = {
+    writer.writeVal(d)
+    writer
+  }
+
+  override def visitInt32(i: Int, index: Int): JsonWriter = {
+    writer.writeVal(i)
+    writer
+  }
+
+  override def visitUInt64(i: Long, index: Int): JsonWriter = {
+    writer.writeVal(i)
+    writer
+  }
+
+  override def visitChar(s: Char, index: Int): JsonWriter = {
+    writer.writeVal(s)
+    writer
+  }
+
+  override def visitExt(tag: Byte, bytes: Array[Byte], offset: Int, len: Int, index: Int): JsonWriter = 
+    visitBinary(bytes, offset, len, index)
 }
