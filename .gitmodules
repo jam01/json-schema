@@ -1,0 +1,3 @@
+[submodule "test-suite"]
+	path = shared/src/test/resources/test-suite
+	url = https://github.com/json-schema-org/JSON-Schema-Test-Suite
