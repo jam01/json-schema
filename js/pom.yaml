@@ -1,0 +1,39 @@
+modelVersion: 4.0.0
+id: io.github.jam01:json-schema_sjs1_3:0.1.0-SNAPSHOT
+packaging: jar
+
+properties:
+  project.build.sourceEncoding: UTF-8
+
+dependencies:
+  - org.scala-js:scalajs-library_2.13:1.16.0
+  - org.scala-lang:scala3-library_sjs1_3:3.3.3
+  - com.lihaoyi:upickle-core_sjs1_3:3.3.1
+  - io.github.cquiroz:scala-java-time_sjs1_3:2.6.0
+  - com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_sjs1_3:2.30.1
+  # test
+  - org.scala-js:scalajs-test-bridge_2.13:test:1.16.0
+  - com.lihaoyi:ujson_sjs1_3:test:3.3.1
+  - org.junit.jupiter:junit-jupiter:test:5.10.2
+  - org.junit.jupiter:junit-jupiter-params:test:5.10.2
+  - org.skyscreamer:jsonassert:test:1.5.1
+
+build: # use when ready https://github.com/apache/maven/pull/1061
+  sourceDirectory: '${project.basedir}/../shared/src/main/scala'
+  testSourceDirectory: '${project.basedir}/../shared/src/test/scala'
+  resources:
+    - directory: '${project.basedir}/../shared/src/main/resources'
+  testResources:
+    - directory: '${project.basedir}/../shared/src/test/resources'
+
+  plugins:
+    - id: org.apache.maven.plugins:maven-compiler-plugin:3.11.0
+      configuration:
+        skipMain: 'true'
+        skip: 'true'
+    - id: net.alchim31.maven:scala-maven-plugin:4.9.1
+      configuration:
+        args: ['-deprecation', '-feature', '-scalajs']
+      executions:
+        - goals: [compile, testCompile]
+    - id: org.apache.maven.plugins:maven-surefire-plugin:3.2.2

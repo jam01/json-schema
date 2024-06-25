@@ -8,7 +8,6 @@ import java.net.{URI, URISyntaxException}
 import java.util.UUID
 import java.util.regex.{Pattern, PatternSyntaxException}
 
-// unavailable in scala js/native
 import java.time.format.DateTimeFormatter.{ISO_LOCAL_DATE, ISO_OFFSET_DATE_TIME, ISO_OFFSET_TIME}
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoField

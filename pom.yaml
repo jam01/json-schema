@@ -1,0 +1,6 @@
+modelVersion: 4.0.0
+id: io.github.jam01:json-schema-aggregator:1.0
+packaging: pom
+modules:
+  - jvm
+  - js
