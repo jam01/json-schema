@@ -40,12 +40,12 @@ trait Context {
    *
    * @param schemaUri identifier of the schema
    * @return the referenced schema
-   * @throws IllegalArgumentException if not retrievable
+   * @throws NoSuchElementException if not retrievable
    */
   def getSchOrThrow(schemaUri: Uri): Schema =
     getSch(schemaUri) match
       case Some(sch) => sch
-      case None => throw new IllegalArgumentException(s"Unavailable schema $schemaUri")
+      case None => throw new NoSuchElementException(s"Unavailable schema $schemaUri")
 
   /**
    * Retrieve the referenced schema using the dynamic validation scope or throw an exception if not retrievable.
@@ -55,12 +55,12 @@ trait Context {
    * @param schemaUri identifier of the schema
    * @param origin [[Vocab]] from where the dynamic schema is requested
    * @return the referenced schema
-   * @throws IllegalArgumentException if not retrievable
+   * @throws NoSuchElementException if not retrievable
    */
   def getDynSchOrThrow(schemaUri: Uri, origin: Vocab[?]): Schema =
     getDynSch(schemaUri, origin) match
       case Some(sch) => sch
-      case None => throw new IllegalArgumentException(s"Unavailable schema $schemaUri")
+      case None => throw new NoSuchElementException(s"Unavailable schema $schemaUri")
 
   /**
    * Register an annotation dependant keyword located within the given schema location.
@@ -92,17 +92,6 @@ trait Context {
   def getDependenciesFor(kwLocation: JsonPointer): Seq[(JsonPointer, Value)]
 
   /**
-   * Publish output units produced for the given schema location.
-   *
-   * This method must be called with the results of every vocabulary in order to satisfy annotation dependencies from
-   * other vocabularies in the validation scope.
-   *
-   * @param schLocation of the schema where the units were produced
-   * @param units that were produced
-   */
-  def onVocabResults(schLocation: JsonPointer, units: Seq[OutputUnit]): Unit
-
-  /**
    * Offer a computed annotation to be used by any registered dependant based on location.
    * 
    * @param location the location of the candidate annotation
@@ -125,6 +114,21 @@ trait Context {
    */
   def notifyInvalid(invalid: Seq[OutputUnit]): Unit
 
+  def ext: ContextExtension
+}
+
+trait ContextExtension {
+  /**
+   * Publish output units produced for the given schema location.
+   *
+   * This method must be called with the results of every vocabulary in order to satisfy annotation dependencies from
+   * other vocabularies in the validation scope.
+   *
+   * @param schLocation of the schema where the units were produced
+   * @param units that were produced
+   */
+  def onVocabResults(schLocation: JsonPointer, units: Seq[OutputUnit]): Unit
+
   /**
    * Signal the end of a schema scope.
    *
@@ -132,10 +136,11 @@ trait Context {
    * @param result of the validation
    */
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit
+
 }
 
-final case class DefaultContext(private val registry: Registry,
-                          config: Config = Config.Default) extends Context with Tracker {
+final class DefaultContext(private val registry: Registry,
+                           val config: Config = Config.Default) extends Context with Tracker with ContextExtension {
 
   private val insloc = mutable.Stack[String]("")
   private var _pointer = JsonPointer.Root
@@ -148,6 +153,7 @@ final case class DefaultContext(private val registry: Registry,
     _pointer = JsonPointer(insloc.reverseIterator.toSeq)
     ref
   }
+  
   override def instanceLoc: JsonPointer = _pointer
 
   override def getSch(schemaUri: Uri): Option[Schema] = {
@@ -191,7 +197,7 @@ final case class DefaultContext(private val registry: Registry,
 
   override def offerAnnotation(location: JsonPointer, value: Value): Unit = {
     if (dependents.isEmpty) return
-    
+
     val it = dependents.iterator
     while (it.hasNext) {
       val (schLoc, schdeps) = it.next()
@@ -204,14 +210,16 @@ final case class DefaultContext(private val registry: Registry,
     }
   }
 
-  override def onVocabResults(schLocation: JsonPointer, units: Seq[OutputUnit]): Unit = {
-    if (dependencies.nonEmpty && units.nonEmpty) 
-      notifyInvalid(units.filter(u => !u.vvalid)) // discard dependencies relative to an error
+  override def notifyInvalid(invalid: Seq[OutputUnit]): Unit = {
+    dependencies.values.foreach(deps =>
+      deps.filterInPlace((kwLoc, _) => !invalid.exists(inv => inv.kwLoc.isRelativeTo(kwLoc))))
   }
 
-  override def notifyInvalid(invalid: Seq[OutputUnit]): Unit = {
-    dependencies.values.foreach(deps => 
-      deps.filterInPlace((kwLoc, _) => !invalid.exists(inv => inv.kwLoc.isRelativeTo(kwLoc))))
+  override def ext: ContextExtension = this
+
+  override def onVocabResults(schLocation: JsonPointer, units: Seq[OutputUnit]): Unit = {
+    if (dependencies.nonEmpty && units.nonEmpty)
+      notifyInvalid(units.filter(u => !u.vvalid)) // discard dependencies relative to an error
   }
 
   override def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit = {
@@ -221,8 +229,4 @@ final case class DefaultContext(private val registry: Registry,
     if (!result.vvalid) notifyInvalid(Seq(result))
     result
   }
-}
-
-object DefaultContext {
-  val Empty: DefaultContext = DefaultContext(Registry.Empty, Config.Default)
 }

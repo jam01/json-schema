@@ -14,7 +14,7 @@ object SchemaValidator {
 
         if (ctx.config.ffast) new FFastObjectSchemaValidator[Nothing](vocabs, ctx, path, dynParent)
         else new MapCompositeVisitor[Nothing, Seq[OutputUnit], OutputUnit](vocabs,
-          unitss => ctx.onScopeEnd(path, ctx.config.format.compose(path, unitss.flatten, ctx.instanceLoc)))
+          unitss => ctx.ext.onScopeEnd(path, ctx.config.format.compose(path, unitss.flatten, ctx.instanceLoc)))
   }
 
   private def guardDepth(dynParent: Option[Vocab[?]], depth: Int): Unit = {
@@ -58,23 +58,25 @@ final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) 
 
 private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]) extends JsonVisitor[Seq[T], OutputUnit] {
   inline private def compose(units: Seq[OutputUnit]): OutputUnit = {
-    val result = ctx.onScopeEnd(path, ctx.config.format.compose(path, units, ctx.instanceLoc))
+    val result = ctx.ext.onScopeEnd(path, ctx.config.format.compose(path, units, ctx.instanceLoc))
     if (dynParent.isEmpty && !result.vvalid) throw new ValidationException(result)
     result
   }
+  
   inline private def compose(f: Vocab[T] => Seq[OutputUnit]): OutputUnit = {
     var res0: Seq[OutputUnit] = Nil
     val it = vocabs.iterator
     var continue = true
     while (it.hasNext && continue) {
       val res1 = f(it.next())
-      ctx.onVocabResults(path, res1)
+      ctx.ext.onVocabResults(path, res1)
       res0 = res0 :++ res1
       if (res1.exists(u => !u.vvalid)) continue = false
     }
 
     compose(res0)
   }
+  
   inline private def ffast(exc: InvalidVectorException): Seq[OutputUnit] = {
     if (dynParent.isEmpty) throw new ValidationException(compose(exc.results))
     exc.results
