@@ -8,6 +8,7 @@ import java.net.{URI, URISyntaxException}
 import java.util.UUID
 import java.util.regex.{Pattern, PatternSyntaxException}
 
+// provided by scala-java-time on sjs/native
 import java.time.format.DateTimeFormatter.{ISO_LOCAL_DATE, ISO_OFFSET_DATE_TIME, ISO_OFFSET_TIME}
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoField
@@ -31,7 +32,7 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "email" => isEmail(s)
       case "idn-email" => isEmail(s, true)
       case "hostname" => s.length() <= 255 && Hostname_r.matches(s)
-      case "idn-hostname" => true
+      case "idn-hostname" => Idn.isHostname(s.toString)
       case "ipv4" => isIPv4(s)
       case "ipv6" => isIPv6(s)
       case "uuid" => try { s.length() == 36 && { UUID.fromString(s.toString); true }} catch // https://bugs.openjdk.org/browse/JDK-8202760
@@ -93,7 +94,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     if (s.length() == 0 || (s.length() == 1 && s.charAt(0) == '/')) return true
     if (s.charAt(0) != '/') return false
 
-    var i = 1;
+    var i = 1
     while (i < s.length() - 1) {
       if (s.charAt(i) == '~' &&
         (s.charAt(i + 1) != '0' && s.charAt(i + 1) != '1')) return false  // '~` must be proceeded by 0-1
@@ -232,8 +233,10 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     }
 
     val auth = parts(1)
-    if (auth.charAt(0) != '[') return auth.length() <= 255 && Hostname_r.matches(auth)  // hostname
-    if (auth.charAt(auth.length - 1) != ']') return false                               // invalid address literal
+    if (auth.charAt(0) != '[')
+      if (!i18n) return auth.length() <= 255 && Hostname_r.matches(auth)  // hostname
+      else return Idn.isHostname(auth)
+    if (auth.charAt(auth.length - 1) != ']') return false                 // invalid address literal
 
     if (auth.startsWith("[IPv6:")) isIPv6(auth.substring(6, auth.length - 1))
     else isIPv4(auth.substring(1, auth.length - 1))
