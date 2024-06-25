@@ -180,11 +180,11 @@ final case class DefaultContext(private val registry: Registry,
       .flatMap(dref => registry.get(dref))
   }
 
-  private val dependents: mutable.Map[JsonPointer, mutable.ArrayBuffer[(JsonPointer, JsonPointer => Boolean)]] = mutable.Map.empty // schLoc -> [(kwLoc, pred)]
+  private val dependents: mutable.Map[JsonPointer, mutable.Buffer[(JsonPointer, JsonPointer => Boolean)]] = mutable.Map.empty // schLoc -> [(kwLoc, pred)]
   private val dependencies: mutable.Map[JsonPointer, mutable.ArrayBuffer[(JsonPointer, Value)]] = mutable.Map.empty // kwLoc -> [(annKwLoc, value)]
 
   override def registerDependant(schLocation: JsonPointer, kwLocation: JsonPointer, predicate: JsonPointer => Boolean): Unit =
-    dependents.getOrElseUpdate(schLocation, new mutable.ArrayBuffer(1)).addOne((kwLocation, predicate)) // perf: chances of there being 2 dependant kws in one sch
+    dependents.getOrElseUpdate(schLocation, new mutable.ListBuffer()).addOne((kwLocation, predicate))
 
   override def getDependenciesFor(kwLocation: JsonPointer): Seq[(JsonPointer, Value)] =
     dependencies.getOrElse(kwLocation, Nil).toSeq
@@ -199,7 +199,7 @@ final case class DefaultContext(private val registry: Registry,
       while (it0.hasNext) {
         val (depKwLoc, predicate) = it0.next()
         if (schLoc.isRelativeTo(location) && predicate(location))
-          dependencies.getOrElseUpdate(depKwLoc, new mutable.ArrayBuffer(5)).addOne((location, value))  // perf: chances of a dependent kw requiring 5+ annotations
+          dependencies.getOrElseUpdate(depKwLoc, new mutable.ArrayBuffer(1)).addOne((location, value)) // perf: chances of a dependent kw requiring >1 annotations
       }
     }
   }

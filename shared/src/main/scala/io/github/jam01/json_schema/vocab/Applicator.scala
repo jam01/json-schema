@@ -49,10 +49,18 @@ final class Applicator private(schema: ObjectSchema,
       .toMap
     )
 
-  private val maxContains: Option[Int] = schema.getInt(MaxContains)
-  private val minContains: Option[Int] = schema.getInt(MinContains)
+  private val containsKw: Option[JsonPointer] = schema.get(Contains).map(_ => path.appended(Contains))
   private val containsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(Contains)
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended(Contains), Some(this)))
+    .map(sch => SchemaValidator.of(sch, ctx, containsKw.get, Some(this)))
+
+  private val maxContains: Option[Int] = if (containsKw.nonEmpty) schema.getInt(MaxContains) else None
+  private val minContains: Option[Int] = if (containsKw.nonEmpty) schema.getInt(MinContains) else None
+  private val maxContKw: Option[JsonPointer] = maxContains.map(_ => path.appended(MaxContains))
+  private val minContKw: Option[JsonPointer] = minContains.map(_ => path.appended(MinContains))
+  if (maxContains.nonEmpty)
+    ctx.registerDependant(path, maxContKw.get, kwLoc => kwLoc == containsKw.get) // perf: eq could be faster
+  if (minContains.nonEmpty)
+    ctx.registerDependant(path, minContKw.get, kwLoc => kwLoc == containsKw.get)
 
   override def visitNull(index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
@@ -172,16 +180,13 @@ final class Applicator private(schema: ObjectSchema,
         if (u.vvalid) matched.addOne(Num(nextIdx)); nextIdx += 1
       }
 
-      override def visitEnd(index: Int): OutputUnit = { // TODO: break up contains into contains, min/max
+      override def visitEnd(index: Int): OutputUnit = {
         var res = matched.nonEmpty
         if (minContains.nonEmpty) {
           if (minContains.get == 0) res = true
-          else res = res && (matched.size >= minContains.get)
         }
-        if (maxContains.nonEmpty) {
-          res = res && (matched.size <= maxContains.get)
-        }
-        mkUnit(res, Contains, "Array does not contain given elements", Nil, Arr(matched.result()), Nil) // TODO: include if failed bc min/max
+
+        mkUnit(res, Contains, "Array does not contain given elements", Nil, Arr(matched.result()), Nil)
       }
     })
 
@@ -243,6 +248,19 @@ final class Applicator private(schema: ObjectSchema,
           if (unit.kwLoc.refTokens.last == If) iff = unit
           else if (unit.kwLoc.refTokens.last == Then) thenn = unit
           else if (unit.kwLoc.refTokens.last == Else) els = unit
+          else if (unit.kwLoc.refTokens.last == Contains) {
+            accumulate(buff, unit)
+            minContains match
+              case None => ()
+              case Some(i) =>
+                val annots = ctx.getDependenciesFor(minContKw.get)
+                accumulate(buff, i == 0 || (annots.nonEmpty && annots.head._2.arr.length >= i), MinContains, "Array does not contain the minimum number of items required")
+            maxContains match
+              case None => ()
+              case Some(i) =>
+                val annots = ctx.getDependenciesFor(maxContKw.get)
+                accumulate(buff, annots.nonEmpty && annots.head._2.arr.length <= i, MaxContains, "Array contains more than the maximum number of items allowed")
+          }
           else accumulate(buff, unit)
         })
 

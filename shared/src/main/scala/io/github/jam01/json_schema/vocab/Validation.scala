@@ -28,9 +28,7 @@ final class Validation private(schema: ObjectSchema,
   private val minItems: Option[Int] = schema.getInt(MinItems)
   private val uniqueItems: Option[Boolean] = schema.getBoolean(UniqueItems)
   private val depReq: Option[collection.Map[String, Value]] = schema.getObjectOpt(DepRequired)
-  private val maxContains: Option[Int] = schema.getInt(MaxContains)
   private val maxProperties: Option[Int] = schema.getInt(MaxProperties)
-  private val minContains: Option[Int] = schema.getInt(MinContains)
   private val minProperties: Option[Int] = schema.getInt(MinProperties)
   private val required: Seq[String] = schema.getStringArray(Required)
 
