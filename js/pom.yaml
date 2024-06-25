@@ -5,8 +5,11 @@ packaging: jar
 properties:
   project.build.sourceEncoding: UTF-8
 
+dependencyManagement:
+  dependencies:
+    - org.scala-js:scalajs-library_2.13:1.16.0
+
 dependencies:
-  - org.scala-js:scalajs-library_2.13:1.16.0
   - org.scala-lang:scala3-library_sjs1_3:3.3.3
   - com.lihaoyi:upickle-core_sjs1_3:3.3.1
   - io.github.cquiroz:scala-java-time_sjs1_3:2.6.0
