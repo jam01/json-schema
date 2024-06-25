@@ -19,13 +19,13 @@ package object json_schema {
    */
   def validator(schema: Schema,
                 config: Config = Config.Default,
-                schemaRegistry: collection.Map[Uri, Schema] = Map.empty): Visitor[?, OutputUnit] = {
-    val ctx = DefaultContext(schemaRegistry, config)
+                registry: Registry = Registry.Empty): Visitor[?, OutputUnit] = {
+    val ctx = DefaultContext(registry, config)
     PointerDelegate(ctx, SchemaValidator.of(schema, ctx))
   }
   
   def from[I](reader: upickle.core.Transformer[I], readable: I, 
-                docbase: Uri = Uri.random, registry: mutable.Map[Uri, Schema] = mutable.Map()): Schema = {
+                docbase: Uri = Uri.random, registry: Registry = new MutableRegistry): Schema = {
     reader.transform(readable, SchemaR(docbase, registry))
   }
 

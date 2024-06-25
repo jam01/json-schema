@@ -71,7 +71,7 @@ class ObjectSchemaValidatorTest {
   def valid_arr_ref(): Unit = {
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(mkValidator(schemas("arrRefSch"), DefaultContext(Map(Uri("mem://test/str") -> schemas("refSch0")))))
+      .transform(mkValidator(schemas("arrRefSch"), DefaultContext(Registry(Uri("mem://test/str") -> schemas("refSch0")))))
     assertTrue(r.vvalid)
   }
 
@@ -79,7 +79,7 @@ class ObjectSchemaValidatorTest {
   def invalid_arr_ref(): Unit = { // base schema dictates arr, but $ref dictates string
     val r = ujson.Readable
       .fromString("""["valid", "valid2", "valid3"]""")
-      .transform(mkValidator(schemas("arrRefSch"), DefaultContext(Map(Uri("mem://test/str") -> schemas("refSch1")), Config(ffast = false))))
+      .transform(mkValidator(schemas("arrRefSch"), DefaultContext(Registry(Uri("mem://test/str") -> schemas("refSch1")), Config(ffast = false))))
     assertFalse(r.vvalid)
   }
 
@@ -135,7 +135,7 @@ class ObjectSchemaValidatorTest {
   def valid_obj_ref(): Unit = {
     val r = ujson.Readable
       .fromString("""{"foo": "bar", "null": null}""")
-      .transform(mkValidator(schemas("objRefSch0"), DefaultContext(Map(Uri("mem://test/nullreq") -> schemas("refSch2")))))
+      .transform(mkValidator(schemas("objRefSch0"), DefaultContext(Registry(Uri("mem://test/nullreq") -> schemas("refSch2")))))
     assertTrue(r.vvalid)
   }
 
@@ -143,7 +143,7 @@ class ObjectSchemaValidatorTest {
   def invalid_obj_ref(): Unit = { // base schema dictates obj, but $ref dictates string
     val r = ujson.Readable
       .fromString("""{"foo": "bar"}""")
-      .transform(mkValidator(schemas("objRefSch1"), DefaultContext(Map(Uri("mem://test/str") -> schemas("refSch1")), Config(ffast = false))))
+      .transform(mkValidator(schemas("objRefSch1"), DefaultContext(Registry(Uri("mem://test/str") -> schemas("refSch1")), Config(ffast = false))))
     assertFalse(r.vvalid)
   }
 
@@ -173,7 +173,7 @@ class ObjectSchemaValidatorTest {
 }
 
 object ObjectSchemaValidatorTest {
-  def mkValidator(osch: ObjectSchema, ctx: Context = DefaultContext(Map.empty[Uri, Schema], Config(ffast = false)),
+  def mkValidator(osch: ObjectSchema, ctx: Context = DefaultContext(Registry.Empty, Config(ffast = false)),
                   path: JsonPointer = JsonPointer.Root, dynParent: Option[VocabBase] = None): Visitor[?, OutputUnit] = {
     SchemaValidator.of(osch, ctx, path, dynParent)
   }

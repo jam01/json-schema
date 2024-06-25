@@ -152,8 +152,8 @@ sealed trait Schema extends Value {
 
   def validate[I](reader: upickle.core.Transformer[I], readable: I,
                   config: Config = Config.Default,
-                  schemaRegistry: collection.Map[Uri, Schema] = Map.empty): OutputUnit = {
-    reader.transform(readable, validator(this, config, schemaRegistry))
+                  registry: Registry = Registry.Empty): OutputUnit = {
+    reader.transform(readable, validator(this, config, registry))
   }
 }
 

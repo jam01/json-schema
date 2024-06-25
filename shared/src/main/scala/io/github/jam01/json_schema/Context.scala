@@ -134,7 +134,7 @@ trait Context {
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit
 }
 
-final case class DefaultContext(private val registry: collection.Map[Uri, Schema],
+final case class DefaultContext(private val registry: Registry,
                           config: Config = Config.Default) extends Context with Tracker {
 
   private val insloc = mutable.Stack[String]("")
@@ -224,5 +224,5 @@ final case class DefaultContext(private val registry: collection.Map[Uri, Schema
 }
 
 object DefaultContext {
-  val Empty: DefaultContext = DefaultContext(Map.empty[Uri, Schema], Config.Default)
+  val Empty: DefaultContext = DefaultContext(Registry.Empty, Config.Default)
 }

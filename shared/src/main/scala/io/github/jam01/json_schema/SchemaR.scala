@@ -5,7 +5,7 @@ import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visit
 import scala.collection.mutable
 
 final class SchemaR private(docbase: Uri,
-              reg: mutable.Map[Uri, Schema] = mutable.Map(),
+              reg: Registry,
               ids: mutable.Buffer[(String, ObjectSchema)] = mutable.ArrayBuffer.empty,
               anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = mutable.ArrayBuffer.empty,
               parent: Option[ObjectSchema] = None,
@@ -94,5 +94,5 @@ object SchemaR {
    * @param registry     the schema registry to populate when traversing schemas
    */
   def apply(docbase: Uri = Uri.random,
-            registry: mutable.Map[Uri, Schema] = mutable.Map()): SchemaR = new SchemaR(docbase, registry)
+            registry: Registry = new MutableRegistry): SchemaR = new SchemaR(docbase, registry)
 }

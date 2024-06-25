@@ -8,7 +8,6 @@ import ujson.StringRenderer
 import upickle.core.Visitor
 
 import java.nio.file.{Files, Path, Paths}
-import scala.collection.mutable
 import scala.util.Using
 
 class TestSuiteTest {
@@ -36,8 +35,8 @@ object TestSuiteTest {
   val NotSupportedFormat: Seq[String] = Seq("idn-hostname.json", "idn-email.json")
   val NotSupportedFormatTests: Seq[String] = Seq("weeks cannot be combined with other units")
 
-  val Registry: mutable.Map[Uri, Schema] = {
-    val builder = mutable.Map[Uri, Schema]()
+  val Registry: Registry = {
+    val builder = new MutableRegistry
 
     // load remotes
     Using(Files.walk(resource("test-suite/remotes/draft2020-12/"), 1)) { remotes =>

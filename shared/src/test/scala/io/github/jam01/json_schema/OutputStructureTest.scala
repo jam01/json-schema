@@ -37,7 +37,7 @@ class OutputStructureTest {
       .fromString("""["", "", 1, 2, 3, "", 4, 5]""")
       .transform(json_schema.validator(simpleSchs("simple"),
         Config(format = OutputFormat.Detailed, ffast = false),
-        Map(Uri("mem://test/ref") -> simpleSchs("refSch0"))))
+        Registry(Uri("mem://test/ref") -> simpleSchs("refSch0"))))
 
     val res =  OutputUnitW.transform(r, StringRenderer()).toString
     //println(res)

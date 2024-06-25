@@ -42,7 +42,7 @@ object Dialect {
    */
   def tryDialect(schema: Schema,
                  dialects: Seq[Dialect] = Seq(Dialect._2020_12_Full),
-                 registry: collection.Map[Uri, Schema]): Option[Dialect] = {
+                 registry: Registry): Option[Dialect] = {
     if (schema.isInstanceOf[BooleanSchema]) return Some(Dialect._2020_12_Basic)
 
     val dialectUri = schema.asInstanceOf[ObjectSchema].getMetaSchema

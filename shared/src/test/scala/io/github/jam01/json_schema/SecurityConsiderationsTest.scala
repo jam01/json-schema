@@ -10,7 +10,7 @@ class SecurityConsiderationsTest {
 
   @Test
   def main(): Unit = {
-    val reg: mutable.Map[Uri, Schema] = mutable.Map()
+    val reg = new MutableRegistry
     val sch = ujson.Readable
       .fromPath(Paths.get(getClass.getClassLoader.getResource("simple-tests/recursive.json").toURI))
       .transform(SchemaR(registry = reg))
