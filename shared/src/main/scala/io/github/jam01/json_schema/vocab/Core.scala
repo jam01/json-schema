@@ -15,10 +15,10 @@ final class Core private(schema: ObjectSchema,
   // these are made lazy to avoid infinite-loops of recursive schemas such as 2020-12 meta schema
   private lazy val _refVis: Option[Visitor[?, OutputUnit]] = schema.getRef
     .map(ref => ctx.getSchOrThrow(ref))
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended(_Ref), Some(this)))
+    .map(sch => SchemaValidator(sch, ctx, path.appended(_Ref), Some(this)))
   private lazy val _dynRefVis: Option[Visitor[?, OutputUnit]] = schema.getDynRef
     .map(dynref => ctx.getDynSchOrThrow(dynref, this))
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended(_DynRef), Some(this)))
+    .map(sch => SchemaValidator(sch, ctx, path.appended(_DynRef), Some(this)))
 
   override def visitNull(index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]

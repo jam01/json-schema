@@ -12,9 +12,9 @@ final class Unevaluated private(schema: ObjectSchema,
                           dynParent: Option[Vocab[?]]) extends VocabBase(schema, ctx, path, dynParent) {
 
   private val itemsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(UnevaluatedItems)
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended(UnevaluatedItems), Some(Unevaluated.this)))
+    .map(sch => SchemaValidator(sch, ctx, path.appended(UnevaluatedItems), Some(Unevaluated.this)))
   private val propsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(UnevaluatedProperties)
-    .map(sch => SchemaValidator.of(sch, ctx, path.appended(UnevaluatedProperties), Some(Unevaluated.this)))
+    .map(sch => SchemaValidator(sch, ctx, path.appended(UnevaluatedProperties), Some(Unevaluated.this)))
 
   if (itemsVis.nonEmpty) 
     ctx.registerDependant(path, path.appended(UnevaluatedItems), kwLoc => check(kwLoc, ItemsAnnotations))

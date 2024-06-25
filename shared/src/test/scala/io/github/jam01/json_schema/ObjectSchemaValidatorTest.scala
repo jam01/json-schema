@@ -175,6 +175,6 @@ class ObjectSchemaValidatorTest {
 object ObjectSchemaValidatorTest {
   def mkValidator(osch: ObjectSchema, ctx: Context = DefaultContext(Registry.Empty, Config(ffast = false)),
                   path: JsonPointer = JsonPointer.Root, dynParent: Option[VocabBase] = None): Visitor[?, OutputUnit] = {
-    SchemaValidator.of(osch, ctx, path, dynParent)
+    SchemaValidator(osch, ctx, path, dynParent)
   }
 }

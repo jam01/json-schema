@@ -3,7 +3,7 @@ package io.github.jam01.json_schema
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 object SchemaValidator {
-  def of(sch: Schema, ctx: Context, path: JsonPointer = JsonPointer.Root, dynParent: Option[Vocab[?]] = None): Visitor[?, OutputUnit] = {
+  def apply(sch: Schema, ctx: Context, path: JsonPointer = JsonPointer.Root, dynParent: Option[Vocab[?]] = None): Visitor[?, OutputUnit] = {
     sch match
       case BooleanSchema(bool) => new BooleanSchemaValidator(bool, ctx, path)
       case osch: ObjectSchema =>

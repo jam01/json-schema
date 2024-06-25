@@ -1,9 +1,6 @@
 package io.github.jam01
 
-import io.github.jam01.json_schema.SchemaValidator.of
 import upickle.core.Visitor
-
-import scala.collection.mutable
 
 package object json_schema {
 
@@ -21,7 +18,7 @@ package object json_schema {
                 config: Config = Config.Default,
                 registry: Registry = Registry.Empty): Visitor[?, OutputUnit] = {
     val ctx = DefaultContext(registry, config)
-    PointerDelegate(ctx, SchemaValidator.of(schema, ctx))
+    PointerDelegate(ctx, SchemaValidator(schema, ctx))
   }
   
   def from[I](reader: upickle.core.Transformer[I], readable: I, 
