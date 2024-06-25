@@ -3,11 +3,10 @@ id: io.github.jam01:json-schema_sjs1_3:0.1.0-SNAPSHOT
 packaging: jar
 
 properties:
+  maven.compiler.source: '21'
+  maven.compiler.target: '21'
+  maven.compiler.release: '21'
   project.build.sourceEncoding: UTF-8
-
-dependencyManagement:
-  dependencies:
-    - org.scala-js:scalajs-library_2.13:1.16.0
 
 dependencies:
   - org.scala-lang:scala3-library_sjs1_3:3.3.3
@@ -15,21 +14,31 @@ dependencies:
   - io.github.cquiroz:scala-java-time_sjs1_3:2.6.0
   - com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_sjs1_3:2.30.1
   # test
-  - org.scala-js:scalajs-test-bridge_2.13:test:1.16.0
+  - org.scala-js:scalajs-test-bridge_2.13:test:1.12.0 # match scala3-lib_sjs1_3
   - com.lihaoyi:ujson_sjs1_3:test:3.3.1
   - org.junit.jupiter:junit-jupiter:test:5.10.2
   - org.junit.jupiter:junit-jupiter-params:test:5.10.2
   - org.skyscreamer:jsonassert:test:1.5.1
 
 build: # use when ready https://github.com/apache/maven/pull/1061
-  sourceDirectory: '${project.basedir}/../shared/src/main/scala'
-  testSourceDirectory: '${project.basedir}/../shared/src/test/scala'
   resources:
+    - directory: '${project.basedir}/src/main/resources'
     - directory: '${project.basedir}/../shared/src/main/resources'
   testResources:
+    - directory: '${project.basedir}/src/test/resources'
     - directory: '${project.basedir}/../shared/src/test/resources'
 
   plugins:
+    - id: org.codehaus.mojo:build-helper-maven-plugin:3.6.0
+      executions:
+        - id: shared-sources
+          goals: [add-source]
+          configuration:
+            sources: ["${project.basedir}/../shared/src/main/scala"]
+        - id: shared-test-sources
+          goals: [add-test-source]
+          configuration:
+            sources: ["${project.basedir}/../shared/src/test/scala"]
     - id: org.apache.maven.plugins:maven-compiler-plugin:3.11.0
       configuration:
         skipMain: 'true'

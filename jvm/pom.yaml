@@ -19,19 +19,24 @@ dependencies:
   - org.skyscreamer:jsonassert:test:1.5.1
 
 build: # use when ready https://github.com/apache/maven/pull/1061
-  sourceDirectory: '${project.basedir}/../shared/src/main/scala'
-  testSourceDirectory: '${project.basedir}/../shared/src/test/scala'
   resources:
+    - directory: '${project.basedir}/src/main/resources'
     - directory: '${project.basedir}/../shared/src/main/resources'
   testResources:
+    - directory: '${project.basedir}/src/test/resources'
     - directory: '${project.basedir}/../shared/src/test/resources'
 
   plugins:
     - id: org.codehaus.mojo:build-helper-maven-plugin:3.6.0
       executions:
-        - goals: [add-source]
+        - id: shared-sources
+          goals: [add-source]
           configuration:
-            sources: ["${project.basedir}/src/main/scala"]
+            sources: ["${project.basedir}/../shared/src/main/scala"]
+        - id: shared-test-sources
+          goals: [add-test-source]
+          configuration:
+            sources: ["${project.basedir}/../shared/src/test/scala"]
     - id: org.apache.maven.plugins:maven-compiler-plugin:3.11.0
       configuration:
         skipMain: 'true'
