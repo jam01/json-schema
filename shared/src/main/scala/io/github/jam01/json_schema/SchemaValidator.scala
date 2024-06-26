@@ -9,7 +9,7 @@ object SchemaValidator {
       case osch: ObjectSchema =>
         guardDepth(dynParent, ctx.config.maxDepth)
 
-        val vocabs: Seq[Vocab[?]] = ctx.config.dialect.vocabsFor(osch)
+        val vocabs: Seq[Vocab[?]] = ctx.config.dialect.filterBy(osch)
           .map(vocabfact => vocabfact.create(osch, ctx, path, dynParent))
 
         if (ctx.config.ffast) new FFastObjectSchemaValidator[Nothing](vocabs, ctx, path, dynParent)

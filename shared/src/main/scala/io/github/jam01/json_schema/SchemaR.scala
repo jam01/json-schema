@@ -4,6 +4,9 @@ import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visit
 
 import scala.collection.mutable
 
+/**
+ * JSON Schema reader
+ */
 final class SchemaR private(docbase: Uri,
               reg: Registry,
               ids: mutable.Buffer[(String, ObjectSchema)] = mutable.ArrayBuffer.empty,
@@ -91,7 +94,7 @@ object SchemaR {
    * A Schema reader.
    *
    * @param docbase the initial base for the schema
-   * @param registry     the schema registry to populate when traversing schemas
+   * @param registry the schema registry to populate when traversing schemas
    */
   def apply(docbase: Uri = Uri.random,
             registry: Registry = new MutableRegistry): SchemaR = new SchemaR(docbase, registry)

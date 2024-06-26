@@ -9,27 +9,48 @@ import scala.collection.mutable
  * @param vocabularies set of [[VocabFactory]]s in this dialect
  */
 case class Dialect(uri: Uri, vocabularies: Seq[VocabFactory[?]]) {
-  def vocabsFor(schema: ObjectSchema): Seq[VocabFactory[?]] = {
+  /**
+   * The subset of [[VocabFactory]]s that apply to the given [[Schema]].
+   *
+   * @param schema the schema to which the vocabs would be applied
+   * @return the subset of factories that apply
+   */
+  def filterBy(schema: ObjectSchema): Seq[VocabFactory[?]] = {
     vocabularies.filter(v => v.shouldApply(schema))
   }
 }
 
 object Dialect {
   /**
-   * A [[Dialect]] implementing the <a href=https://json-schema.org/draft/2020-12/json-schema-core>JSON Schema 2020-12 specification</a>
+   * A dialect implementing the <a href=https://json-schema.org/draft/2020-12/json-schema-core>JSON Schema 2020-12 specification</a>
+   * except the annotation-only vocabularies: `Format`, `Metadata`, and `Content`.
+   *
    * @see <a href=https://json-schema.org/draft/2020-12/schema>JSON Schema 2020-12 Meta-Schema</a>
    */
-  val _2020_12_Basic: Dialect = Dialect(Uri("https://github.io/jam01/json_schema/2012-10/basic"),
+  val Basic: Dialect = Dialect(Uri("https://github.io/jam01/json_schema/2012-10/basic"),
     Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated))
 
-  val _2020_12_FormatAssertion: Dialect = Dialect(Uri("https://github.io/jam01/json_schema/2012-10/format-assertion"),
+  /**
+   * A dialect implementing the <a href=https://json-schema.org/draft/2020-12/json-schema-core>JSON Schema 2020-12 specification</a>
+   * and the `Format-Assertion` vocabulary, but not the annotation-only vocabularies: `Format`,
+   * `Metadata`, and `Content`.
+   *
+   * @see <a href=https://json-schema.org/draft/2020-12/schema>JSON Schema 2020-12 Meta-Schema</a>
+   * @see <a href=https://json-schema.org/draft/2020-12/meta/format-assertion>JSON Schema 2020-12 Format-Assertion Vocabulary Meta-Schema</a>
+   */
+  val FormatAssertion: Dialect = Dialect(Uri("https://github.io/jam01/json_schema/2012-10/format-assertion"),
     Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated, vocab.FormatAssertion))
 
-  val _2020_12_Full: Dialect = Dialect(Uri("https://json-schema.org/draft/2020-12/schema"),
+  /**
+   * A dialect implementing the <a href=https://json-schema.org/draft/2020-12/json-schema-core>JSON Schema 2020-12 specification</a>.
+   *
+   * @see <a href=https://json-schema.org/draft/2020-12/schema>JSON Schema 2020-12 Meta-Schema</a>
+   */
+  val FullSpec: Dialect = Dialect(Uri("https://json-schema.org/draft/2020-12/schema"),
     Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated, vocab.Format, vocab.Metadata, vocab.Content))
 
   /**
-   * Creates a dialect for the given schema.
+   * Attempt to create a dialect for the given schema.
    * <br/><br/>
    * This function will attempt to find or create a dialect based on the meta-schema identifier of the given schema. It
    * will lookup the referenced dialect in the given dialects, if not found it will try to create one based on the
@@ -41,19 +62,19 @@ object Dialect {
    * @return optionally the found or constructed [[Dialect]]
    */
   def tryDialect(schema: Schema,
-                 dialects: Seq[Dialect] = Seq(Dialect._2020_12_Full),
+                 dialects: Seq[Dialect] = Seq(Dialect.FullSpec),
                  registry: Registry): Option[Dialect] = {
-    if (schema.isInstanceOf[BooleanSchema]) return Some(Dialect._2020_12_Basic)
+    if (schema.isInstanceOf[BooleanSchema]) return Some(Dialect.Basic)
 
     val dialectUri = schema.asInstanceOf[ObjectSchema].getMetaSchema
-    if (dialectUri.isEmpty) return Some(Dialect._2020_12_Basic)
+    if (dialectUri.isEmpty) return Some(Dialect.Basic)
 
     val found = dialects.find(d => dialectUri.contains(d.uri))
     if (found.nonEmpty) return found
 
     val msch = registry.get(dialectUri.get)
     if (msch.isEmpty) return None
-    if (msch.get.isInstanceOf[BooleanSchema]) return Some(Dialect._2020_12_Basic)
+    if (msch.get.isInstanceOf[BooleanSchema]) return Some(Dialect.Basic)
 
     val vocabs = msch.get.asInstanceOf[ObjectSchema].getVocabularies
     if (vocabs.isEmpty) return None
@@ -98,7 +119,7 @@ trait VocabFactory[B <: Vocab[?]] {
 
   /**
    * Create a vocabulary validator instance.
-   * 
+   *
    * @param schema the schema to apply
    * @param ctx validation context
    * @param path schema evaluation path
@@ -120,7 +141,7 @@ trait VocabFactory[B <: Vocab[?]] {
 }
 
 /**
- * An exception to interrupt validation vector values, i.e.: as JSON arrays and objects.
+ * An exception to interrupt validation of vector values, i.e.: JSON arrays and objects.
  * 
  * @param results the accumulated results at the point of failure
  */

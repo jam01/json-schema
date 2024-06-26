@@ -22,8 +22,8 @@ class IdnTest {
 object IdnTest {
   def args_provider_idn: java.util.List[Arguments] = {
     val args = new java.util.ArrayList[Arguments]()
-    args.addAll(args_provider(resource("test-suite/tests/draft2020-12/optional/format/idn-hostname.json"), Dialect._2020_12_FormatAssertion))
-    args.addAll(args_provider(resource("test-suite/tests/draft2020-12/optional/format/idn-email.json"), Dialect._2020_12_FormatAssertion))
+    args.addAll(args_provider(resource("test-suite/tests/draft2020-12/optional/format/idn-hostname.json"), Dialect.FormatAssertion))
+    args.addAll(args_provider(resource("test-suite/tests/draft2020-12/optional/format/idn-email.json"), Dialect.FormatAssertion))
 
     args
   }

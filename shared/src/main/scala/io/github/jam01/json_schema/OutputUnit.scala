@@ -13,7 +13,7 @@ import scala.collection.mutable
  * @param insLoc      location of the JSON value evaluated within the instance
  * @param error       produced by a failed validation
  * @param annotation  produced by a successful validation
- * @param details     subschema(s) validation details
+ * @param details     subschema(s) validation results
  */
 sealed class OutputUnit(val valid: Boolean,
                         val kwLoc: JsonPointer,
@@ -23,14 +23,21 @@ sealed class OutputUnit(val valid: Boolean,
                         val annotation: Value | Null = null,
                         val details: Seq[OutputUnit] = Nil) {
 
+  /**
+   * Whether the OutputUnit has annotations.
+   */
   val hasAnnotations: Boolean = annotation != null ||
     (details.nonEmpty && details.exists(u => u.hasAnnotations))
 
+  /**
+   * Whether the OutputUnit is valid for validation purposes.
+   * @see [[InfoUnit]]
+   */
   def vvalid: Boolean = valid
 }
 
 /**
- * Special informational OutputUnit that has no direct effect on the overall validation, e.g.: results of the <i>if</>
+ * Special informational OutputUnit that has no direct effect on the overall validation, e.g.: results of the `if`
  * keyword.
  */
 final class InfoUnit(seed: OutputUnit) extends
@@ -40,7 +47,7 @@ final class InfoUnit(seed: OutputUnit) extends
 
 object OutputUnit {
   /**
-   * Transform the given OutputUnit into an informational one.
+   * Informational equivalent to the given OutputUnit.
    *
    * @param unit the unit to transform
    * @return the [[InfoUnit]] equivalent
@@ -49,7 +56,7 @@ object OutputUnit {
 }
 
 /**
- * A writer of OutputUnits
+ * OutputUnit writer.
  */
 object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
   override def transform[T](unit: OutputUnit, f: Visitor[?, T]): T = {
@@ -90,13 +97,34 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
 }
 
 /**
- * JSON Schema validation output format
+ * JSON Schema validation output format.
  */
 abstract class OutputFormat {
+  /**
+   * Compose a schema OutputUnit according to this output format.
+   *
+   * @param path the schema path
+   * @param units the keyword output units
+   * @param insLoc the instance location for which the results apply
+   * @return the resulting OutputUnit
+   */
   def compose(path: JsonPointer, units: Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
     val (valid, invalid) = units.partition(_.vvalid)
     make(invalid.isEmpty, path, null, insLoc, null, invalid, null, valid)
 
+  /**
+   * Create a keyword OutputUnit according to this output format.
+   *
+   * @param isValid whether the unit is valid
+   * @param kwLoc the keyword location
+   * @param absKwLoc the keyword absolute location
+   * @param insLoc the instance location for this unit
+   * @param error the keyword error message
+   * @param errors the keyword error sub output units
+   * @param annotation the keyword annotation
+   * @param verbose the keyword verbose sub output units
+   * @return the resulting OutputUnit
+   */
   def make(isValid: Boolean,
            kwLoc: JsonPointer,
            absKwLoc: Uri | Null = null,
@@ -106,11 +134,35 @@ abstract class OutputFormat {
            annotation: Value | Null = null,
            verbose: Seq[OutputUnit] = Nil): OutputUnit
 
+  /**
+   * Accumulate the given unit in the results, according to this output format.
+   *
+   * @param results accumulated units
+   * @param unit the unit to accumulate
+   * @return the resulting collection
+   */
   def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
     if (!unit.vvalid) results.addOne(unit)
     else results
   }
 
+  /**
+   * Accumulate the unit-to-be in the results, according to this output format.
+   *
+   * This is equivalent to `fmt.accumulate(results, fmt.make(...))` but where the unit may not be constructed if it
+   * would not be added to the results, for example if it is valid and this format would discard it.
+   *
+   * @param results accumulated units
+   * @param isValid whether the unit is valid
+   * @param kwLoc the keyword location
+   * @param absKwLoc the keyword absolute location
+   * @param insLoc the instance location for this unit
+   * @param error the keyword error message
+   * @param errors the keyword error sub output units
+   * @param annotation the keyword annotation
+   * @param verbose the keyword verbose sub output units
+   * @return the resulting collection
+   */
   def accumulate(results: mutable.Growable[OutputUnit],
                  isValid: Boolean,
                  kwLoc: JsonPointer,
@@ -126,6 +178,9 @@ abstract class OutputFormat {
 }
 
 object OutputFormat {
+  /**
+   * An output format that results in a single OutputUnit for the entire instance being validated.
+   */
   val Flag: OutputFormat = new OutputFormat {
     override def compose(path: JsonPointer, units: Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
       OutputUnit(units.forall(_.vvalid), path, null, insLoc)
@@ -139,6 +194,9 @@ object OutputFormat {
       ???
   }
 
+  /**
+   * A hierarchical output format resembling the schema's structure, which retains only errors results and filtered annotations.
+   */
   val Detailed: OutputFormat = new OutputFormat {
     inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
@@ -150,6 +208,9 @@ object OutputFormat {
       else results
   }
 
+  /**
+   * A hierarchical output format resembling the schema's structure, which retains all results and filtered annotations.
+   */
   val Verbose: OutputFormat = new OutputFormat {
     inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, errors ++: verbose)

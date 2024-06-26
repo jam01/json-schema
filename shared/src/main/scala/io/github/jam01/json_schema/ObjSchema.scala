@@ -6,11 +6,20 @@ import scala.collection.Map
 
 // see: https://docs.scala-lang.org/tour/self-types.html
 private[json_schema] trait ObjSchema { this: ObjectSchema =>
+  /**
+   * Optionally retrieves the value of `$id`.
+   *
+   * @return an Option of the string value, or None if the entry does not exist
+   */
   def getId: Option[String] = {
     getString("$id")
   }
 
   private var _loc: Uri = _ // lazy val is overkill
+
+  /**
+   * The resolved Uri of this Schema.
+   */
   def location: Uri = {
     if (_loc != null) return _loc
     _loc = getId.map(id => base.resolve(id))
@@ -21,6 +30,10 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   private var _base: Uri = _ // lazy val is overkill
+
+  /**
+   * The document base Uri of this Schema.
+   */
   def base: Uri = {
     if (_base != null) return _base
     val effbase = parent.map(_.base).getOrElse(docbase)
@@ -28,19 +41,40 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
     _base
   }
 
+  /**
+   * Optionally retrieves the resolved Uri for `$ref`.
+   *
+   * @return an Option of the reference Uri, or None if the entry does not exist.
+   */
   def getRef: Option[Uri] = {
     getString("$ref").map(ref => base.resolve(ref))
   }
 
+  /**
+   * Optionally retrieves the resolved Uri for `$dynamicRef`.
+   *
+   * @return an Option of the reference Uri, or None if the entry does not exist.
+   */
   def getDynRef: Option[Uri] = {
     // see: https://github.com/json-schema-org/json-schema-spec/issues/1140
     getString("$dynamicRef").map(dynref => base.resolve(dynref, true))
   }
 
+  /**
+   * Optionally retrieves the value associated with the given key.
+   *
+   * @param k the key
+   * @return an Option of the value, or None if the entry does not exist
+   */
   def get(k: String): Option[Value] = {
     value.get(k)
   }
 
+  /**
+   * Optionally retrieves the Uri for `$schema`.
+   *
+   * @return an Option of the meta-schema Uri, or None if the entry does not exist.
+   */
   def getMetaSchema: Option[Uri] = getString("$schema").map(s => Uri(s))
 
   def getVocabularies: Map[String, Boolean] =
@@ -49,7 +83,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
       case Some(value) => value.obj.map((k, v) => (k, v.bool))
 
   /**
-   * Optionally returns the boolean associated with the given key
+   * Optionally retrieves the boolean associated with the given key.
    *
    * @throws IllegalStateException if the value is not a boolean
    * @param k the entry key
@@ -63,7 +97,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the int associated with the given key
+   * Optionally retrieves the int associated with the given key.
    *
    * @throws IllegalStateException if the value is not a int
    * @param k the entry key
@@ -79,7 +113,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the number associated with the given key
+   * Optionally retrieves the number associated with the given key.
    *
    * @throws IllegalStateException if the value is not a double
    * @param k the entry key
@@ -93,7 +127,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the string associated with the given key
+   * Optionally retrieves the string associated with the given key.
    *
    * @throws IllegalStateException if the value is not a String
    * @param k the entry key
@@ -107,7 +141,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the JSON object associated with the given key
+   * Optionally retrieves the JSON object associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON object
    * @param k the entry key
@@ -121,7 +155,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the JSON array associated with the given key
+   * Optionally retrieves the JSON array associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON array
    * @param k the entry key
@@ -135,7 +169,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Returns the JSON array associated with the given key
+   * Returns the JSON array associated with the given key.
    *
    * @throws IllegalStateException if the value is not an Array
    * @param k the entry key
@@ -150,7 +184,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Returns the JSON array of strings associated with the given key
+   * Returns the JSON array of strings associated with the given key.
    *
    * @throws IllegalStateException if the value is not an Array
    * @param k the entry key
@@ -166,7 +200,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
 
   /**
    * Returns the JSON value associated with the given key as an array of strings, wrapping a single string value if 
-   * found
+   * found.
    *
    * @throws IllegalStateException if the value is not an Array of strings or a String
    * @param k the entry key
@@ -182,7 +216,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the Schema associated with the given key
+   * Optionally retrieves the Schema associated with the given key.
    *
    * @throws IllegalStateException if the value is not a Schema
    * @param k the entry key
@@ -196,7 +230,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the JSON array of Schemas associated with the given key
+   * Optionally retrieves the JSON array of Schemas associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON array of Schemas
    * @param k the entry key
@@ -207,7 +241,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally returns the JSON object of Schemas associated with the given key
+   * Optionally retrieves the JSON object of Schemas associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON object of Schemas
    * @param k the entry key

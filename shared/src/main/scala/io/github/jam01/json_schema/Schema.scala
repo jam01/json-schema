@@ -7,7 +7,7 @@ import scala.collection.mutable.ListBuffer
 import scala.util.hashing.MurmurHash3
 
 /**
- * An ADT representing JSON Schema values
+ * An ADT representing JSON Schema values.
  *
  * @see <a href="https://github.com/com-lihaoyi/upickle/blob/3.3.1/ujson/src/ujson/Value.scala">ujson.Value</a>
  */
@@ -113,7 +113,7 @@ object Arr {
   def apply(): Arr = new Arr(Nil)
 }
 
-// TODO: make part of ADT
+// TODO: represent in ADT
 case class Num(value: Long | Double) extends Value
 
 object Num {
@@ -142,6 +142,9 @@ case object Null extends Value {
   def value: Null = null
 }
 
+/**
+ * A JSON Schema.
+ */
 sealed trait Schema extends Value {
   def schBy(subschLocation: JsonPointer): Schema = {
     if (JsonPointer.Root == subschLocation) return this
@@ -157,6 +160,9 @@ sealed trait Schema extends Value {
   }
 }
 
+/**
+ * A JSON Boolean Schema
+ */
 sealed abstract class BooleanSchema extends Schema {
   def value: Boolean
 
@@ -171,10 +177,16 @@ object BooleanSchema {
   def unapply(bool: BooleanSchema): Some[Boolean] = Some(bool.value)
 }
 
+/**
+ * JSON True Schema
+ */
 case object TrueSchema extends BooleanSchema {
   def value = true
 }
 
+/**
+ * JSON False Schema
+ */
 case object FalseSchema extends BooleanSchema {
   def value = false
 }
@@ -185,7 +197,7 @@ case object FalseSchema extends BooleanSchema {
 // https://contributors.scala-lang.org/t/possibility-to-spread-sealed-trait-to-different-files/5304
 
 /**
- * A JSON Schema Object
+ * A JSON Object Schema.
  *
  * @see <a href="https://json-schema.org/draft/2020-12/json-schema-core#section-9.1.1">JSON Schema § Initial Base URI</a>
  *

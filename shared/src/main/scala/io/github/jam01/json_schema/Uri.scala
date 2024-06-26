@@ -5,7 +5,9 @@ import io.github.jam01.json_schema.Uri.{conformUri, resolve}
 import java.net.URI
 import java.util.UUID
 
-
+/**
+ * A JSON Schema URI.
+ */
 final class Uri private(val uri: URI, val isDyn: Boolean, private val str: String) {
   // perf: consider tracking fragment
   private def this(uri: URI, isDyn: Boolean) = {
@@ -27,16 +29,15 @@ final class Uri private(val uri: URI, val isDyn: Boolean, private val str: Strin
    * Returns the decoded fragment component of this Uri.
    *
    * @see [[java.net.URI.getFragment]]
-   *
    * @return the decoded fragment component of this URI
    */
-  def getFragment: String | Null = uri.getFragment
+  def fragment: String | Null = uri.getFragment
 
   /**
    * Appends the given fragment to the existing fragment in this Uri, if any. Otherwise sets the given fragment.
    *
    * @param frag the fragment to append or set
-   * @return the resulting new Uri
+   * @return the resulting Uri
    */
   def appendedFragment(frag: String): Uri = {
     val rfrag = URI(null, null, null, frag).getRawFragment
@@ -48,7 +49,7 @@ final class Uri private(val uri: URI, val isDyn: Boolean, private val str: Strin
    * Sets the given fragment to this Uri, discarding any existing fragment.
    *
    * @param frag the fragment to set
-   * @return the resulting new Uri
+   * @return the resulting Uri
    */
   def withFragment(frag: String, resIsDyn: Boolean = isDyn): Uri = {
     val rfrag = URI(null, null, null, frag).getRawFragment
@@ -59,8 +60,7 @@ final class Uri private(val uri: URI, val isDyn: Boolean, private val str: Strin
 
   /**
    * Removes this Uri's fragment, if any.
-   *
-   * @return the resulting fragment-less new Uri
+   * @return the resulting fragment-less Uri
    */
   def withoutFragment: Uri = {
     if (uri.getRawFragment == null) this
@@ -119,6 +119,9 @@ object Uri {
     else base.resolve(refURI)
   }
 
+  /**
+   * A random Uri.
+   */
   def random: Uri = {
     Uri("urn:uuid:" + UUID.randomUUID().toString)
   }

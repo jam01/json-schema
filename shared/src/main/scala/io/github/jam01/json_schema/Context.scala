@@ -114,6 +114,7 @@ trait Context {
    */
   def notifyInvalid(invalid: Seq[OutputUnit]): Unit
 
+  // inspired by camel-4.6.0/Exchange#getExchangeExtension
   def ext: ContextExtension
 }
 
@@ -136,7 +137,6 @@ trait ContextExtension {
    * @param result of the validation
    */
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit
-
 }
 
 final class DefaultContext(private val registry: Registry,
@@ -157,16 +157,16 @@ final class DefaultContext(private val registry: Registry,
   override def instanceLoc: JsonPointer = _pointer
 
   override def getSch(schemaUri: Uri): Option[Schema] = {
-    val frag = schemaUri.getFragment // using decoded fragment as map keys would be unencoded
+    val frag = schemaUri.fragment // using decoded fragment as map keys would be unencoded
     if (frag == null) return registry.get(schemaUri)
 
     if (frag.startsWith("/")) registry.get(schemaUri.withoutFragment)
-      .map(sch => sch.schBy(JsonPointer(schemaUri.getFragment)))
+      .map(sch => sch.schBy(JsonPointer(schemaUri.fragment)))
     else registry.get(schemaUri).orElse(registry.get(schemaUri.asDyn))
   }
 
   override def getDynSch(schemaUri: Uri, origin: Vocab[?]): Option[Schema] = {
-    val frag = schemaUri.getFragment
+    val frag = schemaUri.fragment
     if (frag == null) return None // expecting a fragment
     if (schemaUri.toString.contains("#/")) return getSch(schemaUri.asNonDyn) // anchor expected, try w/o dynamic
 
@@ -204,7 +204,7 @@ final class DefaultContext(private val registry: Registry,
       val it0 = schdeps.iterator
       while (it0.hasNext) {
         val (depKwLoc, predicate) = it0.next()
-        if (schLoc.isRelativeTo(location) && predicate(location))
+        if (schLoc.isAncestorOf(location) && predicate(location))
           dependencies.getOrElseUpdate(depKwLoc, new mutable.ArrayBuffer(1)).addOne((location, value)) // perf: chances of a dependent kw requiring >1 annotations
       }
     }
@@ -212,7 +212,7 @@ final class DefaultContext(private val registry: Registry,
 
   override def notifyInvalid(invalid: Seq[OutputUnit]): Unit = {
     dependencies.values.foreach(deps =>
-      deps.filterInPlace((kwLoc, _) => !invalid.exists(inv => inv.kwLoc.isRelativeTo(kwLoc))))
+      deps.filterInPlace((kwLoc, _) => !invalid.exists(inv => inv.kwLoc.isAncestorOf(kwLoc))))
   }
 
   override def ext: ContextExtension = this

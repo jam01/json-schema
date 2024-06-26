@@ -2,6 +2,9 @@ package io.github.jam01.json_schema
 
 import upickle.core.Visitor
 
+/**
+ * JSON Schema writer.
+ */
 object SchemaW extends upickle.core.Transformer[Value] {
   override def transform[T](o: Value, v: Visitor[?, T]): T = { // see ujson.Value#transform
     o match

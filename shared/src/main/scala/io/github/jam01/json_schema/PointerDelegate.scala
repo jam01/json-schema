@@ -6,11 +6,11 @@ import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 /**
  * A delegating visitor that keeps track of the current node visited as a JSON Pointer.
  *
- * For arrays, the child location will be set before fwding the subVisitor invocation. For objects, the entry location
- * will be set before fwding visitKey invocation.
+ * For arrays, the child location will be set before fwding the `subVisitor` invocation. For objects, the entry location
+ * will be set before fwding `visitKey` invocation.
  *
  * @param delegate the visitor to fwd nodes to
- * @param tracker the [[Tracker]] to receive reference tokens changes
+ * @param tracker the [[Tracker]] to receive reference tokens updates
  */
 class PointerDelegate[T, V](tracker: Tracker, delegate: Visitor[T, V]) extends Delegate[T, V](delegate) {
   override def visitArray(length: Int, index: Int): ArrVisitor[T, V] = new ArrVisitor[T, V] {
