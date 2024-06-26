@@ -9,8 +9,8 @@ import scala.collection.mutable
  */
 final class SchemaR private(docbase: Uri,
               reg: Registry,
-              ids: mutable.Buffer[(String, ObjectSchema)] = mutable.ArrayBuffer.empty,
-              anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = mutable.ArrayBuffer.empty,
+              ids: mutable.Buffer[(String, ObjectSchema)] = new mutable.ListBuffer,
+              anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = new mutable.ListBuffer,
               parent: Option[ObjectSchema] = None,
               private var prel: Option[String] = None) extends SimpleVisitor[Value, Schema] {
 

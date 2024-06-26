@@ -173,7 +173,7 @@ final class DefaultContext(private val registry: Registry,
     val sch0 = getSch(schemaUri)
     if (sch0.isEmpty) return getSch(schemaUri.asNonDyn) // try w/o dynamic
 
-    val dynScope = mutable.ArrayBuffer(origin.schema)
+    val dynScope = mutable.ListBuffer(origin.schema)
     var head = origin
     while (head.dynParent.nonEmpty) {
       dynScope.addOne(head.dynParent.get.schema)
@@ -190,7 +190,7 @@ final class DefaultContext(private val registry: Registry,
   private val dependencies: mutable.Map[JsonPointer, mutable.ArrayBuffer[(JsonPointer, Value)]] = mutable.Map.empty // kwLoc -> [(annKwLoc, value)]
 
   override def registerDependant(schLocation: JsonPointer, kwLocation: JsonPointer, predicate: JsonPointer => Boolean): Unit =
-    dependents.getOrElseUpdate(schLocation, new mutable.ListBuffer()).addOne((kwLocation, predicate))
+    dependents.getOrElseUpdate(schLocation, new mutable.ListBuffer).addOne((kwLocation, predicate))
 
   override def getDependenciesFor(kwLocation: JsonPointer): Seq[(JsonPointer, Value)] =
     dependencies.getOrElse(kwLocation, Nil).toSeq
@@ -205,7 +205,7 @@ final class DefaultContext(private val registry: Registry,
       while (it0.hasNext) {
         val (depKwLoc, predicate) = it0.next()
         if (schLoc.isAncestorOf(location) && predicate(location))
-          dependencies.getOrElseUpdate(depKwLoc, new mutable.ArrayBuffer(1)).addOne((location, value)) // perf: chances of a dependent kw requiring >1 annotations
+          dependencies.getOrElseUpdate(depKwLoc, new mutable.ArrayBuffer(8)).addOne((location, value)) // perf: chances of a dependent kw seeing >8 annotations
       }
     }
   }

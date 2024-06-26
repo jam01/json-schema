@@ -40,11 +40,11 @@ final class Unevaluated private(schema: ObjectSchema,
       override def subVisitor: Visitor[?, ?] = itemsVis.get
       override def visitValue(unit: OutputUnit, index: Int): Unit = buff.addOne(unit)
       override def visitEnd(index: Int): Seq[OutputUnit] = {
-        val kwLoc = path.appended(UnevaluatedItems)
-        val evalItems: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.Items)
-        val evalPrefixItems: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.PrefixItems)
-        val evalContains: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), Applicator.Contains)
-        val evalUneval: Seq[Value] = getItemsAnnotations(ctx.getDependenciesFor(kwLoc), UnevaluatedItems)
+        val deps = ctx.getDependenciesFor(path.appended(UnevaluatedItems))
+        val evalItems: Seq[Value] = getItemsAnnotations(deps, Applicator.Items)
+        val evalPrefixItems: Seq[Value] = getItemsAnnotations(deps, Applicator.PrefixItems)
+        val evalContains: Seq[Value] = getItemsAnnotations(deps, Applicator.Contains)
+        val evalUneval: Seq[Value] = getItemsAnnotations(deps, UnevaluatedItems)
 
         val (applied, invalid) = buff.result().partition(unit => ! {
           evalItems.contains(True) || evalUneval.contains(True)
@@ -59,8 +59,7 @@ final class Unevaluated private(schema: ObjectSchema,
   }
 
   private def getItemsAnnotations(annotations: Seq[(JsonPointer, Value)], annotName: String): Seq[Value] =
-    annotations.withFilter((kwLoc, _) => annotName == kwLoc.refTokens.last)
-      .map((_, value) => value)
+    annotations.withFilter((kwLoc, _) => annotName == kwLoc.refTokens.last).map((_, value) => value)
   private def getPropsAnnotations(annotations: Seq[(JsonPointer, Value)]): Seq[String] =
     annotations.flatMap((_, value) => value.arr.map(v => v.str))
 

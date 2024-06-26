@@ -5,7 +5,7 @@ import io.github.jam01.json_schema.vocab.Applicator.*
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ListBuffer
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
 
@@ -181,10 +181,8 @@ final class Applicator private(schema: ObjectSchema,
       }
 
       override def visitEnd(index: Int): OutputUnit = {
-        var res = matched.nonEmpty
-        if (minContains.nonEmpty) {
-          if (minContains.get == 0) res = true
-        }
+        val res = if (minContains.nonEmpty && minContains.get == 0) true
+        else matched.nonEmpty
 
         mkUnit(res, Contains, "Array does not contain given elements", Nil, Arr(matched.result()), Nil)
       }
@@ -283,9 +281,9 @@ final class Applicator private(schema: ObjectSchema,
   }
 
   override def visitObject(length: Int, index: Int): ObjVisitor[Any, Seq[OutputUnit]] = {
-    val propsVisited = mutable.ArrayBuffer[String]() // properties visited
+    val propsVisited = new mutable.ListBuffer[String] // properties visited
 
-    val insVisitors: mutable.ArrayBuffer[ObjVisitor[?, OutputUnit]] = new mutable.ArrayBuffer(6)
+    val insVisitors: mutable.ListBuffer[ObjVisitor[?, OutputUnit]] = new mutable.ListBuffer
     notVis.foreach(vis => insVisitors.addOne(new MapObjContext(vis.visitObject(length, true, index), unit => not(unit))))
     allOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
     anyOfVis.foreach(vis => insVisitors.addOne(vis.visitObject(length, true, index)))
@@ -360,8 +358,7 @@ final class Applicator private(schema: ObjectSchema,
       override def visitKeyValue(v: Any): Unit = insVisitor.visitKeyValue(v)
 
       override def subVisitor: Visitor[?, ?] = {
-        val childVisitors: mutable.ArrayBuffer[ObjVisitor[Nothing, OutputUnit]] = mutable.ArrayBuffer.from(insVisitors)
-        childVisitors.sizeHint(childVisitors.size + 6)
+        val childVisitors: mutable.ListBuffer[ObjVisitor[Nothing, OutputUnit]] = mutable.ListBuffer.from(insVisitors)
 
         var isAddl = true // if not in properties or matched patterns
         if (propsViss.nonEmpty && propsViss.get.contains(currentKey)) { isAddl = false; childVisitors.addOne(propsVisitor.get) }

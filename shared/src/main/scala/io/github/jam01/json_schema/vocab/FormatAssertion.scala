@@ -107,7 +107,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     if (s.isEmpty) return false
 
     var c = s.charAt(0)
-    if (c == '-' && c == '+') return false
+    if (c == '-' || c == '+') return false
 
     var i = 0; var hasInt = false
     if (c == '0') { i += 1; hasInt = true }
@@ -170,7 +170,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     else {
       val date = str.substring(0, t); val time = str.substring(t)
       (date.length == 1 || { Period.parse(date); true }) &&
-        { Duration.parse("P" + str.substring(t)); true }
+        { Duration.parse("P" + time); true }
     }
   } catch
     case _: DateTimeParseException => false

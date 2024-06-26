@@ -11,7 +11,7 @@ package object json_schema {
    *
    * @param schema the schema to apply
    * @param config validation configuration
-   * @param schemaRegistry registry to lookup referenced schemas
+   * @param registry registry to lookup referenced schemas
    * @return the schema validator visitor
    */
   def validator(schema: Schema,
