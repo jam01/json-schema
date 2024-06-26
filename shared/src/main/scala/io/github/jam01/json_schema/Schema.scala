@@ -161,7 +161,7 @@ sealed trait Schema extends Value {
 }
 
 /**
- * A JSON Boolean Schema
+ * A JSON Boolean Schema.
  */
 sealed abstract class BooleanSchema extends Schema {
   def value: Boolean
@@ -178,14 +178,14 @@ object BooleanSchema {
 }
 
 /**
- * JSON True Schema
+ * JSON True Schema.
  */
 case object TrueSchema extends BooleanSchema {
   def value = true
 }
 
 /**
- * JSON False Schema
+ * JSON False Schema.
  */
 case object FalseSchema extends BooleanSchema {
   def value = false

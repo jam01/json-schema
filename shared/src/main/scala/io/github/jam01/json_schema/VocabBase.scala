@@ -5,9 +5,9 @@ import io.github.jam01.json_schema.vocab.Core
 import scala.collection.mutable
 
 /**
- * A base class for implementing vocabulary validators using a given Schema.
+ * A base class for implementing vocabulary validators using a given [[ObjectSchema]].
  *
- * Implementations can validate whole vocabularies or single keywords only, as it returns a sequence of OutputUnits.
+ * Implementations can validate whole vocabularies or single keywords only, as it returns a collection of [[OutputUnit]].
  *
  * @param schema    schema to apply
  * @param ctx       validation context
@@ -22,9 +22,9 @@ abstract class VocabBase(schema: ObjectSchema,
   /**
    * Create a keyword [[OutputUnit]] with the given parameters.
    *
-   * This method should be used as it will take care of implementation details such as delegating unit creation to the
-   * effective output format, potentially avoiding object instantiation (see [[OutputFormat]]). More importantly this
-   * also offer the given annotation to the internal annotation dependency tracking.
+   * This method should be used by implementations as it will take care of details such as delegating unit creation to
+   * the effective [[OutputFormat]], potentially avoiding object instantiation. More importantly this also offers the
+   * given annotation to the internal annotation dependency tracking mechanism.
    *
    * @param isValid whether the unit is valid
    * @param kw the generating keyword
@@ -61,9 +61,9 @@ abstract class VocabBase(schema: ObjectSchema,
   /**
    * Accumulate the unit-to-be in the results, according to the effective output format.
    *
-   * This method should be used as it will take care of implementation details such as delegating unit creation to the
-   * effective output format, potentially avoiding object instantiation (see [[OutputFormat]]). More importantly this
-   * also offer the given annotation to the internal annotation dependency tracking.
+   * This method should be used by implementations as it will take care of details such as delegating unit creation to
+   * the effective [[OutputFormat]], potentially avoiding object instantiation. More importantly this also offers the
+   * given annotation to the internal annotation dependency tracking mechanism.
    *
    * @param buff the accumulated results
    * @param isValid whether the unit is valid
@@ -92,7 +92,7 @@ abstract class VocabBase(schema: ObjectSchema,
    * Accumulate the unit-to-be in the results, potentially throwing if the result is not valid and `config.ffast` is
    * enabled.
    *
-   * Should only be called form visitArr/Obj constructors or methods.
+   * Should only be called form `visitArr/Obj` constructors or methods.
    *
    * @throws InvalidVectorException signals to short-circuit validation
    * @param buff the accumulated results
@@ -118,7 +118,7 @@ abstract class VocabBase(schema: ObjectSchema,
    * Accumulate the given unit in the results, potentially throwing if the result is not valid and `config.ffast` is
    * enabled.
    *
-   * Should only be called form visitArr/Obj constructors or methods.
+   * Should only be called form `visitArr/Obj` constructors or methods.
    *
    * @throws InvalidVectorException signals to short-circuit validation
    * @param buff the accumulated results
@@ -133,7 +133,7 @@ abstract class VocabBase(schema: ObjectSchema,
    * If not valid and `config.ffast` is enabled, accumulate the unit-to-be and throw.
    * 
    * Should only be called  
-   * be called when a vector's child is invalid, and from visitKey/Value methods only.
+   * be called when a vector's child is invalid, and from `visitKey/Value` methods only.
    * 
    * @throws InvalidVectorException signals to short-circuit validation
    * @param buff the accumulated results
@@ -158,7 +158,7 @@ abstract class VocabBase(schema: ObjectSchema,
   }
 
   /**
-   * Compose a keyword output unit with sub-schema results, according to the effective output format.
+   * Compose a keyword output unit with sub-schema results, according to the effective [[OutputFormat]].
    *
    * @param kw the generating keyword
    * @param results the keyword sub-schema results

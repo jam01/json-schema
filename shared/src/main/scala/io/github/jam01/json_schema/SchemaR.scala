@@ -5,7 +5,7 @@ import upickle.core.{ArrVisitor, LinkedHashMap, ObjVisitor, SimpleVisitor, Visit
 import scala.collection.mutable
 
 /**
- * JSON Schema reader
+ * JSON Schema reader.
  */
 final class SchemaR private(docbase: Uri,
               reg: Registry,

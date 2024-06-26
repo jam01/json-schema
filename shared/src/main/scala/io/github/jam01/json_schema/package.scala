@@ -5,7 +5,7 @@ import upickle.core.Visitor
 package object json_schema {
 
   /**
-   * Creates a validator visitor for the given schema and configuration..
+   * Creates a validator visitor for the given schema and configuration.
    * 
    * Visiting this validator results in the validation results for the visited structure.
    *

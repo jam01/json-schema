@@ -5,7 +5,7 @@ import upickle.core.{Transformer, Visitor}
 import scala.collection.mutable
 
 /**
- * JSON Schema validation output unit
+ * JSON Schema validation output unit.
  *
  * @param valid       indicates overall validation success or failure
  * @param kwLoc       relative location of the validating keyword that follows the validation path

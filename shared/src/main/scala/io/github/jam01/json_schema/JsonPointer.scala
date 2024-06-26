@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
  */
 final case class JsonPointer private(refTokens: Seq[String]) {
   /**
-   * A copy of this JsonPointer with the given tokens appended
+   * Appends the given reference tokens.
    * @param refToks tokens to append
    * @return the new JsonPointer
    */

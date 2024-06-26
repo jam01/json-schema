@@ -49,7 +49,7 @@ final class Unevaluated private(schema: ObjectSchema,
         val (applied, invalid) = buff.result().partition(unit => ! {
           evalItems.contains(True) || evalUneval.contains(True)
             || evalPrefixItems.exists(n => gteq(n.num, unit.insLoc.refTokens.last.toLong))
-            || evalContains.exists(is => is.arr.contains(Num(unit.insLoc.refTokens.last.toInt)))
+            || evalContains.exists(is => is.arr.exists(e => e.value == unit.insLoc.refTokens.last.toInt))
         })
 
         ctx.notifyInvalid(invalid)

@@ -18,7 +18,7 @@ case class Config(dialect: Dialect = Dialect.Basic,
 
 object Config {
   /**
-   * The default configuration
+   * The default configuration.
    */
   val Default: Config = Config()
 }

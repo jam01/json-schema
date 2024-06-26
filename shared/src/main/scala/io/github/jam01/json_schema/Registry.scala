@@ -7,31 +7,31 @@ import scala.collection.mutable
  */
 trait Registry {
   /**
-   * Whether this registry contains the identified schema.
+   * Whether this registry can provide the identified schema.
    * 
-   * @param key the schema Uri
+   * @param schemaUri the schema Uri
    * @return true if it contains the schema, false otherwise
    */
-  def contains(key: Uri): Boolean
+  def contains(schemaUri: Uri): Boolean
 
   /**
    * Optionally retrieve the identified schema.
-   * 
-   * @param key the schema Uri
-   * @return an Option of the schema, or None if not available.
+   *
+   * @param schemaUri the schema Uri
+   * @return an Option of the schema, or None if not retrievable.
    */
-  def get(key: Uri): Option[Schema]
+  def get(schemaUri: Uri): Option[Schema]
 
   /**
-   * Retrieve the identified schema, throwing if not available.
+   * Optionally retrieve the identified schema, throwing if not available.
    * 
-   * @param key the schema Uri
+   * @param schemaUri the schema Uri
    * @throws NoSuchElementException if the schema is not available
    * @return the identified schema
    */
   @throws[NoSuchElementException]
-  def apply(key: Uri): Schema = get(key) match {
-    case None => throw new NoSuchElementException("Schema not found: " + key)
+  def apply(schemaUri: Uri): Schema = get(schemaUri) match {
+    case None => throw new NoSuchElementException("Schema not found: " + schemaUri)
     case Some(value) => value
   }
 

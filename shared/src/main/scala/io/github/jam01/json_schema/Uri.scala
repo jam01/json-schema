@@ -15,7 +15,7 @@ final class Uri private(val uri: URI, val isDyn: Boolean, private val str: Strin
   }
 
   /**
-   * Resolves the given Uri against this Uri.
+   * Resolves the given String reference against this Uri.
    *
    * @param ref the reference to be resolved
    * @param dyn whether the resulting Uri should be a dynamic reference
@@ -26,7 +26,7 @@ final class Uri private(val uri: URI, val isDyn: Boolean, private val str: Strin
   }
 
   /**
-   * Returns the decoded fragment component of this Uri.
+   * The decoded fragment component of this Uri.
    *
    * @see [[java.net.URI.getFragment]]
    * @return the decoded fragment component of this URI

@@ -7,20 +7,20 @@ import scala.collection.mutable
  */
 trait Context {
   /**
-   * @return the effective validation configuration
+   * The effective validation configuration.
    */
   def config: Config
 
   /**
-   * @return the current location being visited within instance under validation
+   * The current location being visited within the instance under validation.
    */
   def instanceLoc: JsonPointer
 
   /**
-   * Retrieve the referenced schema.
+   * Optionally retrieve the identified schema.
    *
-   * @param schemaUri identifier of the schema
-   * @return optionally the schema referenced
+   * @param schemaUri the schema Uri
+   * @return an Option of the schema, or None if not retrievable.
    */
   def getSch(schemaUri: Uri): Option[Schema]
 
@@ -65,21 +65,21 @@ trait Context {
   /**
    * Register an annotation dependant keyword located within the given schema location.
    *
-   * This method will register that some keyword within the schema at the given location is dependent on annotation
-   * [[OutputUnit]]s to be identified by the provided predicate function.
+   * This method will register that some keyword within the schema at the given location is dependent on annotations to 
+   * be identified by the provided predicate function.
    *
-   * For example, an <i>Unevaluated</i> vocabulary implementation would register a dependant providing the schema
-   * location where such keywords are found and a predicate that matches annotations of keywords <i>items</i>,
-   * <i>properties</i>, <i>paternProperties</i>, etc.
+   * For example, an `Unevaluated` vocabulary implementation would register a dependant providing the schema location
+   * where such keywords are found and a predicate that matches annotations of keywords `items`, `properties`,
+   * `paternProperties`, etc.
    *
-   * The predicate is guaranteed to be applied to [[OutputUnit]]s that have an annotation and that are relative to the
-   * given schema location, i.e.: immediately within that schema or deeper in its keyword subschemas.
+   * The predicate is guaranteed to be applied to annotations that are relative to the given schema location,
+   * i.e.: immediately within that schema or deeper in its keyword sub-schemas.
    *
    * @see <a href="https://github.com/orgs/json-schema-org/discussions/491">Annotations as inter-keyword communication</a>
    * @see <a href="https://github.com/orgs/json-schema-org/discussions/236">Annotation collection</a>
    *
    * @param schLocation location of the schema where the dependant keyword is found
-   * @param predicate function to filter candidate annotation [[OutputUnit]]s
+   * @param predicate function to filter candidate annotation by annotation keyword location
    */
   def registerDependant(schLocation: JsonPointer, kwLocation: JsonPointer, predicate: JsonPointer => Boolean): Unit 
 
@@ -87,12 +87,12 @@ trait Context {
    * Retrieve annotations that satisfy the dependant at the given keyword location.
    *
    * @param kwLocation location of the keyword dependant
-   * @return the collection of annotation [[OutputUnit]]s that satisfy the dependant
+   * @return the collection of annotation `(keyword location, Value)` tuples that satisfy the dependant
    */
   def getDependenciesFor(kwLocation: JsonPointer): Seq[(JsonPointer, Value)]
 
   /**
-   * Offer a computed annotation to be used by any registered dependant based on location.
+   * Offer a computed annotation to be used by any registered dependant.
    * 
    * @param location the location of the candidate annotation
    * @param value the annotation value
@@ -105,19 +105,28 @@ trait Context {
    * Validators must call this method with the [[OutputUnit]]s that were computed contingently for unpredictable
    * validation paths that were then found to not have been taken.
    *
-   * For example, an <i>Applicator</i> vocabulary implementation might always compute <i>if</i>,<i>then</i> and
-   * <i>else</i> as the instance is being visited, in order to assert which results should be included in the result or
-   * discarded. But if the validation for their subschemas called [[onVocabResults]], then the discarded branch result
-   * must be invalidated.
+   * For example, an `Applicator` vocabulary implementation might always compute `if`,`then` and `else` as the instance
+   * is being visited, in order to later assert which results should be included in the result or discarded. However,
+   * in processing those sub-schemas some annotations may have been offered from results which are to be discarded, thus
+   * the need to invalidate those results.
    *
-   * @param invalid units
+   * @param invalid the invalid units
    */
   def notifyInvalid(invalid: Seq[OutputUnit]): Unit
 
   // inspired by camel-4.6.0/Exchange#getExchangeExtension
+  /**
+   * The [[ContextExtension]] API. This interface is intended for internal use within json_schema and end-users should 
+   * avoid using it.
+   *
+   * @return the context extension
+   */
   def ext: ContextExtension
 }
 
+/**
+ * Context extensions API not intended for end-users, but used internally by json_schema.
+ */
 trait ContextExtension {
   /**
    * Publish output units produced for the given schema location.
@@ -139,6 +148,12 @@ trait ContextExtension {
   def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit
 }
 
+/**
+ * The default [[Context]] implementation.
+ * 
+ * @param registry the schema [[Registry]]
+ * @param config the validation [[Config]]
+ */
 final class DefaultContext(private val registry: Registry,
                            val config: Config = Config.Default) extends Context with Tracker with ContextExtension {
 

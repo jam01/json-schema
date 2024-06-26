@@ -51,7 +51,7 @@ object Dialect {
 
   /**
    * Attempt to create a dialect for the given schema.
-   * <br/><br/>
+   *
    * This function will attempt to find or create a dialect based on the meta-schema identifier of the given schema. It
    * will lookup the referenced dialect in the given dialects, if not found it will try to create one based on the
    * referenced vocabularies in the meta-schema and the available vocabularies of the given dialects.
@@ -94,7 +94,7 @@ object Dialect {
 }
 
 /**
- * A JSON Schema validator implementing a single vocabulary
+ * A JSON Schema validator implementing a single vocabulary.
  *
  * A schema vocabulary, or simply a vocabulary, is a set of keywords, their syntax, and their semantics.
  *
@@ -113,7 +113,7 @@ trait Vocab[-T](val schema: ObjectSchema,
  */
 trait VocabFactory[B <: Vocab[?]] {
   /**
-   * @return the URI identifying this vocabulary
+   * The URI identifying this vocabulary
    */
   def uri: String
 

@@ -7,7 +7,7 @@ import scala.collection.Map
 // see: https://docs.scala-lang.org/tour/self-types.html
 private[json_schema] trait ObjSchema { this: ObjectSchema =>
   /**
-   * Optionally retrieves the value of `$id`.
+   * Optionally retrieve the value of `$id`.
    *
    * @return an Option of the string value, or None if the entry does not exist
    */
@@ -42,7 +42,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the resolved Uri for `$ref`.
+   * Optionally retrieve the resolved Uri for `$ref`.
    *
    * @return an Option of the reference Uri, or None if the entry does not exist.
    */
@@ -51,7 +51,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the resolved Uri for `$dynamicRef`.
+   * Optionally retrieve the resolved Uri for `$dynamicRef`.
    *
    * @return an Option of the reference Uri, or None if the entry does not exist.
    */
@@ -61,7 +61,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the value associated with the given key.
+   * Optionally retrieve the value associated with the given key.
    *
    * @param k the key
    * @return an Option of the value, or None if the entry does not exist
@@ -71,7 +71,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the Uri for `$schema`.
+   * Optionally retrieve the Uri for `$schema`.
    *
    * @return an Option of the meta-schema Uri, or None if the entry does not exist.
    */
@@ -83,7 +83,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
       case Some(value) => value.obj.map((k, v) => (k, v.bool))
 
   /**
-   * Optionally retrieves the boolean associated with the given key.
+   * Optionally retrieve the boolean associated with the given key.
    *
    * @throws IllegalStateException if the value is not a boolean
    * @param k the entry key
@@ -97,7 +97,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the int associated with the given key.
+   * Optionally retrieve the int associated with the given key.
    *
    * @throws IllegalStateException if the value is not a int
    * @param k the entry key
@@ -113,7 +113,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the number associated with the given key.
+   * Optionally retrieve the number associated with the given key.
    *
    * @throws IllegalStateException if the value is not a double
    * @param k the entry key
@@ -127,7 +127,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the string associated with the given key.
+   * Optionally retrieve the string associated with the given key.
    *
    * @throws IllegalStateException if the value is not a String
    * @param k the entry key
@@ -141,7 +141,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the JSON object associated with the given key.
+   * Optionally retrieve the JSON object associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON object
    * @param k the entry key
@@ -155,7 +155,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the JSON array associated with the given key.
+   * Optionally retrieve the JSON array associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON array
    * @param k the entry key
@@ -169,7 +169,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Returns the JSON array associated with the given key.
+   * The JSON array associated with the given key.
    *
    * @throws IllegalStateException if the value is not an Array
    * @param k the entry key
@@ -184,7 +184,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Returns the JSON array of strings associated with the given key.
+   * The JSON array of strings associated with the given key.
    *
    * @throws IllegalStateException if the value is not an Array
    * @param k the entry key
@@ -199,7 +199,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Returns the JSON value associated with the given key as an array of strings, wrapping a single string value if 
+   * The JSON value associated with the given key as an array of strings, wrapping a single string value if 
    * found.
    *
    * @throws IllegalStateException if the value is not an Array of strings or a String
@@ -216,7 +216,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the Schema associated with the given key.
+   * Optionally retrieve the Schema associated with the given key.
    *
    * @throws IllegalStateException if the value is not a Schema
    * @param k the entry key
@@ -230,7 +230,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the JSON array of Schemas associated with the given key.
+   * Optionally retrieve the JSON array of Schemas associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON array of Schemas
    * @param k the entry key
@@ -241,7 +241,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * Optionally retrieves the JSON object of Schemas associated with the given key.
+   * Optionally retrieve the JSON object of Schemas associated with the given key.
    *
    * @throws IllegalStateException if the value is not a JSON object of Schemas
    * @param k the entry key
