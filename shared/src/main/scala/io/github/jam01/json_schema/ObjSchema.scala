@@ -199,7 +199,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   /**
-   * The JSON value associated with the given key as an array of strings, wrapping a single string value if 
+   * The JSON value associated with the given key as an array of strings, wrapping a single string value if
    * found.
    *
    * @throws IllegalStateException if the value is not an Array of strings or a String

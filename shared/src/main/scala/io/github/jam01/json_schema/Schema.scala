@@ -146,12 +146,20 @@ case object Null extends Value {
  * A JSON Schema.
  */
 sealed trait Schema extends Value {
+  /**
+   * Retrieve the sub-schema located at the given [[JsonPointer]].
+   * @throws IllegalArgumentException if a sub-schema is not present at the given location or if the location traverses
+   *                                  a scalar value, or if applying a non-root JsonPointer against a [[BooleanSchema]]
+   * @param subschLocation the sub-schema location
+   * @return the identified Schema
+   */
+  @throws[IllegalArgumentException]
   def schBy(subschLocation: JsonPointer): Schema = {
     if (JsonPointer.Root == subschLocation) return this
     schBy0(subschLocation)
   }
 
-  def schBy0(ptr: JsonPointer): Schema
+  protected def schBy0(ptr: JsonPointer): Schema
 
   def validate[I](reader: upickle.core.Transformer[I], readable: I,
                   config: Config = Config.Default,
@@ -167,7 +175,7 @@ sealed abstract class BooleanSchema extends Schema {
   def value: Boolean
 
   override def schBy0(ptr: JsonPointer): Schema = {
-    throw new IllegalStateException("cannot evaluate a JSON pointer against a boolean schema")
+    throw new IllegalArgumentException("Cannot evaluate a JSON Pointer against a boolean schema")
   }
 }
 
