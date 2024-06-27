@@ -1,3 +1,7 @@
+/*
+ * Copyright 2023 Jose Montoya
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package com.github.plokhotnyuk.jsoniter_scala.upickle
 
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec

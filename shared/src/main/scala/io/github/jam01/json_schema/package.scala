@@ -1,3 +1,7 @@
+/*
+ * Copyright 2023 Jose Montoya
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package io.github.jam01
 
 import upickle.core.Visitor
