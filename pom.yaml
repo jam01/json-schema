@@ -23,7 +23,7 @@ build:
           - header: '${project.basedir}/src/build/license-header.txt'
             excludes:
               - '.mvn/**'
-              - '.settings.xml'
+              - 'src/build/**'
               - '**/NOTICE'
               - '**/LICENSE'
               - '**/*pom.*'

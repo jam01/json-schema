@@ -1,4 +1,7 @@
 modelVersion: 4.0.0
+# https://issues.apache.org/jira/browse/MNG-6059
+# https://maven.apache.org/ref/3.9.8/maven-model/apidocs/org/apache/maven/model/
+childProjectUrlInheritAppendPath: false # Model.html#setChildProjectUrlInheritAppendPath
 
 groupId: io.github.jam01
 artifactId: json-schema-parent
@@ -19,7 +22,10 @@ developers:
   - name: Jose Montoya
     email: jam01@pm.me
 
-scm:
+scm: # Scm.html#set...
+  childScmConnectionInheritAppendPath: false
+  childScmDeveloperConnectionInheritAppendPath: false
+  childScmUrlInheritAppendPath: false
   connection: scm:git:https://github.com/jam01/json-schema.git
   developerConnection: scm:git:https://github.com/jam01/json-schema.git
   url: https://github.com/jam01/json-schema.git
@@ -94,6 +100,6 @@ profiles:
             - id: publish
               goals: ['deploy'] # on deploy
           configuration:
-            serverId: sonatype-ossrh
+            serverId: ossrh
             nexusUrl: https://s01.oss.sonatype.org
-            autoReleaseAfterClose: 'false'
+            autoReleaseAfterClose: false

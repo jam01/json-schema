@@ -1,0 +1,78 @@
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      release_ver:
+        description: 'Version to release'
+        required: true
+      next_ver:
+        description: 'Version for next development iteration'
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: update test-suite sub-module
+        run: git submodule update --init --recursive
+      - name: install oracle openjdk
+        uses: oracle-actions/setup-java@v1
+        with:
+          website: jdk.java.net
+          release: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - uses: mikefarah/yq@v4
+      - name: set release version
+        shell: bash
+        run: |
+          src/build/yq-assign.sh .version ${{ github.event.inputs.release_ver }} src/build/pom.yaml
+          src/build/yq-assign.sh .scm.tag ${{ github.event.inputs.release_ver }} src/build/pom.yaml
+          src/build/yq-assign.sh .parent.version ${{ github.event.inputs.release_ver }} jvm/pom.yaml
+          src/build/yq-assign.sh .parent.version ${{ github.event.inputs.release_ver }} js/pom.yaml
+      - name: install gpg key # see: https://gist.github.com/sualeh/ae78dc16123899d7942bc38baba5203c
+        run: |
+          cat <(echo -e "${{ secrets.GPG_KEY }}") | gpg --batch --import
+          gpg --list-secret-keys --keyid-format LONG
+      - name: mvn deploy
+        run: | # alt: mvn verify here and after git ops nexus:deploy -f mod/pom.yaml
+          mvn -V --no-transfer-progress --batch-mode --settings .mvn/settings.xml -Dmaven.install.skip=true -P release deploy
+        env:
+          SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: config git # see: https://github.com/actions/checkout/issues/13#issuecomment-724415212
+        # https://github.com/actions/checkout/tree/v4.1.7?tab=readme-ov-file#push-a-commit-using-the-built-in-token
+        # alt: https://github.com/orgs/community/discussions/40405#discussioncomment-8361451
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: commit release
+        shell: bash
+        run: |
+          git add src/build/pom.yaml jvm/pom.yaml js/pom.yaml
+          git commit -m "[ci skip] prepare release ${{ github.event.inputs.release_ver }}"
+          git push
+      - name: tag release
+        shell: bash
+        run: |
+          git tag ${{ github.event.inputs.release_ver }} -m "[ci] release ${{ github.event.inputs.release_ver }}"
+          git push origin ${{ github.event.inputs.release_ver }}
+      - name: set next dev version
+        shell: bash
+        run: |
+          src/build/yq-assign.sh .version ${{ github.event.inputs.next_ver }} src/build/pom.yaml
+          src/build/yq-assign.sh .scm.tag HEAD src/build/pom.yaml
+          src/build/yq-assign.sh .parent.version ${{ github.event.inputs.next_ver }} jvm/pom.yaml
+          src/build/yq-assign.sh .parent.version ${{ github.event.inputs.next_ver }} js/pom.yaml
+      - name: commit next dev version
+        shell: bash
+        run: |
+          git add src/build/pom.yaml jvm/pom.yaml js/pom.yaml
+          git commit -m "[ci skip] prepare for next development iteration"
+          git push
