@@ -1,6 +1,35 @@
 modelVersion: 4.0.0
-id: io.github.jam01:json-schema-aggregator:1.0
+
+groupId: io.github.jam01
+artifactId: json-schema-aggregator
+version: 0
 packaging: pom
+
 modules:
   - jvm
   - js
+
+properties:
+  maven.deploy.skip: 'true' # need not deploy aggregator
+
+build:
+  plugins:
+    - id: com.mycila:license-maven-plugin:4.5 # update licenses with: mvn license:format -pl '.'
+      executions:
+        - id: license-headers
+          goals: ['check'] # on verify
+      configuration:
+        licenseSets:
+          - header: '${project.basedir}/src/build/license-header.txt'
+            excludes:
+              - '.mvn/**'
+              - '.settings.xml'
+              - '**/NOTICE'
+              - '**/LICENSE'
+              - '**/*pom.*'
+              - README.md
+              - docs/**
+              - theme/**
+              - mkdocs.yml
+              - '**/target/**'
+              - '**/src/test/resources/**'

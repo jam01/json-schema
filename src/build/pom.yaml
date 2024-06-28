@@ -1,0 +1,99 @@
+modelVersion: 4.0.0
+
+groupId: io.github.jam01
+artifactId: json-schema-parent
+version: 0.1.0-SNAPSHOT
+packaging: pom
+
+name: JSON Schema Validator for Scala
+description: |
+  Validation of JSON-like structures with JSON Schemas through upickle's visitor framework
+url: https://github.com/jam01/json-schema
+inceptionYear: 2023
+licenses:
+  - name: Apache License 2.0
+    url: https://spdx.org/licenses/Apache-2.0.html
+    distribution: repo
+
+developers:
+  - name: Jose Montoya
+    email: jam01@pm.me
+
+scm:
+  connection: scm:git:https://github.com/jam01/json-schema.git
+  developerConnection: scm:git:https://github.com/jam01/json-schema.git
+  url: https://github.com/jam01/json-schema.git
+  tag: HEAD
+distributionManagement:
+  snapshotRepository:
+    id: ossrh
+    url: https://s01.oss.sonatype.org/content/repositories/snapshots
+  repository:
+    id: ossrh
+    url: https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
+
+properties:
+  maven.compiler.source: '21'
+  maven.compiler.target: '21'
+  maven.compiler.release: '21'
+  project.build.sourceEncoding: UTF-8
+  #polyglot.dump.pom: .generated-pom.xml # uncomment to check effective pom.xml
+
+build:
+  resources: # use when ready https://github.com/apache/maven/pull/1061
+    - directory: '${project.basedir}/src/main/resources'
+    - directory: '${project.basedir}/../shared/src/main/resources'
+  testResources:
+    - directory: '${project.basedir}/src/test/resources'
+    - directory: '${project.basedir}/../shared/src/test/resources'
+  plugins:
+    - id: org.codehaus.mojo:build-helper-maven-plugin:3.6.0
+      executions:
+        - id: shared-sources
+          goals: ['add-source']
+          configuration:
+            sources: ['${project.basedir}/../shared/src/main/scala']
+        - id: shared-test-sources
+          goals: ['add-test-source']
+          configuration:
+            sources: ['${project.basedir}/../shared/src/test/scala']
+    - id: org.apache.maven.plugins:maven-surefire-plugin:3.2.2
+    - id: org.codehaus.mojo:flatten-maven-plugin:1.6.0
+      configuration:
+        flattenMode: oss
+        updatePomFile: 'true'
+      executions:
+        - id: clean-flattened-pom
+          phase: clean
+          goals: ['clean']
+        - id: flatten-pom # https://issues.apache.org/jira/browse/MNG-6656
+          phase: validate
+          goals: ['flatten']
+
+profiles:
+  - id: release
+    build:
+      plugins:
+        - id: org.apache.maven.plugins:maven-source-plugin:3.3.1
+          executions:
+            - id: attach-sources
+              goals: ['jar-no-fork'] # on package
+        - id: org.apache.maven.plugins:maven-javadoc-plugin:3.7.0
+          executions:
+            - id: attach-javadocs
+              goals: ['jar'] # on package
+        - id: org.apache.maven.plugins:maven-gpg-plugin:3.2.4
+          executions:
+            - id: sign-artifacts
+              goals: ['sign'] # on verify
+              configuration:
+                gpgArguments: ['--pinentry-mode', 'loopback']
+        - id: org.sonatype.plugins:nexus-staging-maven-plugin:1.6.13
+          extensions: 'true'
+          executions:
+            - id: publish
+              goals: ['deploy'] # on deploy
+          configuration:
+            serverId: sonatype-ossrh
+            nexusUrl: https://s01.oss.sonatype.org
+            autoReleaseAfterClose: 'false'
