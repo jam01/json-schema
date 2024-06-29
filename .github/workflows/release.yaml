@@ -76,3 +76,6 @@ jobs:
           git add src/build/pom.yaml jvm/pom.yaml js/pom.yaml
           git commit -m "[ci skip] prepare for next development iteration"
           git push
+      - name: create gh release
+        shell: bash
+        run: gh release create ${{ github.event.inputs.release_ver }} --generate-notes
