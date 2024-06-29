@@ -5,7 +5,7 @@ childProjectUrlInheritAppendPath: false # Model.html#setChildProjectUrlInheritAp
 
 groupId: io.github.jam01
 artifactId: json-schema-parent
-version: 0.1.0-SNAPSHOT
+version: 0.1.0
 packaging: pom
 
 description: |
@@ -28,7 +28,7 @@ scm: # Scm.html#set...
   connection: scm:git:https://github.com/jam01/json-schema.git
   developerConnection: scm:git:https://github.com/jam01/json-schema.git
   url: https://github.com/jam01/json-schema.git
-  tag: HEAD
+  tag: 0.1.0
 distributionManagement:
   snapshotRepository:
     id: ossrh
