@@ -11,6 +11,8 @@ groupId: io.github.jam01
 artifactId: json-schema_sjs1_3
 packaging: jar
 
+name: JSON Schema Validator for Scala.js
+
 dependencies:
   - org.scala-lang:scala3-library_sjs1_3:3.3.3
   - com.lihaoyi:upickle-core_sjs1_3:3.3.1
@@ -30,7 +32,7 @@ build:
         skipMain: 'true'
         skip: 'true'
     - id: net.alchim31.maven:scala-maven-plugin:4.9.1
-      configuration:
-        args: ['-deprecation', '-feature', '-scalajs']
       executions:
         - goals: [compile, testCompile]
+          configuration:
+            args: ['-deprecation', '-feature', '-scalajs']

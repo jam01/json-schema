@@ -8,7 +8,6 @@ artifactId: json-schema-parent
 version: 0.1.0-SNAPSHOT
 packaging: pom
 
-name: JSON Schema Validator for Scala
 description: |
   Validation of JSON-like structures with JSON Schemas through upickle's visitor framework
 url: https://github.com/jam01/json-schema
@@ -84,6 +83,19 @@ profiles:
           executions:
             - id: attach-sources
               goals: ['jar-no-fork'] # on package
+        - id: net.alchim31.maven:scala-maven-plugin:4.9.1
+          executions:
+            - id: attach-javadocs
+              goals: ['doc-jar'] # on package
+              configuration: # https://github.com/davidB/scala-maven-plugin/issues/604#issuecomment-2197884300
+                args: ['-nobootcp']
+                scaladocClassName: dotty.tools.scaladoc.Main
+                sourceDir: '${project.build.outputDirectory}'
+                includes: ['**/*.tasty'] # https://github.com/scala/scala3/issues/11454
+                dependencies:
+                  - groupId: org.scala-lang
+                    artifactId: scaladoc_3
+                    version: 3.3.3
         - id: org.apache.maven.plugins:maven-javadoc-plugin:3.7.0
           executions:
             - id: attach-javadocs
