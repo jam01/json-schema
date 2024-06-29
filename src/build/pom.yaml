@@ -9,7 +9,7 @@ version: 0.1.1-SNAPSHOT
 packaging: pom
 
 description: |
-  Validation of JSON-like structures with JSON Schemas through upickle's visitor framework
+  Validation of JSON-like structures with JSON Schema through upickle's visitor framework
 url: https://github.com/jam01/json-schema
 inceptionYear: 2023
 licenses:
