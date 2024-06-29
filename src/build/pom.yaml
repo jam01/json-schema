@@ -42,6 +42,7 @@ properties:
   maven.compiler.target: '21'
   maven.compiler.release: '21'
   project.build.sourceEncoding: UTF-8
+  maven.deploy.skip: 'true' # in favor of nexus-staging
   #polyglot.dump.pom: .generated-pom.xml # uncomment to check effective pom.xml
 
 build:
