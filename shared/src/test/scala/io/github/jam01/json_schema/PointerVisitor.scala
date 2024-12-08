@@ -51,4 +51,6 @@ class PointerVisitor(insloc: mutable.Stack[String] = mutable.Stack("")) extends 
   override def visitInt64(i: Long, index: Int): Unit = println(path)
 
   override def visitString(s: CharSequence, index: Int): Unit = println(path)
+
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Unit = println(s)
 }

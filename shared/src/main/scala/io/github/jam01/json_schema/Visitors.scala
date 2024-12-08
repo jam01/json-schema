@@ -4,6 +4,7 @@
  */
 package io.github.jam01.json_schema
 
+import io.github.jam01.json_schema.vocab.Validation
 import upickle.core.{ArrVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
 import scala.collection.mutable
@@ -14,12 +15,13 @@ class CompositeVisitor[-T, +J](delegates: Seq[Visitor[T, J]]) extends JsonVisito
   override def visitFalse(index: Int): Seq[J] = delegates.map(_.visitFalse(index))
   override def visitTrue(index: Int): Seq[J] = delegates.map(_.visitTrue(index))
   override def visitFloat64(d: Double, index: Int): Seq[J] = delegates.map(_.visitFloat64(d, index))
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[J] = delegates.map(_.visitFloat64StringParts(s, decIndex, expIndex, index))
   override def visitInt64(i: Long, index: Int): Seq[J] = delegates.map(_.visitInt64(i, index))
   override def visitString(s: CharSequence, index: Int): Seq[J] = delegates.map(_.visitString(s, index))
   override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], Seq[J]] =
-    new CompositeArrVisitor[T, J](delegates.map(_.visitArray(length, index)))
+  new CompositeArrVisitor[T, J](delegates.map(_.visitArray(length, index)))
   override def visitObject(length: Int, index: Int): ObjVisitor[Seq[T], Seq[J]] =
-    new CompositeObjVisitor[T, J](delegates.map(_.visitObject(length, true, index)))
+  new CompositeObjVisitor[T, J](delegates.map(_.visitObject(length, true, index)))
 }
 
 class CompositeArrVisitor[-T, +J](val delArrVis: Seq[ArrVisitor[T, J]]) extends ArrVisitor[Seq[T], Seq[J]] {
@@ -46,6 +48,7 @@ class MapCompositeVisitor[-T, +J, Z](delegates: Seq[Visitor[T, J]], f: Seq[J] =>
   override def visitTrue(index: Int): Z = f(delegates.map(_.visitTrue(index)))
   override def visitInt64(i: Long, index: Int): Z = f(delegates.map(_.visitInt64(i, index)))
   override def visitFloat64(d: Double, index: Int): Z = f(delegates.map(_.visitFloat64(d, index)))
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Z = f(delegates.map(_.visitFloat64StringParts(s, decIndex, expIndex, index)))
   override def visitString(s: CharSequence, index: Int): Z = f(delegates.map(_.visitString(s, index)))
   override def visitArray(length: Int, index: Int): ArrVisitor[Seq[T], Z] =
     new MapCompositeArrContext[T, J, Z](delegates.map(_.visitArray(length, index)), f)
@@ -76,8 +79,13 @@ object LiteralVisitor extends JsonVisitor[Value, Value] {
   override def visitNull(index: Int): Value = Null
   override def visitFalse(index: Int): Value = False
   override def visitTrue(index: Int): Value = True
-  override def visitFloat64(d: Double, index: Int): Value = Num(d)
-  override def visitInt64(i: Long, index: Int): Value = Num(i)
+  override def visitFloat64(d: Double, index: Int): Value = Float64(d)
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Value = Validation.numOf(s.toString, decIndex, expIndex) match
+    case l: Long => Int64(l)
+    case d: Double => Float64(d)
+    case i: BigInt => Int128(i)
+    case d: BigDecimal => Dec128(d)
+  override def visitInt64(i: Long, index: Int): Value = Int64(i)
   override def visitString(s: CharSequence, index: Int): Value = Str(s.toString)
   override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(LiteralVisitor, length, index)
   override def visitArray(length: Int, index: Int): ArrVisitor[Value, Arr] = new CollectArrVisitor(LiteralVisitor, length, index)

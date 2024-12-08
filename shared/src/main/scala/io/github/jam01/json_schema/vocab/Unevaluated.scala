@@ -35,6 +35,7 @@ final class Unevaluated private(schema: ObjectSchema,
   override def visitTrue(index: Int): Seq[OutputUnit] = Nil
   override def visitInt64(i: Long, index: Int): Seq[OutputUnit] = Nil
   override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = Nil
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[OutputUnit] = Nil
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = Nil
   override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, Seq[OutputUnit]] = {
     if (itemsVis.isEmpty) return NilArrayVis
@@ -52,7 +53,7 @@ final class Unevaluated private(schema: ObjectSchema,
 
         val (applied, invalid) = buff.result().partition(unit => ! {
           evalItems.contains(True) || evalUneval.contains(True)
-            || evalPrefixItems.exists(n => gteq(n.num, unit.insLoc.refTokens.last.toLong))
+            || evalPrefixItems.exists(n => Validation.gteq(n.value, unit.insLoc.refTokens.last.toLong))
             || evalContains.exists(is => is.arr.exists(e => e.value == unit.insLoc.refTokens.last.toInt))
         })
 
@@ -112,16 +113,6 @@ object Unevaluated extends VocabFactory[Unevaluated] {
     override def subVisitor: Visitor[?, ?] = NoOpVisitor
     override def visitValue(v: Any, index: Int): Unit = ()
     override def visitEnd(index: Int): Seq[OutputUnit] = Nil
-  }
-  
-  private def gteq(n1: Long | Double, n2: Long | Double): Boolean = {
-    n1 match
-      case l1: Long => n2 match
-        case l2: Long => l1 >= l2
-        case d2: Double => l1 >= d2
-      case d1: Double => n2 match
-        case l2: Long => d1 >= l2
-        case d2: Double => d1 >= d2
   }
 
   private val PropertiesAnnotations = Seq(Applicator.Properties,

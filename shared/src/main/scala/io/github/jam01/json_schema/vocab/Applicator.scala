@@ -141,6 +141,22 @@ final class Applicator private(schema: ObjectSchema,
     buff.result
   }
 
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[OutputUnit] = {
+    val buff = ListBuffer[OutputUnit]()
+    notVis.forall(v => accumulate(buff, not(v.visitFloat64StringParts(s, decIndex, expIndex, index)))) &&
+      allOfVis.forall(v => accumulate(buff, v.visitFloat64StringParts(s, decIndex, expIndex, index))) &&
+      anyOfVis.forall(v => accumulate(buff, v.visitFloat64StringParts(s, decIndex, expIndex, index))) &&
+      oneOfVis.forall(v => accumulate(buff, v.visitFloat64StringParts(s, decIndex, expIndex, index))) &&
+      ifVis.forall(ifv => {
+        val iff = ifv.visitFloat64StringParts(s, decIndex, expIndex, index); accumulate(buff, OutputUnit.info(iff))
+        if (iff.vvalid) thenVis.forall(v => accumulate(buff, v.visitFloat64StringParts(s, decIndex, expIndex, index)))
+        else elseVis.forall(v => accumulate(buff, v.visitFloat64StringParts(s, decIndex, expIndex, index)))
+      })
+
+    buff.result
+  }
+
+
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val buff = ListBuffer[OutputUnit]()
     notVis.forall(v => accumulate(buff, not(v.visitString(s, index)))) &&
@@ -181,7 +197,7 @@ final class Applicator private(schema: ObjectSchema,
 
       override def subVisitor: Visitor[?, ?] = schValidator
       override def visitValue(u: OutputUnit, index: Int): Unit = {
-        if (u.vvalid) matched.addOne(Num(nextIdx)); nextIdx += 1
+        if (u.vvalid) matched.addOne(Int64(nextIdx)); nextIdx += 1
       }
 
       override def visitEnd(index: Int): OutputUnit = {
@@ -215,7 +231,7 @@ final class Applicator private(schema: ObjectSchema,
         private var idx = -1
         override def subVisitor: Visitor[?, ?] = vismap(nextIdx)
         override def visitValue(u: OutputUnit, index: Int): Unit = { accumulateVec(buff, u); if (u.vvalid) idx = nextIdx }
-        override def visitEnd(index: Int): OutputUnit = compose(PrefixItems, buff.result, Num(idx))
+        override def visitEnd(index: Int): OutputUnit = compose(PrefixItems, buff.result, Int64(idx))
       })
 
       val itemsArrVis: Option[ArrVisitor[OutputUnit, OutputUnit]] = itemsVis.map(schValidator => new ArrVisitor[OutputUnit, OutputUnit] {

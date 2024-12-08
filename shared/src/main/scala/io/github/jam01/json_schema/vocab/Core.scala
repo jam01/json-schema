@@ -59,6 +59,14 @@ final class Core private(schema: ObjectSchema,
     buff.result()
   }
 
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[OutputUnit] = {
+    val buff = new ListBuffer[OutputUnit]
+    _refVis.forall(v => accumulate(buff, v.visitFloat64StringParts(s, decIndex, expIndex, index))) &&
+      _dynRefVis.forall(v => accumulate(buff, v.visitFloat64StringParts(s, decIndex, expIndex, index)))
+    buff.result()
+  }
+
+
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
     val buff = new ListBuffer[OutputUnit]
     _refVis.forall(v => accumulate(buff, v.visitString(s, index))) &&

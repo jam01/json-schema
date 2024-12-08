@@ -14,9 +14,11 @@ object SchemaW extends upickle.core.Transformer[Value] {
     o match
       case null | Null => v.visitNull(-1)
       case Bool(bool) => if (bool) v.visitTrue(-1) else v.visitFalse(-1)
-      case Num(num) => num match
-        case l: Long => v.visitInt64(l, -1)
-        case d: Double => v.visitFloat64(d, -1)
+      case num: Num => num match
+        case Int64(l) => v.visitInt64(l, -1)
+        case Float64(d) => v.visitFloat64(d, -1)
+        case Int128(i) => v.visitFloat64StringParts(i.toString(), -1, -1, -1)
+        case Dec128(d) => v.visitFloat64String(d.toString(), -1)
       case Str(str) => v.visitString(str, -1)
       case Arr(arr) => val ctx = v.visitArray(arr.size, -1).narrow
         for (item <- arr) ctx.visitValue(transform(item, ctx.subVisitor), -1)

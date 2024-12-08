@@ -57,15 +57,15 @@ class SchemaMapperTest {
 
     val oschmap = LinkedHashMapFactory(
       "type" -> Str("object"),
-      "maxProperties" -> Num(2L),
-      "minProperties" -> Num(1L),
+      "maxProperties" -> Int64(2L),
+      "minProperties" -> Int64(1L),
       "required" -> Arr(Str("foo")))
     val osch: ObjectSchema = ObjectSchema(oschmap, uri)
 
     val arrschmap = LinkedHashMapFactory(
       "type" -> Str("array"),
-      "maxItems" -> Num(4L),
-      "minItems" -> Num(2L))
+      "maxItems" -> Int64(4L),
+      "minItems" -> Int64(2L))
     val arrsch: ObjectSchema = new ObjectSchema(arrschmap, uri, Some(osch), Some("/properties/arr"))
 
     arrschmap.addOne("items" -> new ObjectSchema(LinkedHashMapFactory(
@@ -75,12 +75,12 @@ class SchemaMapperTest {
       "foo" -> new ObjectSchema(LinkedHashMapFactory(
         "type" -> Str("string"),
         "pattern" -> Str(".*"),
-        "maxLength" -> Num(16L),
-        "minLength" -> Num(3L)), uri, Some(osch), Some("/properties/foo")),
+        "maxLength" -> Int64(16L),
+        "minLength" -> Int64(3L)), uri, Some(osch), Some("/properties/foo")),
       "arr" -> arrsch,
       "obj" -> new ObjectSchema(LinkedHashMapFactory(
         "type" -> Str("object"),
-        "maxProperties" -> Num(1L)), uri, Some(osch), Some("/properties/obj"))
+        "maxProperties" -> Int64(1L)), uri, Some(osch), Some("/properties/obj"))
     ))
 
     val sch = StringParser.transform(jsonStr, SchemaR(uri))

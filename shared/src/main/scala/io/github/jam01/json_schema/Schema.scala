@@ -6,6 +6,7 @@ package io.github.jam01.json_schema
 
 import upickle.core.LinkedHashMap
 
+import java.math.MathContext
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.hashing.MurmurHash3
@@ -46,11 +47,39 @@ sealed trait Value {
   }
 
   /**
-   * Returns the `Double` value of this [[Value]], fails if it is not
-   * a [[Num]]
+   * Returns the `Long` value of this [[Value]], fails if it is not
+   * a [[Int64]]
    */
-  def num: Long | Double = this match {
-    case Num(value) => value
+  def int64: Long = this match {
+    case Int64(value) => value
+    case _ => throw IllegalStateException("Expected Number")
+  }
+
+  /**
+   * Returns the `Double` value of this [[Value]], fails if it is not
+   * a [[Float64]]
+   */
+  def float64: Double = this match {
+    case Float64(value) => value
+    case _ => throw IllegalStateException("Expected Number")
+  }
+
+  /**
+   * Returns the `BigInt` value of this [[Value]], fails if it is not
+   * a [[Int128]]
+   */
+  def int128: BigInt = this match {
+    case Int128(value) => value
+    case Int64(value) => BigInt(value)
+    case _ => throw IllegalStateException("Expected Number")
+  }
+
+  /**
+   * Returns the `BigDecimal` value of this [[Value]], fails if it is not
+   * a [[Dec128]]
+   */
+  def dec128: BigDecimal = this match {
+    case Dec128(value) => value
     case _ => throw IllegalStateException("Expected Number")
   }
 
@@ -79,10 +108,12 @@ object Value {
   given iterable2Obj[T](using f: T => Value): Conversion[IterableOnce[(String, T)], Obj] with
     override def apply(it: IterableOnce[(String, T)]): Obj = Obj(Map.from(it.iterator.map(x => (x._1, f(x._2)))))
   given Conversion[Boolean, Bool] = (i: Boolean) => if (i) True else False
-  given Conversion[Int, Num] = (i: Int) => Num(i: Long)
-  given Conversion[Long, Num] = (i: Long) => Num(i)
-  given Conversion[Float, Num] = (i: Float) => Num(i)
-  given Conversion[Double, Num] = (i: Double) => Num(i)
+  given Conversion[Int, Num] = (i: Int) => Int64(i: Long)
+  given Conversion[Long, Num] = (i: Long) => Int64(i)
+  given Conversion[Float, Num] = (i: Float) => Float64(i)
+  given Conversion[Double, Num] = (i: Double) => Float64(i)
+  given Conversion[BigInt, Num] = (i: BigInt) => Int128(i)
+  given Conversion[BigDecimal, Num] = (i: BigDecimal) => Dec128(i)
   given Conversion[Null, Null.type] = (i: Null) => Null
   given Conversion[CharSequence, Str] = (s: CharSequence) => Str(s.toString)
 }
@@ -117,11 +148,15 @@ object Arr {
   def apply(): Arr = new Arr(Nil)
 }
 
-// TODO: represent in ADT
-case class Num(value: Long | Double) extends Value
+abstract class Num extends Value
 
-object Num {
-  def apply(i: Int): Num = Num(i.toLong)
+case class Int64(value: Long) extends Num
+case class Float64(value: Double) extends Num
+case class Int128(value: BigInt) extends Num {
+  if (value.bitLength > 127) throw new IllegalArgumentException("Integer value exceeds 128 bits")
+}
+case class Dec128(value: BigDecimal) extends Num {
+  if (value.mc != MathContext.DECIMAL128) throw new IllegalArgumentException("Decimal value exceeds 128 bits")
 }
 
 sealed abstract class Bool extends Value {

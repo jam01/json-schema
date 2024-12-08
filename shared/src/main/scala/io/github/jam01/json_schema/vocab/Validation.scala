@@ -9,6 +9,7 @@ import io.github.jam01.json_schema.vocab.Validation.*
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
+import java.math.MathContext
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
@@ -20,11 +21,11 @@ final class Validation private(schema: ObjectSchema,
   private val tyype: Seq[String] = schema.getAsStringArray(Tyype)
   private val const: Option[Value] = schema.get(Const)
   private val enuum: Option[Seq[Value]] = schema.getArrayOpt(Enuum)
-  private val maximum: Option[Long | Double] = schema.getNumber(Maximum)
-  private val minimum: Option[Long | Double] = schema.getNumber(Minimum)
-  private val exclusiveMax: Option[Long | Double] = schema.getNumber(ExclusiveMax)
-  private val exclusiveMin: Option[Long | Double] = schema.getNumber(ExclusiveMin)
-  private val multipleOf: Option[Long | Double] = schema.getNumber(MultipleOf)
+  private val maximum: Option[Num] = schema.getNumber(Maximum)
+  private val minimum: Option[Num] = schema.getNumber(Minimum)
+  private val exclusiveMax: Option[Num] = schema.getNumber(ExclusiveMax)
+  private val exclusiveMin: Option[Num] = schema.getNumber(ExclusiveMin)
+  private val multipleOf: Option[Num] = schema.getNumber(MultipleOf)
   private val maxLength: Option[Int] = schema.getInt(MaxLength)
   private val minLength: Option[Int] = schema.getInt(MinLength)
   private val pattern: Option[Regex] = schema.getString(Pattern).map(s => new Regex(s).unanchored)
@@ -61,40 +62,37 @@ final class Validation private(schema: ObjectSchema,
   }
 
   override def visitInt64(num: Long, index: Int): Seq[OutputUnit] = {
-    def isMultiple(mult: Long | Double) = {
-      mult match
-        case ml: Long => num % ml == 0
-        case md: Double => if (md.isWhole) num % md.longValue == 0 else false
-    }
-
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, tyype.exists(t => "integer" == t || "number" == t), Tyype, s"Expected $tyype, got number")) &&
-      multipleOf.forall(mult => accumulate(buff, isMultiple(mult), MultipleOf, "Number is not a multiple")) &&
+      multipleOf.forall(mult => accumulate(buff, isMultiple(num, mult.value), MultipleOf, "Number is not a multiple")) &&
       visitNumber(num, buff)
     buff.result()
   }
 
   override def visitFloat64(num: Double, index: Int): Seq[OutputUnit] = {
-    def isMultiple(mult: Long | Double) = try {
-      BigDecimal.valueOf(num)
-        .remainder(asBigDec(mult))
-        .compareTo(java.math.BigDecimal.ZERO) == 0
-    } catch case ex: ArithmeticException => false
-
     val buff = new ListBuffer[OutputUnit]
     (tyype.isEmpty || accumulate(buff, tyype.exists(t => "number" == t || "integer" == t && num.isWhole), Tyype, s"Expected $tyype, got number")) &&
-      multipleOf.forall(mult => accumulate(buff, isMultiple(mult), MultipleOf, "Number is not a multiple")) &&
+      multipleOf.forall(mult => accumulate(buff, isMultiple(num, mult.value), MultipleOf, "Number is not a multiple")) &&
       visitNumber(num, buff)
     buff.result()
   }
 
-  private def visitNumber(num: Long | Double, buff: mutable.Growable[OutputUnit]): Boolean = {
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[OutputUnit] = {
+    val buff = new ListBuffer[OutputUnit]
+    val num = numOf(s.toString, decIndex, expIndex)
+    (tyype.isEmpty || accumulate(buff, tyype.exists(t => "number" == t || "integer" == t && isWhole(num)), Tyype, s"Expected $tyype, got number")) &&
+      multipleOf.forall(mult => accumulate(buff, isMultiple(num, mult.value), MultipleOf, "Number is not a multiple")) &&
+      visitNumber(num, buff)
+    buff.result()
+  }
+
+  private def visitNumber(num: Any, buff: mutable.Growable[OutputUnit]): Boolean = {
     const.forall(c => accumulate(buff, c.value == num, Const, "Number does not match expected constant")) &&
       enuum.forall(e => accumulate(buff, e.exists(v => v.value == num), Enuum, "Number not found in enumeration")) &&
-      maximum.forall(max => accumulate(buff, lteq(num, max), Maximum, "Number is greater than maximum")) &&
-      minimum.forall(min => accumulate(buff, gteq(num, min), Minimum, "Number is less than minimum")) &&
-      exclusiveMax.forall(max => accumulate(buff, lt(num, max), ExclusiveMax, "Number is greater than or equal to exclusive maximum")) &&
-      exclusiveMin.forall(min => accumulate(buff, gt(num, min), ExclusiveMin, "Number is less than or equal to exclusive minimum"))
+      maximum.forall(max => accumulate(buff, lteq(num, max.value), Maximum, "Number is greater than maximum")) &&
+      minimum.forall(min => accumulate(buff, gteq(num, min.value), Minimum, "Number is less than minimum")) &&
+      exclusiveMax.forall(max => accumulate(buff, lt(num, max.value), ExclusiveMax, "Number is greater than or equal to exclusive maximum")) &&
+      exclusiveMin.forall(min => accumulate(buff, gt(num, min.value), ExclusiveMin, "Number is less than or equal to exclusive minimum"))
   }
 
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = {
@@ -190,50 +188,94 @@ final class Validation private(schema: ObjectSchema,
       }
     }
   }
+
 }
 
 object Validation extends VocabFactory[Validation] {
-  private def asBigDec(num: Long | Double) = {
-    num match
-      case l: Long => BigDecimal.valueOf(l)
-      case d: Double => BigDecimal.valueOf(d)
+  private def decOf(i: BigInt): BigDecimal = {
+    val d = BigDecimal(i)
+    if (d.precision > MathContext.DECIMAL128.getPrecision) throw new ArithmeticException("Decimal128 overflow")
+    d
   }
-  private def gt(n1: Long | Double, n2: Long | Double) = {
-    n1 match
-      case l1: Long => n2 match
-        case l2: Long => l1 > l2
-        case d2: Double => l1 > d2
-      case d1: Double => n2 match
-        case l2: Long => d1 > l2
-        case d2: Double => d1 > d2
-  }  
-  private def lt(n1: Long | Double, n2: Long | Double) = {
-    n1 match
-      case l1: Long => n2 match
-        case l2: Long => l1 < l2
-        case d2: Double => l1 < d2
-      case d1: Double => n2 match
-        case l2: Long => d1 < l2
-        case d2: Double => d1 < d2
+
+  private def gt(a: Any, b: Any) = compareTo(a, b) == 1
+  private def lt(a: Any, b: Any) = compareTo(a, b) == -1
+  private def lteq(a: Any, b: Any) = compareTo(a, b) != 1
+  private[json_schema] def gteq(a: Any, b: Any) = compareTo(a, b) != -1
+
+  private def compareTo(a: Any, b: Any): Int = {
+    (a, b) match {
+      case (x: Long, y: Long) => x.compareTo(y)
+      case (x: Long, y: Double) => _64(x, y)
+      case (x: Long, y: BigInt) => BigDecimal(x).compareTo(decOf(y))
+      case (x: Long, y: BigDecimal) => BigDecimal(x).compareTo(y)
+
+      case (x: Double, y: Long) => -_64(y, x)
+      case (x: Double, y: Double) =>
+        if (x == 0 && y == -0) return 0
+        if (x == -0 && y == 0) return 0
+        x.compareTo(y)
+      case (x: Double, y: BigInt) => BigDecimal(x).compareTo(decOf(y))
+      case (x: Double, y: BigDecimal) => BigDecimal(x).compareTo(y)
+
+      case (x: BigInt, y: Long) => BigDecimal(x).compareTo(BigDecimal(y))
+      case (x: BigInt, y: Double) => decOf(x).compareTo(BigDecimal(y))
+      case (x: BigInt, y: BigInt) => x.compareTo(y)
+      case (x: BigInt, y: BigDecimal) => decOf(x).compareTo(y)
+
+      case (x: BigDecimal, y: Long) => x.compareTo(BigDecimal(y))
+      case (x: BigDecimal, y: Double) => x.compareTo(BigDecimal(y))
+      case (x: BigDecimal, y: BigInt) => x.compareTo(decOf(y))
+      case (x: BigDecimal, y: BigDecimal) => x.compareTo(y)
+
+      case _ => throw new IllegalStateException
+    }
   }
-  private def lteq(n1: Long | Double, n2: Long | Double) = {
-    n1 match
-      case l1: Long => n2 match
-        case l2: Long => l1 <= l2
-        case d2: Double => l1 <= d2
-      case d1: Double => n2 match
-        case l2: Long => d1 <= l2
-        case d2: Double => d1 <= d2
+  private def _64(x: Long, y: Double): Int = {
+    if (x == 0 && y == -0) return 0
+    val convertedX = x.toDouble
+    val result = convertedX + y
+    if (result.isInfinity || convertedX != x) BigDecimal(x).compareTo(BigDecimal(y)) // Handle precision or overflow
+    else convertedX.compareTo(y)
   }
-  private def gteq(n1: Long | Double, n2: Long | Double): Boolean = {
-    n1 match
-      case l1: Long => n2 match
-        case l2: Long => l1 >= l2
-        case d2: Double => l1 >= d2
-      case d1: Double => n2 match
-        case l2: Long => d1 >= l2
-        case d2: Double => d1 >= d2
+
+  private def isMultiple(a: Any, b: Any): Boolean = {
+    try { mod(a, b) } catch {
+      case e: ArithmeticException if e.getMessage.contains("Division impossible") => false
+      case e @ (_: ArithmeticException | _: IllegalArgumentException) =>
+        throw new IllegalArgumentException("Number overflow while computing multipleOf", e)
+    }
   }
+  private def mod(a: Any, b: Any): Boolean = (a, b) match {
+    case (x: Long, y: Long) => x % y == 0
+    case (x: Long, y: Double) => BigDecimal(x) % BigDecimal(y) == 0
+    case (x: Long, y: BigInt) => BigInt(x) % y == 0
+    case (x: Long, y: BigDecimal) => BigDecimal(x) % y == 0
+
+    case (x: Double, y: Long) => BigDecimal(x) % BigDecimal(y) == 0
+    case (x: Double, y: Double) => BigDecimal(x) % BigDecimal(y) == 0
+    case (x: Double, y: BigInt) => BigDecimal(x) % decOf(y) == 0
+    case (x: Double, y: BigDecimal) => BigDecimal(x) % y == 0
+
+    case (x: BigInt, y: Long) => x % BigInt(y) == 0
+    case (x: BigInt, y: BigInt) => x % y == 0
+    case (x: BigInt, y: Double) => decOf(x) % BigDecimal(y) == 0
+    case (x: BigInt, y: BigDecimal) => decOf(x) % y == 0
+
+    case (x: BigDecimal, y: Long) => x % BigDecimal(y) == 0
+    case (x: BigDecimal, y: Double) => x % BigDecimal(y) == 0
+    case (x: BigDecimal, y: BigInt) => x % decOf(y) == 0
+    case (x: BigDecimal, y: BigDecimal) => x % y == 0
+  }
+
+  private[json_schema] def numOf(s: String, decIndex: Int, expIndex: Int): Any = {
+    if (decIndex == -1 && expIndex == -1) s.toLongOption.getOrElse(BigInt(s))
+    else s.toDoubleOption.getOrElse(BigDecimal(s))
+  }
+  private def isWhole(n: Any) = n match
+    case d: Double => d.isWhole
+    case _: Long | BigInt  => true
+    case d: BigDecimal => d.isWhole
 
   private val NilArrayVis = new ArrVisitor[Any, Seq[OutputUnit]] {
     override def subVisitor: Visitor[?, ?] = NoOpVisitor

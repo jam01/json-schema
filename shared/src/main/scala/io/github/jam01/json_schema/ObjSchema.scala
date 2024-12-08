@@ -109,9 +109,10 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
    */
   def getInt(k: String): Option[Int] = {
     value.get(k).map {
-      case Num(num) => num match
-        case l: Long => l.intValue
-        case d: Double => d.intValue
+      case Int64(i) if i.isValidInt => i.toInt
+      case Int128(i) if i.isValidInt => i.toInt
+      case Float64(i) if i.isValidInt => i.toInt
+      case Dec128(i) if i.isValidInt => i.toInt
       case _ => throw IllegalStateException("Expected Integer")
     }
   }
@@ -123,9 +124,9 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
    * @param k the entry key
    * @return an Option of the number value, or None if the entry does not exist
    */
-  def getNumber(k: String): Option[Long | Double] = {
+  def getNumber(k: String): Option[Num] = {
     value.get(k).map {
-      case Num(num) => num
+      case n: Num => n
       case _ => throw IllegalStateException("Expected Number")
     }
   }

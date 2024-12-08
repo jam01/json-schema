@@ -38,6 +38,7 @@ class CtxPointerVisitor(ctx: Context) extends JsonVisitor[Value, Value] {
   override def visitFalse(index: Int): Value = ctx.instanceLoc.toString
   override def visitTrue(index: Int): Value = ctx.instanceLoc.toString
   override def visitFloat64(d: Double, index: Int): Value = ctx.instanceLoc.toString
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Value = ctx.instanceLoc.toString
   override def visitInt64(i: Long, index: Int): Value = ctx.instanceLoc.toString
   override def visitString(s: CharSequence, index: Int): Value = ctx.instanceLoc.toString
   override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(this)

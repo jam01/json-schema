@@ -75,6 +75,7 @@ final class FormatAssertion private(schema: ObjectSchema,
   override def visitTrue(index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
   override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
   override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[OutputUnit] = Seq(mkUnit(true, FormatKw, annotation = format))
   override def visitArray(length: Int, index: Int): ArrVisitor[?, Seq[OutputUnit]] = constArrVis
   private val constArrVis = new ArrVisitor[Any, Seq[OutputUnit]] {
     override def subVisitor: Visitor[?, ?] = NoOpVisitor

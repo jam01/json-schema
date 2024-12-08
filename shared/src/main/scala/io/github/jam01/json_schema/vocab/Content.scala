@@ -21,6 +21,7 @@ final class Content private(schema: ObjectSchema,
   override def visitTrue(index: Int): Seq[OutputUnit] = result()
   override def visitInt64(l: Long, index: Int): Seq[OutputUnit] = result()
   override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = result()
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[OutputUnit] = result()
   override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = result()
   override def visitArray(length: Int, index: Int): ArrVisitor[?, Seq[OutputUnit]] = constArrVis
   private val constArrVis = new ArrVisitor[Any, Seq[OutputUnit]] {

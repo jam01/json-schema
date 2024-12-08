@@ -44,6 +44,7 @@ final class BooleanSchemaValidator(bool: Boolean, ctx: Context, path: JsonPointe
   override def visitString(s: CharSequence, index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
   override def visitArray(length: Int, index: Int): ArrVisitor[OutputUnit, OutputUnit] = new BooleanArrValidator(bool, ctx, path)
   override def visitObject(length: Int, index: Int): ObjVisitor[OutputUnit, OutputUnit] = new BooleanObjValidator(bool, ctx, path)
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
 }
 
 final class BooleanArrValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends ArrVisitor[Any, OutputUnit] {
@@ -90,6 +91,7 @@ private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context,
   override def visitFalse(index: Int): OutputUnit = compose(v => v.visitFalse(index))
   override def visitTrue(index: Int): OutputUnit = compose(v => v.visitTrue(index))
   override def visitFloat64(d: Double, index: Int): OutputUnit = compose(v => v.visitFloat64(d, index))
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): OutputUnit = compose(v => v.visitFloat64StringParts(s, decIndex, expIndex, index))
   override def visitInt64(i: Long, index: Int): OutputUnit = compose(v => v.visitInt64(i, index))
   override def visitString(s: CharSequence, index: Int): OutputUnit = compose(v => v.visitString(s, index))
 
