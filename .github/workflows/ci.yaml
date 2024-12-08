@@ -11,7 +11,7 @@ jobs:
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: '22'
+          release: '23'
       - uses: actions/cache@v4
         with:
           path: ~/.m2/repository
