@@ -23,7 +23,7 @@ trait JsonVisitor[-T, +J] extends Visitor[T, J] {
     visitFloat64(f, index)
 
   override def visitFloat64String(s: String, index: Int): J = {
-    visitFloat64StringParts(s, s.indexOf('.'), s.indexWhere(c => (c | 0x20) != 'e'), index)
+    visitFloat64StringParts(s, s.indexOf('.'), s.indexWhere(c => (c | 0x20) == 'e'), index)
   }
 
   override def visitChar(s: Char, index: Int): J = visitString(s.toString, index)
