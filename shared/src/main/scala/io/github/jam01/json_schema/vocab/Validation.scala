@@ -247,9 +247,9 @@ object Validation extends VocabFactory[Validation] {
     }
   }
   private def mod(a: Any, b: Any): Boolean = (a, b) match {
-    case (x: Long, y: Long) => x % y == 0
+    case (x: Long, y: Long) => BigDecimal(x) % BigDecimal(y) == 0
     case (x: Long, y: Double) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: Long, y: BigInt) => BigInt(x) % y == 0
+    case (x: Long, y: BigInt) => BigDecimal(x) % BigDecimal(y) == 0
     case (x: Long, y: BigDecimal) => BigDecimal(x) % y == 0
 
     case (x: Double, y: Long) => BigDecimal(x) % BigDecimal(y) == 0
@@ -257,8 +257,8 @@ object Validation extends VocabFactory[Validation] {
     case (x: Double, y: BigInt) => BigDecimal(x) % decOf(y) == 0
     case (x: Double, y: BigDecimal) => BigDecimal(x) % y == 0
 
-    case (x: BigInt, y: Long) => x % BigInt(y) == 0
-    case (x: BigInt, y: BigInt) => x % y == 0
+    case (x: BigInt, y: Long) => BigDecimal(x) % BigDecimal(y) == 0
+    case (x: BigInt, y: BigInt) => BigDecimal(x) % BigDecimal(y) == 0
     case (x: BigInt, y: Double) => decOf(x) % BigDecimal(y) == 0
     case (x: BigInt, y: BigDecimal) => decOf(x) % y == 0
 
