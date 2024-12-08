@@ -3,7 +3,7 @@ date: 2023-10-12
 ---
 # What form or pattern to use for implementation?
 ## Context and Problem Statement
-How to implement the validator? Should we expect the instance to be a fully formed JSON ADT, like `Jackson.Node` or `ujson.Value` or some other structure? How do we model a Schema? How do we implement, group and select keyword validation behavior to be applied?
+How to implement the validator? Should we expect the instance to be a fully formed JSON AST, like `Jackson.Node` or `ujson.Value` or some other structure? How do we model a Schema? How do we implement, group and select keyword validation behavior to be applied?
 
 ## Decision Drivers
 * Support a performant processing style where we could start constructing an object as it's being validated

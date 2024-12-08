@@ -40,4 +40,4 @@ build:
       executions:
         - goals: [compile, testCompile]
           configuration:
-            args: ['-deprecation', '-feature']
+            args: ['-deprecation', '-feature', '-unchecked']
