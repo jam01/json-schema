@@ -192,10 +192,34 @@ object OutputFormat {
     inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       OutputUnit(isValid, kwLoc, null, insLoc)
   }
+  /**
+   * A flat list output format, which retains only errors results and filtered annotations.
+   */
+  val Basic: OutputFormat = new OutputFormat {
+    private def emptied(u: OutputUnit): OutputUnit = { // breaks InfoUnit
+      OutputUnit(u.valid, u.kwLoc, u.absKwLoc, u.insLoc, u.error, u.annotation)
+    }
 
-  val Basic: OutputFormat = new OutputFormat{
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
-      ???
+    override def compose(path: JsonPointer, units: Seq[OutputUnit], insLoc: JsonPointer): OutputUnit =
+      val (valid, invalid) = units.partition(_.vvalid)
+      make(invalid.isEmpty, path, null, insLoc, null, invalid.flatMap(u => Seq(emptied(u)) ++ u.details), null, valid.flatMap(u => Seq(emptied(u)) ++ u.details))
+
+    inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
+      if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
+      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors)
+
+    inline override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] =
+      if (!unit.vvalid) results.addOne(unit)
+      else if (unit.hasAnnotations) results.addOne(unit)
+      else results
+
+    override def accumulate(results: mutable.Growable[OutputUnit], isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): mutable.Growable[OutputUnit] =
+      if (isValid) {
+        results.addOne(make(isValid, kwLoc, absKwLoc, insLoc, error, annotation = annotation))
+        results.addAll(errors)
+        results.addAll(verbose)
+      }
+      else results
   }
 
   /**

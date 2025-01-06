@@ -4,6 +4,7 @@
     "keywordLocation": "",
     "instanceLocation": ""
   },
+  {"valid":false,"keywordLocation":"","instanceLocation":"","details":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"Expected List(string), got array"},{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"Array does not match expected constant"},{"valid":false,"keywordLocation":"/enum","instanceLocation":"","error":"Array not found in enumeration"},{"valid":false,"keywordLocation":"/uniqueItems","instanceLocation":"","error":"Values in array are not unique"},{"valid":false,"keywordLocation":"/maxItems","instanceLocation":"","error":"Array has more items than allowed"}]},
   {
     "valid": false,
     "keywordLocation": "",

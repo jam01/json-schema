@@ -88,6 +88,10 @@ object OutputStructureTest {
     val fres = OutputUnitW.transform(flag, StringRenderer()).toString
     //println(fres)
 
+    val basic = sub.transform(json_schema.validator(sch, Config(format = OutputFormat.Basic, ffast = false)))
+    val bres = OutputUnitW.transform(basic, StringRenderer()).toString
+    println(bres)
+
     val detailed = sub.transform(json_schema.validator(sch, Config(format = OutputFormat.Detailed, ffast = false)))
     val dres = OutputUnitW.transform(detailed, StringRenderer()).toString
     //println(dres)
@@ -96,7 +100,7 @@ object OutputStructureTest {
     val vres = OutputUnitW.transform(verbose, StringRenderer()).toString
     //println(vres)
 
-    val res = Seq(fres, dres, vres).mkString("[", ",", "]")
+    val res = Seq(fres, bres, dres, vres).mkString("[", ",", "]")
     JSONAssert.assertEquals(resourceAsString(path), res, true)
   }
 
