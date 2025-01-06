@@ -26,12 +26,13 @@ object SchemaValidator {
     var countRefs = 0
     var head: Vocab[?] = dynParent.get
     while (head.dynParent.nonEmpty) {
+      // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
+      if (countRefs > depth) throw new IllegalStateException("Depth limit exceeded")
+
       countRefs += 1
       head = head.dynParent.get
     }
 
-    // a naive way to guard against infinite loops from circular reference logic in schemas, which results in StackOverflow
-    if (countRefs > depth) throw new IllegalStateException("Depth limit exceeded")
   }
 }
 
