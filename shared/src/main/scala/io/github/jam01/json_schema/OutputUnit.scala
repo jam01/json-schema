@@ -204,7 +204,7 @@ object OutputFormat {
   val Detailed: OutputFormat = new OutputFormat {
     inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, verbose.filter(_.hasAnnotations))
-      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors)
+      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, null, errors)
 
     inline override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] =
       if (!unit.vvalid) results.addOne(unit)
@@ -218,7 +218,7 @@ object OutputFormat {
   val Verbose: OutputFormat = new OutputFormat {
     inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, errors ++: verbose)
-      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, annotation, errors ++: verbose)
+      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, null, errors ++: verbose)
 
     inline override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] = {
       results.addOne(unit)
