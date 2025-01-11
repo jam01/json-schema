@@ -24,6 +24,7 @@ final class Metadata private(schema: ObjectSchema,
     schema.get(ReadOnly).forall(r => accumulate(buff, true, ReadOnly, annotation = r))
     schema.get(WriteOnly).forall(w => accumulate(buff, true, WriteOnly, annotation = w))
     schema.get(Examples).forall(ex => accumulate(buff, true, Examples, annotation = ex))
+    schema.value.foreachEntry((k, v) => if (k.startsWith("x-")) accumulate(buff, true, k, annotation = v))
     buff.result()
   }
 
@@ -62,7 +63,7 @@ object Metadata extends VocabFactory[Metadata] {
   val Keys: Set[String] = Set(Title, Description, Default, Deprecated, ReadOnly, WriteOnly, Examples)
 
   override def uri: String = "https://json-schema.org/draft/2020-12/meta/meta-data"
-  override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains)
+  override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains) || schema.value.keys.exists(_.startsWith("x-"))
   override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Metadata =
     new Metadata(schema, ctx, path, dynParent)
 }

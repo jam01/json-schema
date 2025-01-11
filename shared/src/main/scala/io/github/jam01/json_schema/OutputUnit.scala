@@ -176,7 +176,7 @@ abstract class OutputFormat {
                  errors: Seq[OutputUnit] = Nil,
                  annotation: Value | Null = null,
                  verbose: Seq[OutputUnit] = Nil): mutable.Growable[OutputUnit] = {
-    if (!isValid) results.addOne(make(isValid, kwLoc, absKwLoc, insLoc, error, errors, annotation, verbose))
+    if (!isValid || annotation != null) results.addOne(make(isValid, kwLoc, absKwLoc, insLoc, error, errors, annotation, verbose))
     else results
   }
 }
