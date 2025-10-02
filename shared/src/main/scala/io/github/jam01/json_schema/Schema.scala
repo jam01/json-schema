@@ -186,13 +186,22 @@ case object Null extends Value {
  */
 sealed trait Schema extends Value {
   /**
+   * Exception thrown when sub-schema retrieval fails.
+   *
+   * @param message A description of the failure
+   * @param cause The underlying cause (if any)
+   */
+  class SchemaRetrievalException(message: String, cause: Throwable = null)
+    extends RuntimeException(message, cause)
+  
+  /**
    * Retrieve the sub-schema located at the given [[JsonPointer]].
-   * @throws IllegalArgumentException if a sub-schema is not present at the given location or if the location traverses
+   * @throws SchemaRetrievalException if a sub-schema is not present at the given location or if the location traverses
    *                                  a scalar value, or if applying a non-root JsonPointer against a [[BooleanSchema]]
    * @param subschLocation the sub-schema location
    * @return the identified Schema
    */
-  @throws[IllegalArgumentException]
+  @throws[SchemaRetrievalException]
   def schBy(subschLocation: JsonPointer): Schema = {
     if (JsonPointer.Root == subschLocation) return this
     schBy0(subschLocation)
@@ -214,7 +223,7 @@ sealed abstract class BooleanSchema extends Schema {
   def value: Boolean
 
   override def schBy0(ptr: JsonPointer): Schema = {
-    throw new IllegalArgumentException("Cannot evaluate a JSON Pointer against a boolean schema")
+    throw new SchemaRetrievalException("Cannot evaluate a JSON Pointer against a boolean schema")
   }
 }
 

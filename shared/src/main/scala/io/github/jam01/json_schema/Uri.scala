@@ -13,7 +13,7 @@ import java.util.UUID
  * A JSON Schema URI.
  */
 final class Uri private(val uri: URI, val isDyn: Boolean, private val str: String) {
-  // perf: consider tracking fragment
+  // PERF: consider tracking fragment as JsonPointer
   private def this(uri: URI, isDyn: Boolean) = {
     this(uri, isDyn, conformUri(uri.toString))
   }

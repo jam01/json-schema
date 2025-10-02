@@ -160,7 +160,6 @@ trait ContextExtension {
  */
 final class DefaultContext(private val registry: Registry,
                            val config: Config = Config.Default) extends Context with Tracker with ContextExtension {
-
   private val insloc = mutable.Stack[String]("")
   private var _pointer = JsonPointer.Root
   override def push(ref: String): Unit = {

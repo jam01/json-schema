@@ -89,6 +89,38 @@ class OutputStructureTest {
     Assertions.assertEquals(null, res.details.head.annotation.value)
   }
 
+
+
+  @Test
+  def findAnnotatingUnitsWithAnyOfAndItems(): Unit = {
+    val schemaString =
+      """
+      {
+        "type": "array",
+        "anyOf": [
+          { "items": { "type": "number" } },
+          { "items": { "type": "number" } }
+        ]
+      }
+    """
+
+    val res = json_schema
+      .from(ujson.Readable, ujson.read(schemaString))
+      .validate(ujson.Value, ujson.Arr(ujson.Num(1)), Config(format = OutputFormat.Detailed, allowList = AllowList.KeepAll))
+
+    val loc = JsonPointer.Root
+    val foundUnits1 = res.findAnnotatingUnits(loc, "items")
+
+    Assertions.assertEquals(2, foundUnits1.size, "There should be two matching OutputUnit for the first element.")
+    val matchingUnit1 = foundUnits1.head
+    Assertions.assertEquals(loc, matchingUnit1.insLoc, "Instance location should match for the first element.")
+    Assertions.assertEquals("/anyOf/0/items", matchingUnit1.kwLoc.toString, "Keyword should match for the first element.")
+    Assertions.assertEquals(true, matchingUnit1.annotation.value, "Annotation should match the expected type for the first element.")
+    val matchingUnit2 = foundUnits1.last
+    Assertions.assertEquals(loc, matchingUnit2.insLoc, "Instance location should match for the first element.")
+    Assertions.assertEquals("/anyOf/1/items", matchingUnit2.kwLoc.toString, "Keyword should match for the first element.")
+    Assertions.assertEquals(true, matchingUnit2.annotation.value, "Annotation should match the expected type for the first element.")
+  }
 }
 
 object OutputStructureTest {

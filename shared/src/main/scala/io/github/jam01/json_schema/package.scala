@@ -39,11 +39,4 @@ package object json_schema {
                 docbase: Uri = Uri.random, registry: Registry = new MutableRegistry): Schema = {
     reader.transform(readable, SchemaR(docbase, registry))
   }
-
-  /**
-   * Exception thrown when validating with [[Config.ffast]].
-   * 
-   * @param result the validation result
-   */
-  class ValidationException(val result: OutputUnit) extends RuntimeException
 }

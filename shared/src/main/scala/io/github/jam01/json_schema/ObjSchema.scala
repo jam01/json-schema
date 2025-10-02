@@ -5,6 +5,7 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
+import io.github.jam01.json_schema.TrueSchema.SchemaRetrievalException
 
 import scala.collection.Map
 
@@ -268,7 +269,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
           val i = key.toInt
           if (value.length <= i) throw refError(ptr)
           value(i)
-        case x: Any => throw new IllegalArgumentException(s"unsupported type ${x.getClass.getName}")
+        case x: Any => throw new SchemaRetrievalException(s"unsupported type ${x.getClass.getName}")
 
       i = i + 1
     }
@@ -285,6 +286,6 @@ object ObjSchema {
   }
 
   private def refError(ptr: JsonPointer): Exception =
-    new IllegalArgumentException(s"invalid location $ptr")
+    new SchemaRetrievalException(s"invalid location $ptr")
 }
 

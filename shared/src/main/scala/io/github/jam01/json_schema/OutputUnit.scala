@@ -38,6 +38,29 @@ sealed class OutputUnit(val valid: Boolean,
    * @see [[InfoUnit]]
    */
   def vvalid: Boolean = valid
+
+  /**
+   * Finds all OutputUnits within the given hierarchy that:
+   * 1. Match the specified instance location (insLoc).
+   * 2. Contain annotations.
+   * 3. Match the specified keyword filter.
+   *
+   * @param instanceLocation The JsonPointer location for which units are being searched.
+   * @param keyword The relative keyword location to filter by.
+   * @return A sequence of OutputUnits that match the instance location and keyword filter.
+   */
+  def findAnnotatingUnits(instanceLocation: JsonPointer, keyword: String): Seq[OutputUnit] = {
+    val matchingUnits = scala.collection.mutable.ListBuffer[OutputUnit]()
+
+    // Check if the current unit matches the instance location, has an annotation, and matches the keyword filter
+    if (this.insLoc == instanceLocation && this.annotation != null && this.kwLoc.refTokens.last == keyword)
+      matchingUnits += this
+
+    for (childUnit <- this.details)  // Recursively search through the details of the unit
+      matchingUnits ++= childUnit.findAnnotatingUnits(instanceLocation, keyword)
+
+    matchingUnits.toSeq
+  }
 }
 
 /**
@@ -193,7 +216,7 @@ object OutputFormat {
       OutputUnit(isValid, kwLoc, null, insLoc)
   }
 
-  val Basic: OutputFormat = new OutputFormat{
+  val Basic: OutputFormat = new OutputFormat {
     override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       ???
   }
