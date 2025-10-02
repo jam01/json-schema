@@ -269,7 +269,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
           val i = key.toInt
           if (value.length <= i) throw refError(ptr)
           value(i)
-        case x: Any => throw new SchemaRetrievalException(s"unsupported type ${x.getClass.getName}")
+        case x: Any => throw new IllegalStateException(s"Unsupported type ${x.getClass.getName} for reference $ptr")
 
       i = i + 1
     }
@@ -286,6 +286,6 @@ object ObjSchema {
   }
 
   private def refError(ptr: JsonPointer): Exception =
-    new SchemaRetrievalException(s"invalid location $ptr")
+    new SchemaRetrievalException(s"Invalid reference location $ptr")
 }
 
