@@ -43,12 +43,12 @@ final class FormatAssertion private(schema: ObjectSchema,
         case _: IllegalArgumentException => false
       case "uri" => try { // https://stackoverflow.com/a/3585791/4814697 https://stackoverflow.com/a/14066594/4814697
         val uri = new URI(s.toString)
-        uri.isAbsolute && s.chars().allMatch(isAscii) && !hasBareIPv6(uri)
+        uri.isAbsolute && allAscii(s) && !hasBareIPv6(uri)
       } catch
         case _: URISyntaxException => false
       case "uri-reference" => try {
         val uri = new URI(s.toString)
-        s.chars().allMatch(isAscii) && !hasBareIPv6(uri)
+        allAscii(s) && !hasBareIPv6(uri)
       } catch
         case _: URISyntaxException => false
       case "iri" => try {
@@ -309,6 +309,14 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   private inline def isNumeric(c: Int): Boolean = c >= 0x30 && c <= 0x39
   private inline def in(c: Int, arr: Array[Int]): Boolean = arr.contains(c)
   private inline def isAscii(c: Int): Boolean = c <= 0x7F
+  private def allAscii(s: CharSequence): Boolean = {
+    var i = 0
+    while (i < s.length) {
+      if (s.charAt(i) > 0x7F) return false
+      i += 1
+    }
+    true
+  }
 
   private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
   private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 https://stackoverflow.com/a/1418724/4814697
