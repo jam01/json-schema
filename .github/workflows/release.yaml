@@ -16,17 +16,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: update test-suite sub-module
         run: git submodule update --init --recursive
-      - name: install oracle openjdk
-        uses: oracle-actions/setup-java@v1
+      - uses: actions/setup-java@v5
         with:
-          website: jdk.java.net
-          release: '25'
-      - uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          distribution: oracle
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: '**/pom.yaml'
       - uses: mikefarah/yq@v4
       - name: set release version
         shell: bash
