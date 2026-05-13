@@ -85,8 +85,6 @@ final class SchemaR private(docbase: Uri,
 
     override def visitEnd(index: Int): ObjectSchema = {
       if (parent.isEmpty) {
-        // `sch.base` already resolves `$id` against the enclosing base, so use it directly —
-        // re-resolving the raw id string would double-append a relative segment.
         ids.foreach { case (_, sch) => reg.addOne(sch.base, sch) }
         anchors.foreach { case (anchor, isDyn, sch) => reg.addOne(sch.base.withFragment(anchor, isDyn), sch) }
       }
