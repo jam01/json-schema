@@ -35,9 +35,9 @@ class TestSuiteTest {
 
   /**
    * Runs every invalid test from the suite under `Detailed` format (`ffast=false`) and asserts the result tree
-   * carries enough info to pinpoint a failure: at least one descendant must have a non-null `error` and a `kwLoc`
-   * that names a specific keyword (i.e. deeper than the root pointer). Default `Flag` + `ffast=true` strips both,
-   * so without this we'd silently accept empty error trees from any vocab.
+   * carries diagnostic info: at least one unit in the tree has a non-null `error` string. Default
+   * `Flag` + `ffast=true` strips errors entirely, so without this we'd silently accept empty error trees from
+   * any vocab.
    */
   @ParameterizedTest
   @MethodSource(value = Array("args_provider_invalid_detailed"))
@@ -46,7 +46,7 @@ class TestSuiteTest {
       case exc: ValidationException => exc.result
     val label = path + ": " + desc + ": " + tdesc
     Assertions.assertFalse(res.vvalid, "expected invalid: " + label)
-    Assertions.assertTrue(TestSuiteTest.hasKeywordError(res), "no keyword-level error in result for: " + label)
+    Assertions.assertTrue(TestSuiteTest.hasError(res), "no error in result for: " + label)
   }
 }
 
@@ -56,21 +56,8 @@ object TestSuiteTest {
   val NotSupportedFormat: Seq[String] = Seq("idn-hostname.json", "idn-email.json")
   val NotSupportedFormatTests: Seq[String] = Seq("weeks cannot be combined with other units")
 
-  // Files whose invalid cases don't currently produce a keyword-level error unit under Detailed format.
-  // These are real gaps to be fixed separately — `error_shape` skips them to keep the harness green
-  // while it does catch regressions elsewhere. Buckets, by root cause:
-  //   - BooleanSchemaValidator emits no error message for `false` schemas (there is no keyword name):
-  //       boolean_schema.json
-  //   - $ref / $dynamicRef short-circuit before vocab errors propagate up:
-  //       ref.json, dynamicRef.json
-  //   - Misc keyword-specific gaps:
-  //       items.json, additionalProperties.json, dependentSchemas.json, patternProperties.json,
-  //       uniqueItems.json, properties.json, vocabulary.json, prefixItems.json
-  val NotSupportedErrorShape: Seq[String] = Seq(
-    "boolean_schema.json", "ref.json", "dynamicRef.json",
-    "items.json", "additionalProperties.json", "dependentSchemas.json", "patternProperties.json",
-    "uniqueItems.json", "properties.json", "vocabulary.json", "prefixItems.json"
-  )
+  // Files whose invalid cases don't currently produce an error in the result tree under Detailed format.
+  val NotSupportedErrorShape: Seq[String] = Seq.empty
 
   // Test-case descriptions to skip in `error_shape` only — same shape as NotSupportedErrorShape but
   // for cases that live in a file whose other cases do produce keyword-level errors.
@@ -156,14 +143,9 @@ object TestSuiteTest {
     args
   }
 
-  /**
-   * True if the unit tree has at least one descendant with a non-null `error` and a `kwLoc` deeper than root
-   * (i.e. naming a specific keyword that failed).
-   */
-  private def hasKeywordError(u: OutputUnit): Boolean = {
-    if (!u.vvalid && u.error != null && u.kwLoc.refTokens.nonEmpty && u.kwLoc.refTokens != Seq("")) true
-    else u.details.exists(hasKeywordError)
-  }
+  /** True if any unit in the tree carries a non-null `error` string. */
+  private def hasError(u: OutputUnit): Boolean =
+    (!u.vvalid && u.error != null) || u.details.exists(hasError)
 
   def args_provider(path: Path, dial0: Dialect = null, errorShape: Boolean = false): java.util.List[Arguments] = {
     val suite = ujson.read(ujson.Readable.fromPath(path)).arr

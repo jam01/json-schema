@@ -53,7 +53,8 @@
           {
             "valid": false,
             "keywordLocation": "/oneOf/2",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       }
