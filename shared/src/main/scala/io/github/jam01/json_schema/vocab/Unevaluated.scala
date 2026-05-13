@@ -51,14 +51,24 @@ final class Unevaluated private(schema: ObjectSchema,
         val evalContains: Seq[Value] = getItemsAnnotations(deps, Applicator.Contains)
         val evalUneval: Seq[Value] = getItemsAnnotations(deps, UnevaluatedItems)
 
-        val (applied, invalid) = buff.result().partition(unit => ! {
+        val (applied, evaled) = buff.result().partition(unit => ! {
           evalItems.contains(True) || evalUneval.contains(True)
             || evalPrefixItems.exists(n => Validation.gteq(n.value, unit.insLoc.refTokens.last.toLong))
             || evalContains.exists(is => is.arr.exists(e => e.value == unit.insLoc.refTokens.last.toInt))
         })
 
-        ctx.notifyInvalid(invalid)
-        Seq(compose(UnevaluatedItems, applied, True))
+        ctx.notifyInvalid(evaled)
+
+        val (valid, invalid) = applied.partition(_.vvalid)
+        val unit =
+          if (invalid.isEmpty) mkUnit(true, UnevaluatedItems, annotation = True, verbose = valid)
+          else {
+            val failed = invalid.map(_.insLoc.refTokens.last).distinct
+            mkUnit(false, UnevaluatedItems,
+              error = s"Unevaluated items failed validation at indices: ${failed.mkString(", ")}",
+              errors = invalid, verbose = valid)
+          }
+        Seq(unit)
       }
     }
   }
@@ -89,9 +99,19 @@ final class Unevaluated private(schema: ObjectSchema,
 
       override def visitEnd(index: Int): Seq[OutputUnit] = {
         val evaluated = getPropsAnnotations(ctx.getDependenciesFor(path.appended(UnevaluatedProperties)))
-        val (applied, invalid) = buff.result().partition(unit => !evaluated.contains(unit.insLoc.refTokens.last))
-        ctx.notifyInvalid(invalid)
-        Seq(compose(UnevaluatedProperties, applied, Arr(annot.result())))
+        val (applied, evaled) = buff.result().partition(unit => !evaluated.contains(unit.insLoc.refTokens.last))
+        ctx.notifyInvalid(evaled)
+
+        val (valid, invalid) = applied.partition(_.vvalid)
+        val unit =
+          if (invalid.isEmpty) mkUnit(true, UnevaluatedProperties, annotation = Arr(annot.result()), verbose = valid)
+          else {
+            val failed = invalid.map(_.insLoc.refTokens.last).distinct
+            mkUnit(false, UnevaluatedProperties,
+              error = s"Unevaluated properties failed validation: ${failed.mkString(", ")}",
+              errors = invalid, verbose = valid)
+          }
+        Seq(unit)
       }
     }
   }

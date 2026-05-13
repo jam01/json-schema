@@ -59,8 +59,6 @@ object TestSuiteTest {
   // Files whose invalid cases don't currently produce a keyword-level error unit under Detailed format.
   // These are real gaps to be fixed separately — `error_shape` skips them to keep the harness green
   // while it does catch regressions elsewhere. Buckets, by root cause:
-  //   - Unevaluated vocab emits a single root-level unit without naming the keyword:
-  //       unevaluatedProperties.json, unevaluatedItems.json
   //   - Applicator combiners (not/oneOf/anyOf/allOf) collapse to a root-only unit when failing:
   //       not.json, oneOf.json, anyOf.json, allOf.json
   //   - BooleanSchemaValidator emits no error message for `false` schemas (there is no keyword name):
@@ -71,12 +69,17 @@ object TestSuiteTest {
   //       items.json, additionalProperties.json, dependentSchemas.json, patternProperties.json,
   //       uniqueItems.json, properties.json, vocabulary.json, prefixItems.json
   val NotSupportedErrorShape: Seq[String] = Seq(
-    "unevaluatedProperties.json", "unevaluatedItems.json",
     "not.json", "oneOf.json", "anyOf.json", "allOf.json",
     "boolean_schema.json", "ref.json", "dynamicRef.json",
     "items.json", "additionalProperties.json", "dependentSchemas.json", "patternProperties.json",
     "uniqueItems.json", "properties.json", "vocabulary.json", "prefixItems.json"
   )
+
+  // Test-case descriptions to skip in `error_shape` only — these are real failures in a bucket
+  // we haven't fixed yet, but live in a file whose other cases do produce keyword-level errors.
+  //   - "dynamic evalation inside nested refs" (unevaluatedProperties.json): the failure is a top-level
+  //     `oneOf` double-match, which falls in the applicator-combiner bucket, not Unevaluated.
+  val NotSupportedErrorShapeTests: Seq[String] = Seq("dynamic evalation inside nested refs")
 
   // The official test suite expects `remotes/<rel>` to be reachable at `http://localhost:1234/<rel>`.
   // See test-suite/README.md § "Additional Assumptions".
@@ -150,6 +153,7 @@ object TestSuiteTest {
         .forEach(p => {
           args_provider(p, errorShape = true).stream()
             .filter(args => !NotSupportedTests.contains(args.get()(1)))
+            .filter(args => !NotSupportedErrorShapeTests.contains(args.get()(1)))
             .filter(args => !args.get()(4).asInstanceOf[java.lang.Boolean])  // invalid cases only
             .forEach(args0 => args.add(Arguments.of(args0.get()(0), args0.get()(1), args0.get()(2), args0.get()(3), args0.get()(5))))
         })
