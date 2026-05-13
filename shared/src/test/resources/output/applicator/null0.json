@@ -12,12 +12,14 @@
       {
         "valid": false,
         "keywordLocation": "/not",
-        "instanceLocation": ""
+        "instanceLocation": "",
+        "error": "Subschema unexpectedly matched"
       },
       {
         "valid": false,
         "keywordLocation": "/allOf",
         "instanceLocation": "",
+        "error": "Branches failed at indices: 0",
         "details": [
           {
             "valid": false,
@@ -30,6 +32,7 @@
         "valid": false,
         "keywordLocation": "/anyOf",
         "instanceLocation": "",
+        "error": "No branches matched",
         "details": [
           {
             "valid": false,
@@ -42,6 +45,7 @@
         "valid": false,
         "keywordLocation": "/oneOf",
         "instanceLocation": "",
+        "error": "Expected exactly one branch to match, none matched",
         "details": [
           {
             "valid": false,
@@ -61,6 +65,7 @@
         "valid": false,
         "keywordLocation": "/not",
         "instanceLocation": "",
+        "error": "Subschema unexpectedly matched",
         "details": [
           {
             "valid": true,
@@ -78,6 +83,7 @@
         "valid": false,
         "keywordLocation": "/allOf",
         "instanceLocation": "",
+        "error": "Branches failed at indices: 0",
         "details": [
           {
             "valid": false,
@@ -95,6 +101,7 @@
         "valid": false,
         "keywordLocation": "/anyOf",
         "instanceLocation": "",
+        "error": "No branches matched",
         "details": [
           {
             "valid": false,
@@ -107,6 +114,7 @@
         "valid": false,
         "keywordLocation": "/oneOf",
         "instanceLocation": "",
+        "error": "Expected exactly one branch to match, none matched",
         "details": [
           {
             "valid": false,

@@ -13,6 +13,7 @@
         "valid": false,
         "keywordLocation": "/oneOf",
         "instanceLocation": "",
+        "error": "Expected exactly one branch to match, more than one matched at indices: 0, 1",
         "details": [
           {
             "valid": true,
@@ -37,6 +38,7 @@
         "valid": false,
         "keywordLocation": "/oneOf",
         "instanceLocation": "",
+        "error": "Expected exactly one branch to match, more than one matched at indices: 0, 1",
         "details": [
           {
             "valid": true,
