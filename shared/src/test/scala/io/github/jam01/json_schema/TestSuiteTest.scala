@@ -52,10 +52,7 @@ class TestSuiteTest {
 
 object TestSuiteTest {
   val NotSupported: Seq[String] = Seq.empty
-  // refRemote.json — chained `$id` resolution where an inner `$defs.<name>.$id` is a relative ref
-  // (e.g. `"baseUriChangeFolder/"`) is not being registered against the root `$id`'s base, so the
-  // outer `$ref` to that resolved URI fails. Tracked separately.
-  val NotSupportedTests: Seq[String] = Seq("base URI change - change folder", "base URI change - change folder in subschema")
+  val NotSupportedTests: Seq[String] = Seq.empty
   val NotSupportedFormat: Seq[String] = Seq("idn-hostname.json", "idn-email.json")
   val NotSupportedFormatTests: Seq[String] = Seq("weeks cannot be combined with other units")
 
