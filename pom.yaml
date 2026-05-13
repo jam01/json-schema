@@ -31,7 +31,7 @@ build:
               - '**/LICENSE'
               - '**/*pom.*'
               - README.md
-              - CLAUDE.md
+              - AGENTS.md
               - docs/**
               - theme/**
               - mkdocs.yml
