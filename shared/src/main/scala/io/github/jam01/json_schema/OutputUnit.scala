@@ -216,9 +216,24 @@ object OutputFormat {
       OutputUnit(isValid, kwLoc, null, insLoc)
   }
 
+  /**
+   * A flat output format: a single root unit whose `details` is a flat list of keyword-level
+   * units (no nesting), per JSON Schema 2020-12 § 12.4.2. Each entry in `details` carries its own
+   * `valid`/`kwLoc`/`insLoc`/`error`/`annotation` with empty `details`.
+   */
   val Basic: OutputFormat = new OutputFormat {
-    override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
-      ???
+    private def flat(u: OutputUnit): Seq[OutputUnit] =
+      OutputUnit(u.valid, u.kwLoc, u.absKwLoc, u.insLoc, u.error, u.annotation) +: u.details
+
+    inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
+      if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation,
+        verbose.flatMap(flat).filter(u => u.annotation != null))
+      else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, null, errors.flatMap(flat))
+
+    inline override def accumulate(results: mutable.Growable[OutputUnit], unit: OutputUnit): mutable.Growable[OutputUnit] =
+      if (!unit.vvalid) results.addOne(unit)
+      else if (unit.hasAnnotations) results.addOne(unit)
+      else results
   }
 
   /**
