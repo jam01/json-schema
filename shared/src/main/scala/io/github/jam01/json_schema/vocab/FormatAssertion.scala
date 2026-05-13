@@ -210,12 +210,13 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
         if (!i18n && !between(c, ' ', '~')) return false              // must be printable
         if (i18n && isAscii(c) && !between(c, ' ', '~')) return false // must be printable or non-ASCII
 
-        if (c == '"' && i != qstr.length - 1)           // if DQUOTE in the middle
-          if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
-        else if (c == '\\' && i == qstr.length - 2)     // if backslash at end of quoted-string
-          if (qstr.charAt(i - 1) != '\\') return false  //   preceding char must be a backslash
-        else if (i18n && !isAscii(c))                   // if non-ASCII
-          if (qstr.charAt(i - 1) == '\\') return false  //   preceding char must not be a backslash
+        if (c == '"' && i != qstr.length - 1) {                  // if DQUOTE in the middle
+          if (qstr.charAt(i - 1) != '\\') return false           //   preceding char must be a backslash
+        } else if (c == '\\' && i == qstr.length - 2) {          // if backslash at end of quoted-string
+          if (qstr.charAt(i - 1) != '\\') return false           //   preceding char must be a backslash
+        } else if (i18n && !isAscii(c)) {                        // if non-ASCII
+          if (qstr.charAt(i - 1) == '\\') return false           //   preceding char must not be a backslash
+        }
 
         i += 1
       }
