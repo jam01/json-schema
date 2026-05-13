@@ -59,8 +59,6 @@ object TestSuiteTest {
   // Files whose invalid cases don't currently produce a keyword-level error unit under Detailed format.
   // These are real gaps to be fixed separately — `error_shape` skips them to keep the harness green
   // while it does catch regressions elsewhere. Buckets, by root cause:
-  //   - Applicator combiners (not/oneOf/anyOf/allOf) collapse to a root-only unit when failing:
-  //       not.json, oneOf.json, anyOf.json, allOf.json
   //   - BooleanSchemaValidator emits no error message for `false` schemas (there is no keyword name):
   //       boolean_schema.json
   //   - $ref / $dynamicRef short-circuit before vocab errors propagate up:
@@ -69,17 +67,14 @@ object TestSuiteTest {
   //       items.json, additionalProperties.json, dependentSchemas.json, patternProperties.json,
   //       uniqueItems.json, properties.json, vocabulary.json, prefixItems.json
   val NotSupportedErrorShape: Seq[String] = Seq(
-    "not.json", "oneOf.json", "anyOf.json", "allOf.json",
     "boolean_schema.json", "ref.json", "dynamicRef.json",
     "items.json", "additionalProperties.json", "dependentSchemas.json", "patternProperties.json",
     "uniqueItems.json", "properties.json", "vocabulary.json", "prefixItems.json"
   )
 
-  // Test-case descriptions to skip in `error_shape` only — these are real failures in a bucket
-  // we haven't fixed yet, but live in a file whose other cases do produce keyword-level errors.
-  //   - "dynamic evalation inside nested refs" (unevaluatedProperties.json): the failure is a top-level
-  //     `oneOf` double-match, which falls in the applicator-combiner bucket, not Unevaluated.
-  val NotSupportedErrorShapeTests: Seq[String] = Seq("dynamic evalation inside nested refs")
+  // Test-case descriptions to skip in `error_shape` only — same shape as NotSupportedErrorShape but
+  // for cases that live in a file whose other cases do produce keyword-level errors.
+  val NotSupportedErrorShapeTests: Seq[String] = Seq.empty
 
   // The official test suite expects `remotes/<rel>` to be reachable at `http://localhost:1234/<rel>`.
   // See test-suite/README.md § "Additional Assumptions".

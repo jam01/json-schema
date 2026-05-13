@@ -429,27 +429,32 @@ final class Applicator private(schema: ObjectSchema,
   /* helper methods */
   private def allOf(kw: String, units: Seq[OutputUnit]): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
-    mkUnit(invalid.isEmpty, kw, errors = invalid, verbose = valid)
+    if (invalid.isEmpty) mkUnit(true, kw, verbose = valid)
+    else mkUnit(false, kw,
+      error = s"Branches failed at indices: ${invalid.map(_.kwLoc.refTokens.last).mkString(", ")}",
+      errors = invalid, verbose = valid)
   }
 
   private def oneOf(kw: String, units: Seq[OutputUnit]): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
     if (valid.size == 1) mkUnit(true, kw, verbose = units) // if one valid, no errors and all results are verbose
-    else if (valid.size > 1) mkUnit(false, kw, errors = valid, verbose = invalid) // if 1+ valid, errors are all valid, and invalid are verbose
-    else mkUnit(false, kw, errors = units) // if none valid, all results are errors
+    else if (valid.size > 1) mkUnit(false, kw, // if 1+ valid, errors are all valid, and invalid are verbose
+      error = s"Expected exactly one branch to match, more than one matched at indices: ${valid.map(_.kwLoc.refTokens.last).mkString(", ")}",
+      errors = valid, verbose = invalid)
+    else mkUnit(false, kw, error = "Expected exactly one branch to match, none matched", errors = units)
   }
 
   private def anyOf(kw: String, units: Seq[OutputUnit]): OutputUnit = {
     val (valid, invalid) = units.partition(_.vvalid)
     if (valid.nonEmpty) mkUnit(true, kw, verbose = units) // if some succeeded, no errors and all results are verbose
-    else mkUnit(false, kw, errors = units) // if none succeeded, all results are errors
+    else mkUnit(false, kw, error = "No branches matched", errors = units)
   }
 
   private def not(n: OutputUnit): OutputUnit = {
-    if (n.vvalid) {
+    if (n.vvalid) { // if invvalid, errors are all valid, and invalid are verbose
       val (valid, invalid) = n.details.partition(_.vvalid)
-      mkUnit(false, Not, errors = valid, verbose = invalid) // if invvalid, errors are all valid, and invalid are verbose
-    } 
+      mkUnit(false, Not, error = "Subschema unexpectedly matched", errors = valid, verbose = invalid)
+    }
     else mkUnit(true, Not, verbose = n.details) // if vvalid, all results are verbose
   }
 }
