@@ -24,7 +24,8 @@
           {
             "valid": false,
             "keywordLocation": "/allOf/0",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       },
@@ -37,7 +38,8 @@
           {
             "valid": false,
             "keywordLocation": "/anyOf/0",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       },
@@ -50,7 +52,8 @@
           {
             "valid": false,
             "keywordLocation": "/oneOf/0",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       }
@@ -88,7 +91,8 @@
           {
             "valid": false,
             "keywordLocation": "/allOf/0",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           },
           {
             "valid": true,
@@ -106,7 +110,8 @@
           {
             "valid": false,
             "keywordLocation": "/anyOf/0",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       },
@@ -119,7 +124,8 @@
           {
             "valid": false,
             "keywordLocation": "/oneOf/0",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       }

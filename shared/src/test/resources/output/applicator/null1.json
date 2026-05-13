@@ -45,7 +45,8 @@
           {
             "valid": false,
             "keywordLocation": "/anyOf/1",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       },
@@ -62,7 +63,8 @@
           {
             "valid": false,
             "keywordLocation": "/oneOf/1",
-            "instanceLocation": ""
+            "instanceLocation": "",
+            "error": "Schema rejects all values"
           }
         ]
       }

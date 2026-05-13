@@ -12,7 +12,8 @@
       {
         "valid": false,
         "keywordLocation": "/then",
-        "instanceLocation": ""
+        "instanceLocation": "",
+        "error": "Schema rejects all values"
       }
     ]
   },
@@ -24,7 +25,8 @@
       {
         "valid": false,
         "keywordLocation": "/then",
-        "instanceLocation": ""
+        "instanceLocation": "",
+        "error": "Schema rejects all values"
       },
       {
         "valid": true,

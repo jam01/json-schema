@@ -37,21 +37,28 @@ object SchemaValidator {
 }
 
 final class BooleanSchemaValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends JsonVisitor[OutputUnit, OutputUnit] {
-  override def visitNull(index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
-  override def visitFalse(index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
-  override def visitTrue(index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
-  override def visitFloat64(d: Double, index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
-  override def visitInt64(i: Long, index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
-  override def visitString(s: CharSequence, index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
+  private def emit: OutputUnit = BooleanSchemaValidator.emit(bool, ctx, path)
+  override def visitNull(index: Int): OutputUnit = emit
+  override def visitFalse(index: Int): OutputUnit = emit
+  override def visitTrue(index: Int): OutputUnit = emit
+  override def visitFloat64(d: Double, index: Int): OutputUnit = emit
+  override def visitInt64(i: Long, index: Int): OutputUnit = emit
+  override def visitString(s: CharSequence, index: Int): OutputUnit = emit
   override def visitArray(length: Int, index: Int): ArrVisitor[OutputUnit, OutputUnit] = new BooleanArrValidator(bool, ctx, path)
   override def visitObject(length: Int, index: Int): ObjVisitor[OutputUnit, OutputUnit] = new BooleanObjValidator(bool, ctx, path)
-  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): OutputUnit = emit
+}
+
+object BooleanSchemaValidator {
+  private[json_schema] def emit(bool: Boolean, ctx: Context, path: JsonPointer): OutputUnit =
+    ctx.config.format.make(bool, path, null, ctx.instanceLoc,
+      error = if (bool) null else "Schema rejects all values")
 }
 
 final class BooleanArrValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends ArrVisitor[Any, OutputUnit] {
   override def subVisitor: Visitor[?, ?] = NoOpVisitor
   override def visitValue(v: Any, index: Int): Unit = ()
-  override def visitEnd(index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
+  override def visitEnd(index: Int): OutputUnit = BooleanSchemaValidator.emit(bool, ctx, path)
 }
 
 final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) extends ObjVisitor[Any, OutputUnit] {
@@ -59,7 +66,7 @@ final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) 
   override def visitKeyValue(v: Any): Unit = ()
   override def subVisitor: Visitor[?, ?] = NoOpVisitor
   override def visitValue(v: Any, index: Int): Unit = ()
-  override def visitEnd(index: Int): OutputUnit = OutputUnit(bool, path, null, ctx.instanceLoc)
+  override def visitEnd(index: Int): OutputUnit = BooleanSchemaValidator.emit(bool, ctx, path)
 }
 
 private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]) extends JsonVisitor[Seq[T], OutputUnit] {

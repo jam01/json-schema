@@ -23,7 +23,8 @@
           {
             "valid": false,
             "keywordLocation": "/prefixItems/1",
-            "instanceLocation": "/1"
+            "instanceLocation": "/1",
+            "error": "Schema rejects all values"
           }
         ]
       },
@@ -50,7 +51,8 @@
       {
         "valid": false,
         "keywordLocation": "/else",
-        "instanceLocation": ""
+        "instanceLocation": "",
+        "error": "Schema rejects all values"
       }
     ]
   },
@@ -73,7 +75,8 @@
           {
             "valid": false,
             "keywordLocation": "/prefixItems/1",
-            "instanceLocation": "/1"
+            "instanceLocation": "/1",
+            "error": "Schema rejects all values"
           },
           {
             "valid": true,
@@ -105,7 +108,8 @@
       {
         "valid": false,
         "keywordLocation": "/else",
-        "instanceLocation": ""
+        "instanceLocation": "",
+        "error": "Schema rejects all values"
       },
       {
         "valid": false,
