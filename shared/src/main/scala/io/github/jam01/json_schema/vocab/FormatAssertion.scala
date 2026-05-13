@@ -109,7 +109,7 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
     i == s.length() - 1 && s.charAt(i) != '~'
   }
   private def isRelJsPtr(s: CharSequence): Boolean = {
-    if (s.isEmpty) return false
+    if (s.length() == 0) return false
 
     var c = s.charAt(0)
     if (c == '-' || c == '+') return false

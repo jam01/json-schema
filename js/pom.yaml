@@ -36,3 +36,41 @@ build:
         - goals: [compile, testCompile]
           configuration:
             args: ['-deprecation', '-feature', '-scalajs']
+    # parent adds shared/src/test/scala as a test source — those tests use JVM-only APIs
+    # (filesystem, JUnit 5) and cannot link on Scala.js; disable just that execution.
+    - id: org.codehaus.mojo:build-helper-maven-plugin:3.6.0
+      executions:
+        - id: shared-test-sources
+          phase: none
+    # Dump the test runtime classpath for sjsld to scan for .sjsir.
+    - id: org.apache.maven.plugins:maven-dependency-plugin:3.6.1
+      executions:
+        - id: dump-test-classpath
+          phase: test-compile
+          goals: ['build-classpath']
+          configuration:
+            outputFile: ${project.build.directory}/test-classpath.txt
+            includeScope: test
+    # Link the Scala.js smoke test to a single main.js, then run it under Node.
+    - id: org.codehaus.mojo:exec-maven-plugin:3.5.0
+      executions:
+        - id: link-smoke
+          phase: test
+          goals: ['exec']
+          configuration:
+            executable: java
+            arguments:
+              - -jar
+              - ${project.basedir}/../src/build/sjsld/target/sjsld.jar
+              - ${project.build.directory}/scalajs-smoke
+              - io.github.jam01.json_schema.Smoke
+              - ${project.build.outputDirectory}
+              - ${project.build.testOutputDirectory}
+              - '@${project.build.directory}/test-classpath.txt'
+        - id: run-smoke
+          phase: test
+          goals: ['exec']
+          configuration:
+            executable: node
+            arguments:
+              - ${project.build.directory}/scalajs-smoke/main.js

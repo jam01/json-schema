@@ -125,8 +125,14 @@ object Uri {
 
   /**
    * A random Uri.
+   *
+   * Constructs a v4 UUID from `scala.util.Random` rather than `UUID.randomUUID()` so the call site does
+   * not transitively pull `java.security.SecureRandom`, which is not provided by Scala.js's javalib.
    */
   def random: Uri = {
-    Uri("urn:uuid:" + UUID.randomUUID().toString)
+    val rng = scala.util.Random
+    val msb = (rng.nextLong() & 0xFFFFFFFFFFFF0FFFL) | 0x0000000000004000L // version 4
+    val lsb = (rng.nextLong() & 0x3FFFFFFFFFFFFFFFL) | (1L << 63)          // RFC 4122 variant
+    Uri("urn:uuid:" + new UUID(msb, lsb).toString)
   }
 }

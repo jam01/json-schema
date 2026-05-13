@@ -1,0 +1,57 @@
+modelVersion: 4.0.0
+
+groupId: io.github.jam01
+artifactId: json-schema-sjsld
+version: 1.0.0
+packaging: jar
+
+name: JSON Schema Scala.js linker driver
+description: |
+  Build-time tool that drives the Scala.js linker to produce a runnable .js bundle from .sjsir on a classpath.
+  Used by the js module to package the Scala.js smoke test for execution under Node.
+
+properties:
+  maven.compiler.source: '21'
+  maven.compiler.target: '21'
+  maven.compiler.release: '21'
+  project.build.sourceEncoding: UTF-8
+  maven.install.skip: 'true'
+  maven.deploy.skip: 'true'
+
+dependencies:
+  - org.scala-lang:scala3-library_3:3.3.3
+  - org.scala-js:scalajs-linker_2.13:1.16.0
+
+build:
+  finalName: sjsld
+  plugins:
+    - id: org.apache.maven.plugins:maven-compiler-plugin:3.11.0
+      configuration:
+        skipMain: 'true'
+        skip: 'true'
+    - id: net.alchim31.maven:scala-maven-plugin:4.9.1
+      executions:
+        - goals: ['compile']
+          configuration:
+            args: ['-deprecation', '-feature', '-unchecked']
+    - id: org.apache.maven.plugins:maven-shade-plugin:3.5.3
+      executions:
+        - id: shade-sjsld
+          phase: package
+          goals: ['shade']
+          configuration:
+            shadedArtifactAttached: false
+            createDependencyReducedPom: false
+            filters:
+              - artifact: '*:*'
+                excludes:
+                  - 'META-INF/*.SF'
+                  - 'META-INF/*.DSA'
+                  - 'META-INF/*.RSA'
+                  - 'module-info.class'
+                  - 'META-INF/versions/*/module-info.class'
+            transformers:
+              - attr/implementation: org.apache.maven.plugins.shade.resource.ManifestResourceTransformer
+                manifestEntries:
+                  Main-Class: io.github.jam01.json_schema.build.Sjsld
+              - attr/implementation: org.apache.maven.plugins.shade.resource.ServicesResourceTransformer

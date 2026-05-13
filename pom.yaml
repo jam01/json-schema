@@ -6,6 +6,7 @@ version: 0
 packaging: pom
 
 modules:
+  - src/build/sjsld # build-time only, must precede js
   - jvm
   - js
 
@@ -23,11 +24,14 @@ build:
           - header: '${project.basedir}/src/build/license-header.txt'
             excludes:
               - '.mvn/**'
-              - 'src/build/**'
+              - 'src/build/license-header.txt'
+              - 'src/build/yq-assign.sh'
+              - 'src/build/pom.yaml'
               - '**/NOTICE'
               - '**/LICENSE'
               - '**/*pom.*'
               - README.md
+              - CLAUDE.md
               - docs/**
               - theme/**
               - mkdocs.yml

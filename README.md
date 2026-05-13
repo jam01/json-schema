@@ -30,3 +30,9 @@ _Maven_
     <version>0.1.0</version>
 </dependency>
 ```
+
+### Scala.js limitations
+
+The `_sjs1_3` artifact aims for feature parity with the JVM artifact, with one documented exception:
+
+- **`format: idn-hostname` and `format: idn-email`** (under the format-assertion vocabulary) are validated *structurally* on Scala.js — label length, character category, hyphen placement, total length — but not against the full IDNA 2008 / RFC 5892 tables, Punycode (`xn--…`) decoding, or RFC 5893 Bidi rules. The JVM target uses `com.networknt`'s RFC 5892 implementation for full conformance. If you need that, validate on the JVM. See `js/src/main/scala/io/github/jam01/json_schema/vocab/Idn.scala` for the precise list of checks performed.
