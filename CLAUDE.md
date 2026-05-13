@@ -1,0 +1,109 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+Scala 3 JSON Schema validator (draft 2020-12) built on `upickle.core.Visitor`. Published as `io.github.jam01:json-schema_3` (JVM) and `io.github.jam01:json-schema_sjs1_3` (Scala.js).
+
+## Build & test
+
+This is a Maven build using **Polyglot YAML** (`pom.yaml`, not `pom.xml`) via the `io.takari.polyglot:polyglot-yaml` extension declared in `.mvn/extensions.xml`. Maven auto-loads the extension, so the normal `mvn` CLI works — there is no separate command.
+
+Requires **JDK 25** (CI uses Oracle 25); compiler `release` is `21`. Most tests live under `shared/src/test/` and are run by the `jvm` module (Scala.js packaging produces no test runner here — see `docs/decisions/005-build-tool.md`).
+
+The repo includes the official **JSON Schema Test Suite as a git submodule** at `shared/src/test/resources/test-suite`. Initialize it before running tests:
+
+```bash
+git submodule update --init --recursive
+mvn -V --no-transfer-progress --batch-mode clean verify
+```
+
+Run a single test class or method (JVM module only — `surefire` doesn't run inside the JS module):
+
+```bash
+mvn -pl jvm test -Dtest=ObjectSchemaValidatorTest
+mvn -pl jvm test -Dtest=TestSuiteTest#optional_format
+```
+
+Useful flags:
+- `-pl jvm` / `-pl js` — restrict to one module (the root is an aggregator only).
+- `-P release` — sources + scaladoc + GPG sign + nexus-staging deploy (used by `.github/workflows/release.yaml`).
+- `mvn license:format -pl '.'` — re-apply the Apache-2.0 license header (`src/build/license-header.txt`).
+
+## Architecture
+
+### Pipeline
+
+The library is a **push-style streaming validator**: the JSON instance is pushed through a `Visitor` and validation results stream out, without ever materializing the instance as a full AST. The two public entry points in `shared/.../json_schema/package.scala` are:
+
+- `json_schema.from(reader, readable, ...)` — parses a JSON document into a `Schema` by transforming it through `SchemaR` (the schema reader visitor).
+- `json_schema.validator(schema, config, registry)` — returns a `Visitor[?, OutputUnit]` you push the instance through (typically via `ujson.transform`).
+
+`Schema#validate(reader, readable, ...)` wraps both. `SchemaValidator.apply` wraps the validator in a `PointerDelegate` that tracks the instance location during traversal.
+
+### Schema ADT
+
+`Schema.scala` defines the schema ADT and the broader `Value` ADT (`Str`, `Obj`, `Arr`, `Int64`, `Float64`, `Int128`, `Dec128`, `Bool`, `Null`). A `Schema` is either:
+- `BooleanSchema` (`TrueSchema` / `FalseSchema`), or
+- `ObjectSchema` — a JSON object backed by a `collection.Map[String, Value]` plus `docbase: Uri`, `parent: Option[ObjectSchema]`, and `prel` (relative pointer from parent). `ObjectSchema.equals`/`hashCode` deliberately ignore `parent` to avoid cycles, since children reference back to it (see comment in `Schema.scala`).
+
+`ObjSchema.scala` provides accessor helpers (`getMetaSchema`, `getVocabularies`, etc.). `Uri` and `JsonPointer` are first-class types used pervasively.
+
+### Vocabularies (the keyword implementations)
+
+Validation logic is split into **vocabularies**, each implementing a `Vocab[T]` (which itself is a `JsonVisitor[T, Seq[OutputUnit]]`). Built-in vocabs live in `shared/.../json_schema/vocab/`: `Core`, `Validation`, `Applicator`, `Unevaluated`, `Format`, `FormatAssertion`, `Metadata`, `Content`. The `Idn.scala` (IDN hostname/email) implementation is split: the JVM version (`jvm/src/main/.../vocab/Idn.scala`) wraps `com.networknt`'s RFC 5892 utility for full IDNA 2008 conformance; the Scala.js version (`js/src/main/.../vocab/Idn.scala`) is a best-effort structural validator with documented gaps — no IDNA 2008 character eligibility, no Punycode decoding, no Bidi (see Scala.js limitations below).
+
+### Scala.js limitations
+
+`format: idn-hostname` / `format: idn-email` are validated structurally on Scala.js but not against the IDNA 2008 tables. Documented in README. The Scala.js `Idn.isHostname` enforces label/total length, hyphen placement, and category-based char checks (`Character.isLetterOrDigit` + dots/hyphens). Code paths that need strict conformance must run on JVM.
+
+### Scala.js testing
+
+The `js` module is linked to a single `main.js` and run under Node at the `test` phase. This is a **smoke test only** — the full suite is JVM-only because most tests use `java.nio.file` and JUnit 5 (which doesn't run on Scala.js).
+
+- `src/build/sjsld/` — small Maven module producing `sjsld.jar`, a Scala.js linker driver around `org.scala-js:scalajs-linker_2.13`. Built first in the reactor; uber-jar bundled via `maven-shade-plugin`.
+- `js/src/test/scala/.../Smoke.scala` — plain `main` with hand-rolled `check(...)` calls covering platform-divergent code paths (regex, `java.time`, `Idn`) plus a few smoke happy/sad paths. No test framework — JUnit 5 doesn't work on Scala.js and a JS-compatible framework would need its own linker/runner.
+- `js/pom.yaml` disables the parent's `shared-test-sources` execution (those tests are JVM-only) and runs `exec-maven-plugin` twice: link → node.
+- CI installs Node via `actions/setup-node@v4`.
+
+Anything in shared production code that references a Java 15+ `CharSequence` method, `java.security.SecureRandom`, `java.nio.file`, etc. will fail at the **link** step on JS — so the linker doubles as a static check for accidental JVM-only API use.
+
+A `Dialect` (`Dialect.scala`) bundles a set of `VocabFactory` instances under a meta-schema URI. Three presets: `Dialect.Basic` (no format/metadata/content), `Dialect.FormatAssertion`, `Dialect.FullSpec`. `Dialect.tryDialect` derives a dialect from `$schema` + `$vocabulary` in a meta-schema, falling back to `Basic`.
+
+`VocabBase` (extend this for new vocabs) provides `mkUnit`, `accumulate`, `accumulateVec`, and `ffastChild` helpers that respect the configured `OutputFormat`, offer annotations to the `Context`, and short-circuit on `ffast` by throwing `InvalidVectorException`.
+
+### How keyword sub-schemas compose
+
+`SchemaValidator.apply` filters dialect vocabs to those applicable to the schema, then composes them with either `FFastObjectSchemaValidator` (the `ffast` path, which throws `InvalidVectorException` / `ValidationException` to short-circuit) or `MapCompositeVisitor` (full-validation path). Composite visitors fan a single instance node out to N delegates (`CompositeVisitor` / `MapCompositeVisitor` in `Visitors.scala`). This is the pattern used by both multi-vocab dispatch and applicator keywords (`allOf`, `anyOf`, `oneOf`).
+
+### Dynamic dependencies & annotation flow
+
+Some keywords depend on others (e.g. `else` on `if`, `unevaluatedItems` on `items`/`properties`). The chosen strategy (see `docs/decisions/002-dynamic-deps.md`, `003-annotation-dyn-deps.md`, `004-invalid-dyn-deps.md`) is **always compute, then resolve via annotations**:
+
+- Each vocab `offerAnnotation(loc, value)` through the `Context` when a keyword produces an annotation.
+- Dependent keywords call `ctx.registerDependant(schLocation, kwLocation, predicate)` up front; `getDependenciesFor(kwLocation)` later returns the matching annotations.
+- `Context.notifyInvalid(...)` (and `onVocabResults` / `onScopeEnd` in `ContextExtension`) prune dependencies that came from branches later found invalid (e.g. discarded `if`/`then`/`else` paths).
+- `DefaultContext` in `Context.scala` is the only `Context` implementation; treat the `ContextExtension` API (`ext.onVocabResults`, `ext.onScopeEnd`) as **internal**, called from `VocabBase`/`SchemaValidator`, not from vocab keyword code.
+
+### Output and configuration
+
+- `OutputFormat` (in `OutputUnit.scala`) controls result shape: `Flag` (single bool), `Detailed`, `Verbose`. `Basic` is currently `???` (unimplemented). The format also controls whether successful units are accumulated (annotation propagation) or dropped.
+- `Config` bundles `dialect`, `format`, `ffast` (default `true`), `allowList` (annotation filter, default `DropAll`), `maxDepth` (default `32`, guards infinite `$ref` recursion — see `SchemaValidator.guardDepth`).
+- `Registry` looks up schemas by `Uri`. Used to resolve `$ref` / `$dynamicRef`, meta-schemas, and remotes. `DefaultContext.getDynSch` walks the dynamic scope by climbing `Vocab.dynParent`.
+
+### Module layout summary
+
+- `pom.yaml` (root, aggregator) → modules `jvm`, `js`.
+- `src/build/pom.yaml` — the **parent POM** for both modules (compiler config, scala-maven-plugin, license header, surefire, flatten).
+- `shared/src/main/scala` — added as an extra source root to both modules via `build-helper-maven-plugin`. Likewise `shared/src/test/scala` and `shared/src/test/resources`.
+- `jvm/src/main/scala` / `js/src/main/scala` — platform-specific overrides (currently just `vocab/Idn.scala`).
+- The `js` module depends on `scalajs-test-bridge` but has no real Scala.js test runner wired up.
+
+## Conventions worth knowing
+
+- All source files carry the Apache-2.0 header from `src/build/license-header.txt`; `mvn license:format -pl '.'` rewrites them. CI fails on missing headers (`license:check` in the root `pom.yaml`).
+- `Schema` and `Value` are `sealed` ADTs in a single file — see comment block in `Schema.scala` linking to discussions on multi-file ADTs. Keep new cases co-located.
+- The `equals`/`hashCode` of `ObjectSchema` intentionally ignores `parent` to avoid cycles. Don't "fix" this without reading the rationale.
+- `package.scala` is the user-facing API surface. Keep public-API additions there.
+- Tests rely on the submodule being initialized; CI does this explicitly.

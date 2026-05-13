@@ -13,5 +13,8 @@ jobs:
           java-version: '25'
           cache: maven
           cache-dependency-path: '**/pom.yaml'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: mvn verify
         run: mvn -V --no-transfer-progress --batch-mode clean verify
