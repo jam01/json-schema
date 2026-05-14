@@ -138,6 +138,36 @@ Example. Schema `{"properties":{"name":{"type":"string","minLength":3}}}` agains
 `Verbose` additionally retains every successful unit. Use `OutputUnitW.transform(unit, ujson.StringRenderer())`
 to serialize.
 
+## Annotations
+
+Beyond pass/fail, JSON Schema defines an **annotation** mechanism: keywords that succeed can attach a value to
+their evaluation site, observable downstream by the user *and* by sibling keywords. This is what
+makes `unevaluatedItems` / `unevaluatedProperties` correct in the first place, and what powers things like
+form generation, doc rendering, or routing decisions driven by schema metadata.
+
+This library treats annotations as first-class. Specifically:
+
+- **Spec-compliant emission across all four output formats** — `Detailed` retains successful units that
+  carry annotations; `Verbose` retains every successful unit; `Basic` flattens annotated units at the root;
+  `Flag` drops them. See [JSON Schema 2020-12 §7.7](https://json-schema.org/draft/2020-12/json-schema-core#section-7.7).
+- **Correct cross-keyword propagation** — `unevaluatedItems` and `unevaluatedProperties` see the
+  annotations produced by sibling `properties` / `patternProperties` / `additionalProperties` /
+  `prefixItems` / `items` / `contains`, including across `$ref`, `allOf`/`anyOf`/`oneOf`, and
+  `if`/`then`/`else` branches.
+- **Pruning on invalidated branches** — when a `oneOf` arm fails, an `if` selects the other branch,
+  or an applicator otherwise discards a result, the annotations produced by the discarded subtree
+  are pruned before downstream keywords consume them. This is the kind of thing many implementations
+  get wrong.
+- **`AllowList` for tuning what lands in the output** — `Config(allowList = …)`. Choices: `KeepAll`,
+  `DropAll` (default), `Keep(Set[String])`, `Drop(Set[String])`. Useful when you want, say, `title` /
+  `description` / `x-*` for downstream tooling but not the `prefixItems` index annotations.
+- **`OutputUnit.findAnnotatingUnits(insLoc, keyword)`** for extracting annotations from a result tree
+  without re-traversing it yourself.
+
+Custom vocabularies plug into the same mechanism: emit an annotation via `mkUnit(..., annotation = …)`,
+and declare a dependency on others via `ctx.registerDependant(…)` + `ctx.getDependenciesFor(…)`. See
+the `Unevaluated` vocab for the canonical pattern.
+
 ## Format assertion
 
 `format` is annotation-only by default. To make it assert, opt in via `Dialect.FormatAssertion`:
