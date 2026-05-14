@@ -19,9 +19,10 @@ properties:
 
 dependencies:
   # The validator itself. Transitively brings scala3-library, upickle-core, scala-java-time.
+  # Pinned to this module's version so release-time bumps only need to touch `.version`.
   - groupId: io.github.jam01
     artifactId: json-schema_sjs1_3
-    version: 0.1.1-SNAPSHOT
+    version: ${project.version}
   # ujson is a test-scope dep of the `js` module; the facade uses it at compile scope.
   - com.lihaoyi:ujson_sjs1_3:3.3.1
 
@@ -94,3 +95,9 @@ build:
                 includes:
                   - 'README.md'
                   - 'index.d.ts'
+              # LICENSE lives at the repo root; copy it in so the npm tarball ships with it
+              # (referenced by `files` in package.json).
+              - directory: ${project.basedir}/..
+                filtering: 'false'
+                includes:
+                  - 'LICENSE'

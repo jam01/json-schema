@@ -30,6 +30,9 @@ jobs:
           src/build/yq-assign.sh .scm.tag ${{ github.event.inputs.release_ver }} src/build/pom.yaml
           src/build/yq-assign.sh .parent.version ${{ github.event.inputs.release_ver }} jvm/pom.yaml
           src/build/yq-assign.sh .parent.version ${{ github.event.inputs.release_ver }} js/pom.yaml
+          # npm/pom.yaml is standalone; its `${project.version}` is used as the
+          # json-schema_sjs1_3 dep version too, so this one bump covers both.
+          src/build/yq-assign.sh .version ${{ github.event.inputs.release_ver }} npm/pom.yaml
       - name: install gpg key # see: https://gist.github.com/sualeh/ae78dc16123899d7942bc38baba5203c
         run: |
           cat <(echo -e "${{ secrets.GPG_KEY }}") | gpg --batch --import
@@ -50,7 +53,7 @@ jobs:
       - name: commit release
         shell: bash
         run: |
-          git add src/build/pom.yaml jvm/pom.yaml js/pom.yaml
+          git add src/build/pom.yaml jvm/pom.yaml js/pom.yaml npm/pom.yaml
           git commit -m "[ci skip] prepare release ${{ github.event.inputs.release_ver }}"
           git push
       - name: tag release
@@ -63,6 +66,29 @@ jobs:
         run: gh release create ${{ github.event.inputs.release_ver }} --generate-notes
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      # Pack the npm artifact built earlier by `mvn deploy` (which runs through the package +
+      # verify phases for the npm module) and attach it to the GitHub release. Consumers can:
+      #   - npm install <release-asset-url>     (use the .tgz directly)
+      #   - script tag the loose main.js / main.js.map / index.d.ts files
+      # No commitment to npmjs.org or any package registry; assets are file-only.
+      - name: pack npm tarball
+        shell: bash
+        run: |
+          cd npm/target/scalajs-npm
+          npm pack
+      - name: upload release assets
+        shell: bash
+        run: |
+          cd npm/target/scalajs-npm
+          gh release upload "${{ github.event.inputs.release_ver }}" \
+            jam01-json-schema-*.tgz \
+            main.js \
+            main.js.map \
+            index.d.ts \
+            LICENSE \
+            --clobber
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: set next dev version
         shell: bash
         run: |
@@ -70,9 +96,10 @@ jobs:
           src/build/yq-assign.sh .scm.tag HEAD src/build/pom.yaml
           src/build/yq-assign.sh .parent.version ${{ github.event.inputs.next_ver }} jvm/pom.yaml
           src/build/yq-assign.sh .parent.version ${{ github.event.inputs.next_ver }} js/pom.yaml
+          src/build/yq-assign.sh .version ${{ github.event.inputs.next_ver }} npm/pom.yaml
       - name: commit next dev version
         shell: bash
         run: |
-          git add src/build/pom.yaml jvm/pom.yaml js/pom.yaml
+          git add src/build/pom.yaml jvm/pom.yaml js/pom.yaml npm/pom.yaml
           git commit -m "[ci skip] prepare for next development iteration"
           git push
