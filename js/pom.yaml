@@ -16,7 +16,6 @@ name: JSON Schema Validator for Scala.js
 dependencies:
   - org.scala-lang:scala3-library_sjs1_3:3.3.3
   - com.lihaoyi:upickle-core_sjs1_3:3.3.1
-  - com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_sjs1_3:2.30.1
   - io.github.cquiroz:scala-java-time_sjs1_3:2.6.0
   # test
   - org.scala-js:scalajs-test-bridge_2.13:test:1.12.0 # match scala3-lib_sjs1_3
