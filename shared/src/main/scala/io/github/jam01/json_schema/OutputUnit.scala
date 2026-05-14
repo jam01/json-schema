@@ -30,7 +30,7 @@ sealed class OutputUnit(val valid: Boolean,
   /**
    * Whether the OutputUnit has annotations.
    */
-  val hasAnnotations: Boolean = annotation != null ||
+  lazy val hasAnnotations: Boolean = annotation != null ||
     (details.nonEmpty && details.exists(u => u.hasAnnotations))
 
   /**
