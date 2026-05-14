@@ -4,9 +4,9 @@
     <!--https://issues.apache.org/jira/browse/MNG-5659-->
     <servers>
         <server>
-            <id>ossrh</id>
-            <username>${env.SONATYPE_USER}</username>
-            <password>${env.SONATYPE_PASSWORD}</password>
+            <id>central</id>
+            <username>${env.MAVEN_CENTRAL_USERNAME}</username>
+            <password>${env.MAVEN_CENTRAL_PASSWORD}</password>
         </server>
     </servers>
 </settings>
