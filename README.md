@@ -187,9 +187,11 @@ A vocabulary is a set of keywords with a single `VocabFactory` companion. To add
 `VocabBase`, override the `visit*` methods for the JSON node types your keyword applies to,
 declare the factory, and put it in a `Dialect`.
 
+`VocabBase` provides `Nil`-returning defaults for every `visit*` method, so a string-only
+keyword needs to override only `visitString`:
+
 ```scala
 import io.github.jam01.json_schema.*
-import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 final class StartsWith(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]])
     extends VocabBase(schema, ctx, path, dynParent) {
@@ -200,29 +202,6 @@ final class StartsWith(schema: ObjectSchema, ctx: Context, path: JsonPointer, dy
     val valid = s.toString.startsWith(prefix)
     Seq(mkUnit(valid, "startsWith",
       error = if (valid) null else s"""string does not start with "$prefix""""))
-  }
-
-  // Keyword applies only to strings; everything else is a no-op.
-  override def visitNull(index: Int):    Seq[OutputUnit] = Nil
-  override def visitTrue(index: Int):    Seq[OutputUnit] = Nil
-  override def visitFalse(index: Int):   Seq[OutputUnit] = Nil
-  override def visitInt64(i: Long, index: Int):   Seq[OutputUnit] = Nil
-  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = Nil
-  override def visitFloat64StringParts(s: CharSequence, dec: Int, exp: Int, index: Int): Seq[OutputUnit] = Nil
-  override def visitArray(length: Int, index: Int):  ArrVisitor[Nothing, Seq[OutputUnit]] = NoArr
-  override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, Seq[OutputUnit]] = NoObj
-
-  private val NoArr = new ArrVisitor[Any, Seq[OutputUnit]] {
-    def subVisitor: Visitor[?, ?] = NoOpVisitor
-    def visitValue(v: Any, index: Int): Unit = ()
-    def visitEnd(index: Int): Seq[OutputUnit] = Nil
-  }
-  private val NoObj = new ObjVisitor[Any, Seq[OutputUnit]] {
-    def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
-    def visitKeyValue(v: Any): Unit = ()
-    def subVisitor: Visitor[?, ?] = NoOpVisitor
-    def visitValue(v: Any, index: Int): Unit = ()
-    def visitEnd(index: Int): Seq[OutputUnit] = Nil
   }
 }
 

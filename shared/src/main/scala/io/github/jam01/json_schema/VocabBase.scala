@@ -5,6 +5,7 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.vocab.Core
+import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 import scala.collection.mutable
 
@@ -180,4 +181,32 @@ abstract class VocabBase(schema: ObjectSchema,
 
   private lazy val hasRef: Boolean =
     path.refTokens.exists(s => Core._Ref == s || Core._DynRef == s)
+
+  // Default no-op `visit*` implementations. Subclasses override only the JSON node types their
+  // keywords apply to. Returning `Nil` from a visit means this vocab produces no unit for that
+  // node — equivalent to opting out for that input kind.
+  override def visitNull(index: Int): Seq[OutputUnit] = Nil
+  override def visitTrue(index: Int): Seq[OutputUnit] = Nil
+  override def visitFalse(index: Int): Seq[OutputUnit] = Nil
+  override def visitInt64(i: Long, index: Int): Seq[OutputUnit] = Nil
+  override def visitFloat64(d: Double, index: Int): Seq[OutputUnit] = Nil
+  override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Seq[OutputUnit] = Nil
+  override def visitString(s: CharSequence, index: Int): Seq[OutputUnit] = Nil
+  override def visitArray(length: Int, index: Int): ArrVisitor[Nothing, Seq[OutputUnit]] = VocabBase.NoArr
+  override def visitObject(length: Int, index: Int): ObjVisitor[Nothing, Seq[OutputUnit]] = VocabBase.NoObj
+}
+
+object VocabBase {
+  private val NoArr: ArrVisitor[Nothing, Seq[OutputUnit]] = new ArrVisitor[Any, Seq[OutputUnit]] {
+    override def subVisitor: Visitor[?, ?] = NoOpVisitor
+    override def visitValue(v: Any, index: Int): Unit = ()
+    override def visitEnd(index: Int): Seq[OutputUnit] = Nil
+  }
+  private val NoObj: ObjVisitor[Nothing, Seq[OutputUnit]] = new ObjVisitor[Any, Seq[OutputUnit]] {
+    override def visitKey(index: Int): Visitor[?, ?] = NoOpVisitor
+    override def visitKeyValue(v: Any): Unit = ()
+    override def subVisitor: Visitor[?, ?] = NoOpVisitor
+    override def visitValue(v: Any, index: Int): Unit = ()
+    override def visitEnd(index: Int): Seq[OutputUnit] = Nil
+  }
 }
