@@ -12,7 +12,7 @@ import scala.collection.mutable
  * JSON Schema reader.
  */
 final class SchemaR private(docbase: Uri,
-              reg: Registry,
+              reg: MutableRegistry,
               ids: mutable.Buffer[(String, ObjectSchema)] = new mutable.ListBuffer,
               anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = new mutable.ListBuffer,
               parent: Option[ObjectSchema] = None,
@@ -101,5 +101,5 @@ object SchemaR {
    * @param registry the schema registry to populate when traversing schemas
    */
   def apply(docbase: Uri = Uri.random,
-            registry: Registry = new MutableRegistry): SchemaR = new SchemaR(docbase, registry)
+            registry: MutableRegistry = new MutableRegistry): SchemaR = new SchemaR(docbase, registry)
 }

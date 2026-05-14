@@ -7,12 +7,16 @@ package io.github.jam01.json_schema
 import scala.collection.mutable
 
 /**
- * A schema registry.
+ * A read-only schema registry.
+ *
+ * Write capability lives on [[MutableRegistry]]. Pass a [[MutableRegistry]] to
+ * [[json_schema.from]] to populate it; pass it (or any `Registry`) to
+ * [[json_schema.validator]] to look up referenced schemas during validation.
  */
 trait Registry {
   /**
    * Whether this registry can provide the identified schema.
-   * 
+   *
    * @param schemaUri the schema Uri
    * @return true if it contains the schema, false otherwise
    */
@@ -28,7 +32,7 @@ trait Registry {
 
   /**
    * Optionally retrieve the identified schema, throwing if not available.
-   * 
+   *
    * @param schemaUri the schema Uri
    * @throws NoSuchElementException if the schema is not available
    * @return the identified schema
@@ -38,14 +42,6 @@ trait Registry {
     case None => throw new NoSuchElementException("Schema not found: " + schemaUri)
     case Some(value) => value
   }
-
-  /**
-   * Add a schema to this registry.
-   * 
-   * @param elem the identifier and schema tuple
-   * @return this registry
-   */
-  def addOne(elem: (Uri, Schema)): this.type
 }
 
 object Registry {
@@ -59,24 +55,29 @@ object Registry {
 
 /**
  * An immutable registry with the given identifier and schema tuples.
- * 
+ *
  * @param it tuples iterator
  */
 final class ImmutableRegistry(it: IterableOnce[(Uri, Schema)]) extends Registry {
   private val m = Map.from(it)
   override def contains(key: Uri): Boolean = m.contains(key)
   override def get(key: Uri): Option[Schema] = m.get(key)
-  override def addOne(elem: (Uri, Schema)): this.type =
-    throw new UnsupportedOperationException("Immutable registry")
 }
 
 /**
- * A mutable registry.
+ * A mutable registry. Required by [[json_schema.from]] and [[SchemaR]] to record
+ * `$id`/`$anchor` registrations encountered during schema parsing.
  */
 final class MutableRegistry extends Registry {
   private val m: mutable.Map[Uri, Schema] = mutable.Map()
   override def contains(key: Uri): Boolean = m.contains(key)
   override def get(key: Uri): Option[Schema] = m.get(key)
-  override def addOne(elem: (Uri, Schema)): this.type =
-    m.addOne(elem); this
+
+  /**
+   * Add a schema to this registry.
+   *
+   * @param elem the identifier and schema tuple
+   * @return this registry
+   */
+  def addOne(elem: (Uri, Schema)): this.type = { m.addOne(elem); this }
 }

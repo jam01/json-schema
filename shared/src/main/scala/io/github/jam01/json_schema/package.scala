@@ -41,8 +41,8 @@ package object json_schema {
    * @tparam I the readable type
    * @return
    */
-  def from[I](reader: upickle.core.Transformer[I], readable: I, 
-                docbase: Uri = Uri.random, registry: Registry = new MutableRegistry): Schema = {
+  def from[I](reader: upickle.core.Transformer[I], readable: I,
+                docbase: Uri = Uri.random, registry: MutableRegistry = new MutableRegistry): Schema = {
     reader.transform(readable, SchemaR(docbase, registry))
   }
 }

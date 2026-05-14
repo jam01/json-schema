@@ -67,7 +67,7 @@ object TestSuiteTest {
   // See test-suite/README.md § "Additional Assumptions".
   private val RemotesBase: Uri = Uri("http://localhost:1234/")
 
-  val Registry: Registry = {
+  val Registry: MutableRegistry = {
     val builder = new MutableRegistry
 
     // load remotes — walk recursively, register under their canonical localhost URIs
