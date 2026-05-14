@@ -79,17 +79,17 @@ private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context,
   }
   
   inline private def compose(f: Vocab[T] => Seq[OutputUnit]): OutputUnit = {
-    var res0: Seq[OutputUnit] = Nil
+    val buff = new collection.mutable.ListBuffer[OutputUnit]
     val it = vocabs.iterator
     var continue = true
     while (it.hasNext && continue) {
-      val res1 = f(it.next())
-      ctx.ext.onVocabResults(path, res1)
-      res0 = res0 :++ res1
-      if (res1.exists(u => !u.vvalid)) continue = false
+      val res = f(it.next())
+      ctx.ext.onVocabResults(path, res)
+      buff ++= res
+      if (res.exists(u => !u.vvalid)) continue = false
     }
 
-    compose(res0)
+    compose(buff.result())
   }
   
   inline private def ffast(exc: InvalidVectorException): Seq[OutputUnit] = {
