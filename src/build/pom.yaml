@@ -5,7 +5,7 @@ childProjectUrlInheritAppendPath: false # Model.html#setChildProjectUrlInheritAp
 
 groupId: io.github.jam01
 artifactId: json-schema-parent
-version: 0.1.1-SNAPSHOT
+version: 0.2.0-SNAPSHOT
 packaging: pom
 
 description: |
