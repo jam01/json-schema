@@ -5,7 +5,6 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
-import io.github.jam01.json_schema.TrueSchema.SchemaRetrievalException
 
 import scala.collection.Map
 
