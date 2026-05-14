@@ -279,6 +279,31 @@ exception:
   validate on the JVM. See `js/src/main/scala/.../vocab/Idn.scala` for the precise list of
   checks performed.
 
+## How it compares
+
+The Scala 3 / JVM + Scala.js story is the obvious uniqueness, but the design choices below are
+worth considering against any modern validator:
+
+| Capability                                            | this lib                       | networknt (JVM) | ajv (JS)                | jsonschema-rs (Rust) | python-jsonschema |
+|-------------------------------------------------------|--------------------------------|-----------------|-------------------------|----------------------|-------------------|
+| Draft 2020-12, official test suite                    | ✅                              | ✅              | ✅                      | ✅                   | ✅                |
+| All four spec output formats                          | ✅ Flag / Basic / Detailed / Verbose | partial         | own format (not spec-aligned) | partial              | partial           |
+| Annotations as first-class output + dependency API    | ✅ AllowList, `findAnnotatingUnits`, vocab-level | partial         | not in standard output  | partial              | partial           |
+| Correct `unevaluated*` across `$ref` / applicators / `if`/`then`/`else` | ✅          | ✅              | ✅                      | ✅                   | partial           |
+| Push-style streaming (no instance AST built)          | ✅                              | ❌ (Jackson tree) | ❌                      | ❌ (`serde_json::Value`) | ❌            |
+| Cross-platform native (single library, multiple targets) | ✅ JVM + Scala.js           | ❌ JVM only     | ❌ JS only              | ❌ Rust only         | ❌ Python only    |
+| Vocabulary extension at the spec-vocabulary level     | ✅ public `Vocab`/`VocabFactory` | keyword-level   | keyword-level (different model) | keyword-level | ❌                |
+| Scala 3 native                                        | ✅                              | n/a             | n/a                     | n/a                  | n/a               |
+
+What this lib does **not** claim against the field: adoption (networknt and ajv are deployed at
+scale; this is pre-1.0 with one maintainer), measured throughput (jsonschema-rs and pre-compiled
+ajv are very fast; this library has no published benchmarks yet), and breadth of supported drafts
+(2020-12 only — most listed alternatives support draft-04 through 2020-12).
+
+Where it lands: if you want a Scala 3 native validator that runs on both JVM and the browser,
+treats annotations as part of the contract, and lets you stream large instances or plug in your
+own vocabularies — this is the most aligned option available.
+
 ## Status
 
 - Implements [JSON Schema 2020-12](https://json-schema.org/draft/2020-12). Earlier drafts are
