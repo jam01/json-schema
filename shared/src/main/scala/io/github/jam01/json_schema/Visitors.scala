@@ -26,18 +26,24 @@ class CompositeVisitor[-T, +J](delegates: Seq[Visitor[T, J]]) extends JsonVisito
 
 class CompositeArrVisitor[-T, +J](val delArrVis: Seq[ArrVisitor[T, J]]) extends ArrVisitor[Seq[T], Seq[J]] {
   override def subVisitor: Visitor[?, ?] = new CompositeVisitor(delArrVis.map(_.subVisitor))
-  override def visitValue(v: Seq[T], index: Int): Unit =
-    delArrVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index)) // perf: extra LazyZip2 object overhead
+  override def visitValue(v: Seq[T], index: Int): Unit = {
+    val d = delArrVis.iterator; val o = v.iterator
+    while (d.hasNext) d.next().visitValue(o.next(), index)
+  }
   override def visitEnd(index: Int): Seq[J] = delArrVis.map(_.visitEnd(index))
 }
 
 class CompositeObjVisitor[-T, +J](val delObjVis: Seq[ObjVisitor[T, J]]) extends ObjVisitor[Seq[T], Seq[J]] {
   override def visitKey(index: Int): Visitor[?, ?] = new CompositeVisitor(delObjVis.map(_.visitKey(index)))
-  override def visitKeyValue(v: Any): Unit =
-    delObjVis.lazyZip(v.asInstanceOf[Seq[?]]).foreach((v, o) => v.visitKeyValue(o))
+  override def visitKeyValue(v: Any): Unit = {
+    val d = delObjVis.iterator; val o = v.asInstanceOf[Seq[?]].iterator
+    while (d.hasNext) d.next().visitKeyValue(o.next())
+  }
   override def subVisitor: Visitor[?, ?] = new CompositeVisitor(delObjVis.map(_.subVisitor))
-  override def visitValue(v: Seq[T], index: Int): Unit =
-    delObjVis.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+  override def visitValue(v: Seq[T], index: Int): Unit = {
+    val d = delObjVis.iterator; val o = v.iterator
+    while (d.hasNext) d.next().visitValue(o.next(), index)
+  }
   override def visitEnd(index: Int): Seq[J] = delObjVis.map(_.visitEnd(index))
 }
 
@@ -58,19 +64,25 @@ class MapCompositeVisitor[-T, +J, Z](delegates: Seq[Visitor[T, J]], f: Seq[J] =>
 
 class MapCompositeArrContext[-T, +J, Z](val delegates: Seq[ArrVisitor[T, J]], f: Seq[J] => Z) extends ArrVisitor[Seq[T], Z] {
   override def subVisitor: Visitor[?, ?] = new CompositeVisitor(delegates.map(_.subVisitor))
-  override def visitValue(v: Seq[T], index: Int): Unit =
-    delegates.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+  override def visitValue(v: Seq[T], index: Int): Unit = {
+    val d = delegates.iterator; val o = v.iterator
+    while (d.hasNext) d.next().visitValue(o.next(), index)
+  }
   override def visitEnd(index: Int): Z = f(delegates.map(_.visitEnd(index)))
 }
 
 class MapCompositeObjContext[-T, +J, Z](val delegates: Seq[ObjVisitor[T, J]], f: Seq[J] => Z) extends ObjVisitor[Seq[T], Z] {
   override def visitKey(index: Int): Visitor[?, ?] =
     new CompositeVisitor(delegates.map(_.visitKey(index)))
-  override def visitKeyValue(v: Any): Unit =
-    delegates.lazyZip(v.asInstanceOf[Seq[?]]).foreach((v, o) => v.visitKeyValue(o))
+  override def visitKeyValue(v: Any): Unit = {
+    val d = delegates.iterator; val o = v.asInstanceOf[Seq[?]].iterator
+    while (d.hasNext) d.next().visitKeyValue(o.next())
+  }
   override def subVisitor: Visitor[?, ?] = new CompositeVisitor(delegates.map(_.subVisitor))
-  override def visitValue(v: Seq[T], index: Int): Unit =
-    delegates.lazyZip(v).foreach((v, o) => v.visitValue(o, index))
+  override def visitValue(v: Seq[T], index: Int): Unit = {
+    val d = delegates.iterator; val o = v.iterator
+    while (d.hasNext) d.next().visitValue(o.next(), index)
+  }
   override def visitEnd(index: Int): Z = f(delegates.map(_.visitEnd(index)))
 }
 
