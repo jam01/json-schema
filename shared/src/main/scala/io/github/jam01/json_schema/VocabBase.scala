@@ -174,7 +174,6 @@ abstract class VocabBase(schema: ObjectSchema,
     mkUnit(invalid.isEmpty, kw, errors = invalid, annotation = ann, verbose = valid)
   }
 
-  private def hasRef: Boolean = {
+  private lazy val hasRef: Boolean =
     path.refTokens.exists(s => Core._Ref == s || Core._DynRef == s)
-  }
 }
