@@ -19,7 +19,7 @@ dependencies:
   - com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_3:2.30.1
   - groupId: com.networknt
     artifactId: json-schema-validator
-    version: 1.4.2
+    version: 1.5.6
     exclusions:
       - groupId: '*'
         artifactId: '*'
@@ -44,3 +44,32 @@ build:
             # so without it scalac compiles against JDK 25's bootclasspath while the artifact advertises
             # Java 21. See https://github.com/davidB/scala-maven-plugin/issues/527.
             args: ['-deprecation', '-feature', '-unchecked', '-release', '21']
+    # Shade only the IDN utility classes from `com.networknt:json-schema-validator` (used by the JVM
+    # Idn.scala wrapper) into the published jar. Drops a ~3 MiB transitive dep down to the four
+    # classes + the `ucd/` resource files we actually call. Published pom is the dependency-reduced
+    # one, so consumers don't see networknt.
+    - id: org.apache.maven.plugins:maven-shade-plugin:3.6.0
+      executions:
+        - id: shade-idn
+          phase: package
+          goals: ['shade']
+          configuration:
+            useDependencyReducedPomInJar: 'true'
+            artifactSet:
+              includes:
+                - 'com.networknt:json-schema-validator'
+            filters:
+              - artifact: 'com.networknt:json-schema-validator'
+                includes:
+                  - 'com/networknt/schema/utils/RFC5892*'
+                  - 'com/networknt/schema/utils/UCDLoader*'
+                  - 'com/networknt/schema/utils/UnicodeDatabase*'
+                  - 'ucd/**'
+            # Relocate the shaded classes out of `com.networknt.*` so they can't collide if a
+            # downstream user also brings in the full `networknt:json-schema-validator` jar.
+            # The `/ucd/...` resource paths in the relocated classes' bytecode are string constants
+            # that shade does not rewrite, and our filter keeps the resources at the root — so
+            # `ClassLoader.getResourceAsStream` calls continue to resolve.
+            relocations:
+              - pattern: 'com.networknt.schema.utils'
+                shadedPattern: 'io.github.jam01.json_schema.shaded.networknt'

@@ -3,3 +3,4 @@ target/
 .vs
 .polyglot.pom.yaml
 **/.flattened-pom.xml
+**/dependency-reduced-pom.xml
