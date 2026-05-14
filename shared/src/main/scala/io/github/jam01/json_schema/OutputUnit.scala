@@ -128,6 +128,16 @@ object OutputUnitW extends upickle.core.Transformer[OutputUnit] {
  */
 abstract class OutputFormat {
   /**
+   * Whether this format retains units that are valid and carry no annotation.
+   *
+   * The default `accumulate(...)` overload drops such units, so emitters routing through
+   * `VocabBase.accumulate` skip computing the unit's `kwLoc`/`absKwLoc` when this is `false`.
+   * Formats whose `accumulate(...)` keeps everything (e.g. [[OutputFormat.Verbose]]) must
+   * override to `true`.
+   */
+  val retainsValidUnannotated: Boolean = false
+
+  /**
    * Compose a schema OutputUnit according to this output format.
    *
    * @param path the schema path
@@ -254,6 +264,8 @@ object OutputFormat {
    * A hierarchical output format resembling the schema's structure, which retains all results and filtered annotations.
    */
   val Verbose: OutputFormat = new OutputFormat {
+    override val retainsValidUnannotated: Boolean = true
+
     inline override def make(isValid: Boolean, kwLoc: JsonPointer, absKwLoc: Uri | Null, insLoc: JsonPointer, error: String | Null, errors: Seq[OutputUnit], annotation: Value | Null, verbose: Seq[OutputUnit]): OutputUnit =
       if (isValid) OutputUnit(true, kwLoc, absKwLoc, insLoc, null, annotation, errors ++: verbose)
       else OutputUnit(false, kwLoc, absKwLoc, insLoc, error, null, errors ++: verbose)

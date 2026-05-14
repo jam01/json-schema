@@ -85,10 +85,14 @@ abstract class VocabBase(schema: ObjectSchema,
                            errors: Seq[OutputUnit] = Nil,
                            annotation: Value | Null = null,
                            verbose: Seq[OutputUnit] = Nil): Boolean = {
-    val kwLoc = path.appended(kw)
-    val absKwLoc = if (hasRef) schema.location.appendedFragment(s"/$kw") else null
-    if (isValid && annotation != null) ctx.offerAnnotation(kwLoc, annotation)
-    ctx.config.format.accumulate(buff, isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.allowList.ifAllowed(kw, annotation), verbose)
+    // Skip kwLoc/absKwLoc compute when the format would drop a valid+non-annotated unit;
+    // the format declares its retention preference via `retainsValidUnannotated`.
+    if (!isValid || annotation != null || ctx.config.format.retainsValidUnannotated) {
+      val kwLoc = path.appended(kw)
+      val absKwLoc = if (hasRef) schema.location.appendedFragment(s"/$kw") else null
+      if (isValid && annotation != null) ctx.offerAnnotation(kwLoc, annotation)
+      ctx.config.format.accumulate(buff, isValid, kwLoc, absKwLoc, ctx.instanceLoc, error, errors, ctx.config.allowList.ifAllowed(kw, annotation), verbose)
+    }
     isValid || !ctx.config.ffast
   }
 
