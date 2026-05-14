@@ -285,10 +285,10 @@ final class Applicator private(schema: ObjectSchema,
         prefixItemsArrVis.forall(v => accumulate(buff, v.visitEnd(index)))
         itemsArrVis.forall(v => accumulate(buff, v.visitEnd(index)))
         ifVis.foreach(_ => {
-          val iff0 = iff; accumulate(buff, OutputUnit.info(iff0))
-          if (iff0.vvalid) {
+          accumulate(buff, OutputUnit.info(iff))
+          if (iff.vvalid) {
             if (elseVis.nonEmpty) ctx.notifyInvalid(Seq(els))
-            thenVis.foreach(_ => accumulate(buff, thenn)) // warning these could fail if for some reason iff/thenn/els are note set
+            thenVis.foreach(_ => accumulate(buff, thenn))
           } else {
             if (thenVis.nonEmpty) ctx.notifyInvalid(Seq(thenn))
             elseVis.foreach(_ => accumulate(buff, els))
@@ -411,10 +411,10 @@ final class Applicator private(schema: ObjectSchema,
         accumulate(buff, propNamesValid, PropertyNames, "Object property name(s) are invalid")
 
         ifVis.foreach(_ => {
-          val u = iff; accumulate(buff, OutputUnit.info(u))
-          if (u.vvalid) {
+          accumulate(buff, OutputUnit.info(iff))
+          if (iff.vvalid) {
             if (elseVis.nonEmpty) ctx.notifyInvalid(Seq(els))
-            thenVis.foreach(_ => accumulate(buff, thenn)) // warning these could fail if for some reason iff/thenn/els are not set
+            thenVis.foreach(_ => accumulate(buff, thenn))
           } else {
             if (thenVis.nonEmpty) ctx.notifyInvalid(Seq(thenn))
             elseVis.foreach(_ => accumulate(buff, els))
