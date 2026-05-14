@@ -10,7 +10,7 @@ Scala 3 JSON Schema validator (draft 2020-12) built on `upickle.core.Visitor`. P
 
 This is a Maven build using **Polyglot YAML** (`pom.yaml`, not `pom.xml`) via the `io.takari.polyglot:polyglot-yaml` extension declared in `.mvn/extensions.xml`. Maven auto-loads the extension, so the normal `mvn` CLI works — there is no separate command.
 
-Requires **JDK 25** (CI uses Oracle 25); compiler `release` is `21`. Most tests live under `shared/src/test/` and are run by the `jvm` module (Scala.js packaging produces no test runner here — see `docs/decisions/005-build-tool.md`).
+Requires **JDK 25** (CI uses Oracle 25); compiler `release` is `21`. The full test suite lives under `shared/src/test/` and runs in the `jvm` module; the `js` module runs a smaller Node-executed smoke test (see *Scala.js testing* below and `docs/decisions/006-scalajs-testing.md`).
 
 The repo includes the official **JSON Schema Test Suite as a git submodule** at `shared/src/test/resources/test-suite`. Initialize it before running tests:
 
@@ -28,7 +28,7 @@ mvn -pl jvm test -Dtest=TestSuiteTest#optional_format
 
 Useful flags:
 - `-pl jvm` / `-pl js` — restrict to one module (the root is an aggregator only).
-- `-P release` — sources + scaladoc + GPG sign + nexus-staging deploy (used by `.github/workflows/release.yaml`).
+- `-P release` — sources + scaladoc + GPG sign + Sonatype Central Portal publish via `central-publishing-maven-plugin` (used by `.github/workflows/release.yaml`).
 - `mvn license:format -pl '.'` — re-apply the Apache-2.0 license header (`src/build/license-header.txt`).
 
 ## Architecture
@@ -88,17 +88,16 @@ Some keywords depend on others (e.g. `else` on `if`, `unevaluatedItems` on `item
 
 ### Output and configuration
 
-- `OutputFormat` (in `OutputUnit.scala`) controls result shape: `Flag` (single bool), `Detailed`, `Verbose`. `Basic` is currently `???` (unimplemented). The format also controls whether successful units are accumulated (annotation propagation) or dropped.
+- `OutputFormat` (in `OutputUnit.scala`) controls result shape: `Flag` (single bool), `Basic` (flat keyword list under one root), `Detailed` (hierarchical, errors + annotated successes), `Verbose` (hierarchical, retains everything). The format also controls whether successful units are accumulated (annotation propagation) or dropped — Verbose overrides `retainsValidUnannotated = true`.
 - `Config` bundles `dialect`, `format`, `ffast` (default `true`), `allowList` (annotation filter, default `DropAll`), `maxDepth` (default `32`, guards infinite `$ref` recursion — see `SchemaValidator.guardDepth`).
 - `Registry` looks up schemas by `Uri`. Used to resolve `$ref` / `$dynamicRef`, meta-schemas, and remotes. `DefaultContext.getDynSch` walks the dynamic scope by climbing `Vocab.dynParent`.
 
 ### Module layout summary
 
-- `pom.yaml` (root, aggregator) → modules `jvm`, `js`.
-- `src/build/pom.yaml` — the **parent POM** for both modules (compiler config, scala-maven-plugin, license header, surefire, flatten).
+- `pom.yaml` (root, aggregator) → modules `jvm`, `src/build/sjsld`, `js` (in reactor order; sjsld must build before `js` consumes it).
+- `src/build/pom.yaml` — the **parent POM** for `jvm` and `js` (compiler config, scala-maven-plugin, license header, surefire, flatten). `sjsld` is standalone, does not inherit.
 - `shared/src/main/scala` — added as an extra source root to both modules via `build-helper-maven-plugin`. Likewise `shared/src/test/scala` and `shared/src/test/resources`.
 - `jvm/src/main/scala` / `js/src/main/scala` — platform-specific overrides (currently just `vocab/Idn.scala`).
-- The `js` module depends on `scalajs-test-bridge` but has no real Scala.js test runner wired up.
 
 ## Conventions worth knowing
 
