@@ -182,18 +182,18 @@ case object Null extends Value {
 }
 
 /**
+ * Exception thrown when sub-schema retrieval fails.
+ *
+ * @param message A description of the failure
+ * @param cause The underlying cause (if any)
+ */
+class SchemaRetrievalException(message: String, cause: Throwable = null)
+  extends RuntimeException(message, cause)
+
+/**
  * A JSON Schema.
  */
 sealed trait Schema extends Value {
-  /**
-   * Exception thrown when sub-schema retrieval fails.
-   *
-   * @param message A description of the failure
-   * @param cause The underlying cause (if any)
-   */
-  class SchemaRetrievalException(message: String, cause: Throwable = null)
-    extends RuntimeException(message, cause)
-  
   /**
    * Retrieve the sub-schema located at the given [[JsonPointer]].
    * @throws SchemaRetrievalException if a sub-schema is not present at the given location or if the location traverses
