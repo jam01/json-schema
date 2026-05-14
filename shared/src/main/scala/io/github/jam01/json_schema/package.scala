@@ -10,8 +10,14 @@ package object json_schema {
 
   /**
    * Creates a validator visitor for the given schema and configuration.
-   * 
+   *
    * Visiting this validator results in the validation results for the visited structure.
+   *
+   * The returned visitor holds a mutable [[DefaultContext]] that tracks per-traversal state
+   * (instance location, annotation dependencies). It is **not thread-safe** — do not share a
+   * single visitor across threads. The same visitor may be reused for repeated sequential
+   * `.transform(...)` calls: the context is reset at the end of each top-level scope, so a
+   * `ValidationException` from a failed `ffast` transform does not corrupt the next call.
    *
    * @param schema the schema to apply
    * @param config validation configuration

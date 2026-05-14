@@ -71,7 +71,9 @@ final class BooleanObjValidator(bool: Boolean, ctx: Context, path: JsonPointer) 
 
 private class FFastObjectSchemaValidator[T](vocabs: Seq[Vocab[T]], ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]) extends JsonVisitor[Seq[T], OutputUnit] {
   inline private def compose(units: Seq[OutputUnit]): OutputUnit = {
-    val result = ctx.ext.onScopeEnd(path, ctx.config.format.compose(path, units, ctx.instanceLoc))
+    // Root scope: insLoc is always Root, even if a mid-traversal `ffast` failure left the stack unbalanced.
+    val insLoc = if (dynParent.isEmpty) JsonPointer.Root else ctx.instanceLoc
+    val result = ctx.ext.onScopeEnd(path, ctx.config.format.compose(path, units, insLoc))
     if (dynParent.isEmpty && !result.vvalid) throw new ValidationException(result)
     result
   }
