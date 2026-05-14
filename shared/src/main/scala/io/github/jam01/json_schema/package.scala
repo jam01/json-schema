@@ -19,6 +19,9 @@ package object json_schema {
    * `.transform(...)` calls: the context is reset at the end of each top-level scope, so a
    * `ValidationException` from a failed `ffast` transform does not corrupt the next call.
    *
+   * For one-shot validation against a single instance, [[Schema.validate]] is a one-line
+   * convenience that builds and applies the validator in a single call.
+   *
    * @param schema the schema to apply
    * @param config validation configuration
    * @param registry registry to lookup referenced schemas
