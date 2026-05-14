@@ -33,7 +33,9 @@ build:
       executions:
         - goals: ['compile']
           configuration:
-            args: ['-deprecation', '-feature', '-unchecked']
+            # `-release 21` matches the JVM module's setting; scala-maven-plugin doesn't consume
+            # `maven.compiler.release` on its own.
+            args: ['-deprecation', '-feature', '-unchecked', '-release', '21']
     - id: org.apache.maven.plugins:maven-shade-plugin:3.5.3
       executions:
         - id: shade-sjsld

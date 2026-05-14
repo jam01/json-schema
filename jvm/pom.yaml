@@ -40,4 +40,7 @@ build:
       executions:
         - goals: [compile, testCompile]
           configuration:
-            args: ['-deprecation', '-feature', '-unchecked']
+            # `-release 21` is required: scala-maven-plugin does not consume `maven.compiler.release`,
+            # so without it scalac compiles against JDK 25's bootclasspath while the artifact advertises
+            # Java 21. See https://github.com/davidB/scala-maven-plugin/issues/527.
+            args: ['-deprecation', '-feature', '-unchecked', '-release', '21']
