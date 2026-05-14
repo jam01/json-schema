@@ -3,11 +3,31 @@
 Validation of JSON-like structures with JSON Schemas through upickle's visitor framework.
 
 ## Usage
-### Example with _ujson_
+
+### One-shot validation with _ujson_
+```scala 3
+val sch: Schema = json_schema.from(ujson.Readable, ujson.Readable.fromString("""{"type": "string"}"""))
+val result: OutputUnit = sch.validate(ujson.Readable, ujson.Readable.fromString(""""foo""""))
+```
+
+### Reusable validator
+For batch validation — many instances against one schema — build the validator once and apply it to each instance:
 ```scala 3
 val sch: Schema = json_schema.from(ujson.Readable, ujson.Readable.fromString("""{"type": "string"}"""))
 val validator: Visitor[?, OutputUnit] = json_schema.validator(sch)
-val result: OutputUnit = ujson.Str("foo").transform(validator)
+val r1: OutputUnit = ujson.Str("foo").transform(validator)
+val r2: OutputUnit = ujson.Str("bar").transform(validator)
+```
+
+The returned validator is **not thread-safe** but is safe for repeated sequential `.transform(...)` calls.
+
+### `$ref` and shared registry
+If the schema uses `$ref` to external schemas, share a [[MutableRegistry]] across `from(...)` and the validator so references resolve:
+```scala 3
+val reg = new MutableRegistry
+val userSch = json_schema.from(ujson.Readable, ujson.Readable.fromString(userSchemaJson), registry = reg)
+val orderSch = json_schema.from(ujson.Readable, ujson.Readable.fromString(orderSchemaJson), registry = reg)
+val result: OutputUnit = userSch.validate(ujson.Readable, ujson.Readable.fromString(payload), registry = reg)
 ```
 
 **Note:** _ujson_ is not a direct dependency of _json-schema_3_.

@@ -209,6 +209,21 @@ sealed trait Schema extends Value {
 
   protected def schBy0(ptr: JsonPointer): Schema
 
+  /**
+   * One-shot validation: build a validator for this schema and apply it to `readable`.
+   *
+   * Convenient for ad-hoc checks. For batch validation (the same schema against many instances),
+   * use [[json_schema.validator]] directly to amortize validator construction across `.transform`
+   * calls.
+   *
+   * @param reader the upickle transformer for the input type
+   * @param readable the instance to validate
+   * @param config validation configuration
+   * @param registry registry to look up referenced schemas. Defaults to [[Registry.Empty]]; if the
+   *                 schema uses `$ref` to schemas outside itself, populate one via
+   *                 [[json_schema.from]] with a shared [[MutableRegistry]] and pass it here.
+   * @return the validation result
+   */
   def validate[I](reader: upickle.core.Transformer[I], readable: I,
                   config: Config = Config.Default,
                   registry: Registry = Registry.Empty): OutputUnit = {
