@@ -241,10 +241,27 @@ final class DefaultContext(private val registry: Registry,
   }
 
   override def onScopeEnd(schLocation: JsonPointer, result: OutputUnit): OutputUnit = {
-    dependents.remove(schLocation)
     dependencies.remove(schLocation)
 
     if (!result.vvalid) notifyInvalid(Seq(result))
+    if (schLocation == JsonPointer.Root) reset()
     result
+  }
+
+  /**
+   * Reset per-traversal mutable state so this Context can be reused for a new instance traversal.
+   *
+   * Called automatically at the end of the root scope (`onScopeEnd` with `JsonPointer.Root`),
+   * including the path where a top-level `ffast` failure throws `ValidationException` — without
+   * the reset, the leftover instance-location tokens from the un-traversed remainder of the
+   * instance would corrupt the next `.transform()` on this validator.
+   *
+   * Note that the Context is not safe for concurrent use; reuse is sequential only.
+   */
+  def reset(): Unit = {
+    insloc.clear()
+    insloc.push("")
+    _pointer = JsonPointer.Root
+    dependencies.clear()
   }
 }
