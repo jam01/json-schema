@@ -145,8 +145,15 @@ trait VocabFactory[B <: Vocab[?]] {
 }
 
 /**
- * An exception to interrupt validation of vector values, i.e.: JSON arrays and objects.
- * 
+ * Thrown to short-circuit validation of vector values (JSON arrays and objects) under `ffast`.
+ *
+ * Used as control flow between [[VocabBase]]'s `accumulateVec`/`ffastChild` helpers and the
+ * `FFastObjectSchemaValidator` in [[SchemaValidator]], which catches it and re-emits the
+ * accumulated results. Vocabulary implementers extending [[VocabBase]] typically rely on those
+ * helpers to raise it rather than constructing it directly. Mixes in
+ * [[scala.util.control.NoStackTrace]] because the diagnostic is in `results`, not the stack.
+ *
  * @param results the accumulated results at the point of failure
  */
-class InvalidVectorException(val results: Seq[OutputUnit]) extends RuntimeException
+class InvalidVectorException(val results: Seq[OutputUnit])
+  extends RuntimeException with scala.util.control.NoStackTrace
