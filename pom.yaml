@@ -6,9 +6,10 @@ version: 0
 packaging: pom
 
 modules:
-  - src/build/sjsld # build-time only, must precede js
   - jvm
+  - src/build/sjsld # build-time only, must precede js (consumed by `js` test phase and `npm` link)
   - js
+  - npm
 
 properties:
   maven.deploy.skip: 'true' # need not deploy aggregator
@@ -32,6 +33,9 @@ build:
               - '**/*pom.*'
               - README.md
               - AGENTS.md
+              - npm/README.md
+              - npm/**/*.d.ts
+              - npm/**/*.json
               - docs/**
               - theme/**
               - mkdocs.yml

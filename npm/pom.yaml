@@ -1,0 +1,96 @@
+modelVersion: 4.0.0
+
+groupId: io.github.jam01
+artifactId: json-schema-npm
+version: 0.1.1-SNAPSHOT
+packaging: jar
+
+name: JSON Schema npm package builder
+description: |
+  Builds the publishable npm artifact at target/scalajs-npm/. Not deployed to Maven.
+
+properties:
+  maven.compiler.source: '21'
+  maven.compiler.target: '21'
+  maven.compiler.release: '21'
+  project.build.sourceEncoding: UTF-8
+  maven.install.skip: 'true'
+  maven.deploy.skip: 'true'
+
+dependencies:
+  # The validator itself. Transitively brings scala3-library, upickle-core, scala-java-time.
+  - groupId: io.github.jam01
+    artifactId: json-schema_sjs1_3
+    version: 0.1.1-SNAPSHOT
+  # ujson is a test-scope dep of the `js` module; the facade uses it at compile scope.
+  - com.lihaoyi:ujson_sjs1_3:3.3.1
+
+build:
+  plugins:
+    - id: org.apache.maven.plugins:maven-compiler-plugin:3.11.0
+      configuration:
+        skipMain: 'true'
+        skip: 'true'
+    - id: net.alchim31.maven:scala-maven-plugin:4.9.1
+      executions:
+        - goals: ['compile']
+          configuration:
+            args: ['-deprecation', '-feature', '-scalajs', '-release', '21']
+    # Dump the runtime classpath so sjsld can scan for .sjsir.
+    - id: org.apache.maven.plugins:maven-dependency-plugin:3.6.1
+      executions:
+        - id: dump-classpath
+          phase: prepare-package
+          goals: ['build-classpath']
+          configuration:
+            outputFile: ${project.build.directory}/runtime-classpath.txt
+            includeScope: runtime
+    # Link to a single ESM module under target/scalajs-npm/. Classpath includes:
+    #   - this module's compiled facade (${project.build.outputDirectory})
+    #   - the sibling js module's compiled validator (../js/target/classes)
+    #   - everything in runtime-classpath.txt (ujson, upickle-core, scala stdlib, scala-java-time)
+    - id: org.codehaus.mojo:exec-maven-plugin:3.5.0
+      executions:
+        - id: link-npm
+          phase: package
+          goals: ['exec']
+          configuration:
+            executable: java
+            arguments:
+              - -jar
+              - ${project.basedir}/../src/build/sjsld/target/sjsld.jar
+              - --esm
+              - ${project.build.directory}/scalajs-npm
+              - ${project.build.outputDirectory}
+              - ${project.basedir}/../js/target/classes
+              - '@${project.build.directory}/runtime-classpath.txt'
+        # Node smoke against the linked artifact. Runs in `target/scalajs-npm/` so the smoke
+        # script's relative `./main.js` import resolves.
+        - id: smoke-npm
+          phase: verify
+          goals: ['exec']
+          configuration:
+            executable: node
+            arguments:
+              - ${project.basedir}/src/test/npm/smoke.mjs
+              - ${project.build.directory}/scalajs-npm/main.js
+    # Render package.json (substituting ${project.version}) and copy README + index.d.ts.
+    # Must run AFTER `link-npm` — the Scala.js linker wipes its output directory before writing,
+    # so resources copied earlier would be deleted.
+    - id: org.apache.maven.plugins:maven-resources-plugin:3.3.1
+      executions:
+        - id: render-package-json
+          phase: package
+          goals: ['copy-resources']
+          configuration:
+            outputDirectory: ${project.build.directory}/scalajs-npm
+            resources:
+              - directory: ${project.basedir}/src/main/npm
+                filtering: 'true'
+                includes:
+                  - 'package.json'
+              - directory: ${project.basedir}/src/main/npm
+                filtering: 'false'
+                includes:
+                  - 'README.md'
+                  - 'index.d.ts'

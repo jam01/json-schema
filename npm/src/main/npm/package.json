@@ -1,0 +1,38 @@
+{
+  "name": "@jam01/json-schema",
+  "version": "${project.version}",
+  "description": "JSON Schema 2020-12 validator. Same code as io.github.jam01:json-schema_3 (JVM), compiled to JS via Scala.js.",
+  "license": "Apache-2.0",
+  "author": "Jose Montoya",
+  "homepage": "https://github.com/jam01/json-schema",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jam01/json-schema.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jam01/json-schema/issues"
+  },
+  "keywords": [
+    "json-schema",
+    "json",
+    "schema",
+    "validator",
+    "validation",
+    "2020-12",
+    "scala-js"
+  ],
+  "type": "module",
+  "main": "main.js",
+  "exports": {
+    ".": "./main.js"
+  },
+  "types": "index.d.ts",
+  "files": [
+    "main.js",
+    "main.js.map",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false
+}
