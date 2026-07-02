@@ -53,7 +53,7 @@ class TestSuiteTest {
 object TestSuiteTest {
   val NotSupported: Seq[String] = Seq.empty
   val NotSupportedTests: Seq[String] = Seq.empty
-  val NotSupportedFormat: Seq[String] = Seq("idn-hostname.json", "idn-email.json")
+  val NotSupportedFormat: Seq[String] = Seq.empty
   val NotSupportedFormatTests: Seq[String] = Seq("weeks cannot be combined with other units")
 
   // Files whose invalid cases don't currently produce an error in the result tree under Detailed format.
