@@ -87,8 +87,8 @@ final class Validation private(schema: ObjectSchema,
   }
 
   private def visitNumber(num: Any, buff: mutable.Growable[OutputUnit]): Boolean = {
-    const.forall(c => accumulate(buff, c.value == num, Const, "Number does not match expected constant")) &&
-      enuum.forall(e => accumulate(buff, e.exists(v => v.value == num), Enuum, "Number not found in enumeration")) &&
+    const.forall(c => accumulate(buff, c.isInstanceOf[Num] && compareTo(c.value, num) == 0, Const, "Number does not match expected constant")) &&
+      enuum.forall(e => accumulate(buff, e.exists(v => v.isInstanceOf[Num] && compareTo(v.value, num) == 0), Enuum, "Number not found in enumeration")) &&
       maximum.forall(max => accumulate(buff, lteq(num, max.value), Maximum, "Number is greater than maximum")) &&
       minimum.forall(min => accumulate(buff, gteq(num, min.value), Minimum, "Number is less than minimum")) &&
       exclusiveMax.forall(max => accumulate(buff, lt(num, max.value), ExclusiveMax, "Number is greater than or equal to exclusive maximum")) &&
@@ -114,8 +114,8 @@ final class Validation private(schema: ObjectSchema,
       if (const.isEmpty && enuum.isEmpty && (uniqueItems.isEmpty || !uniqueItems.get)) NilArrayVis
       else new MapArrContext(LiteralVisitor.visitArray(length, index), jsVal => { // Vis[Value, coll.Seq[OUnit]]
         val buff0 = new ListBuffer[OutputUnit]
-        const.foreach(c => accumulate(buff0, c == jsVal, Const, "Array does not match expected constant"))
-        enuum.foreach(e => accumulate(buff0, e.contains(jsVal), Enuum, "Array not found in enumeration"))
+        const.foreach(c => accumulate(buff0, valueEquals(c, jsVal), Const, "Array does not match expected constant"))
+        enuum.foreach(e => accumulate(buff0, e.exists(v => valueEquals(v, jsVal)), Enuum, "Array not found in enumeration"))
         uniqueItems.foreach(b => {
           val set = new mutable.HashSet[Value](jsVal.arr.size, 1) // perf: avoid Set
           accumulate(buff0, jsVal.arr.forall(e => set.add(e)), UniqueItems, "Values in array are not unique")
@@ -153,8 +153,8 @@ final class Validation private(schema: ObjectSchema,
       if (const.isEmpty && enuum.isEmpty && (uniqueItems.isEmpty || !uniqueItems.get)) NilObjVis
       else new MapObjContext(LiteralVisitor.visitObject(length, index), obj => { // Vis[Value, coll.Seq[OUnit]]
         val buff0 = new ListBuffer[OutputUnit]
-        const.foreach(c => accumulate(buff0, c == obj, Const, "Object does not match expected constant"))
-        enuum.foreach(e => accumulate(buff0, e.contains(obj), Enuum, "Object not found in enumeration"))
+        const.foreach(c => accumulate(buff0, valueEquals(c, obj), Const, "Object does not match expected constant"))
+        enuum.foreach(e => accumulate(buff0, e.exists(v => valueEquals(v, obj)), Enuum, "Object not found in enumeration"))
         buff0.result()
       })
 
@@ -202,6 +202,18 @@ object Validation extends VocabFactory[Validation] {
   private def lt(a: Any, b: Any) = compareTo(a, b) == -1
   private def lteq(a: Any, b: Any) = compareTo(a, b) != 1
   private[json_schema] def gteq(a: Any, b: Any) = compareTo(a, b) != -1
+
+  /**
+   * JSON Schema equality: numbers compare by mathematical value regardless of their [[Value]]
+   * subtype (e.g. `0` and `0.0` are equal even though they're represented as [[Int64]] and
+   * [[Float64]] respectively), and arrays/objects compare deeply using the same rule.
+   */
+  private[json_schema] def valueEquals(a: Value, b: Value): Boolean = (a, b) match {
+    case (an: Num, bn: Num) => compareTo(an.value, bn.value) == 0
+    case (Arr(as), Arr(bs)) => as.length == bs.length && as.lazyZip(bs).forall(valueEquals)
+    case (Obj(am), Obj(bm)) => am.size == bm.size && am.forall((k, v) => bm.get(k).exists(valueEquals(v, _)))
+    case _ => a == b
+  }
 
   private def compareTo(a: Any, b: Any): Int = {
     (a, b) match {
