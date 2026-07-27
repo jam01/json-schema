@@ -85,7 +85,7 @@ class OutputStructureTest {
   def x_annotations(): Unit = {
     val res =json_schema
       .from(ujson.Readable, ujson.Readable.fromString("""{"x-foo": null }"""))
-      .validate(ujson.Value, ujson.Arr(0, 1, 2), Config(Dialect.FullSpec, OutputFormat.Detailed, allowList = AllowList.KeepAll))
+      .validate(ujson.Value, ujson.Arr(0, 1, 2), Config(dialect = Dialect.FullSpec, format = OutputFormat.Detailed, allowList = AllowList.KeepAll))
     Assertions.assertEquals(null, res.details.head.annotation.value)
   }
 

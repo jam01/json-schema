@@ -7,13 +7,21 @@ package io.github.jam01.json_schema
 /**
  * Reusable validation configuration.
  *
- * @param dialect   to interpret the schema being applied
+ * @param dialect        to interpret the schema being applied. Used as-is when `resolveDialect`
+ *                        is `false`; used as the fallback when `resolveDialect` is `true` and
+ *                        resolution from the schema's own `$schema` doesn't succeed.
+ * @param resolveDialect  whether to resolve the dialect from the schema's own `$schema`/
+ *                        `$vocabulary` declaration (via [[Dialect.tryDialect]]) instead of always
+ *                        using `dialect`. Requires the metaschema referenced by `$schema` to be
+ *                        resolvable in the `registry` passed to [[json_schema.validator]]/
+ *                        [[Schema.validate]]; falls back to `dialect` otherwise.
  * @param format    structure to return by validator visitor
  * @param ffast     whether to fail fast, i.e.: at first error vs fully validate the structure
  * @param allowList [[AllowList]] of JSON Schema annotations to (dis)allow in the result
  * @param maxDepth the maximum schema validator dynamic scope depth, to guard against infinite recursive schemas
  */
 case class Config(dialect: Dialect = Dialect.Basic,
+                  resolveDialect: Boolean = false,
                   format: OutputFormat = OutputFormat.Flag,
                   ffast: Boolean = true,
                   allowList: AllowList = AllowList.DropAll,

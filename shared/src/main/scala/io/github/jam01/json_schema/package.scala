@@ -30,7 +30,10 @@ package object json_schema {
   def validator(schema: Schema,
                 config: Config = Config.Default,
                 registry: Registry = Registry.Empty): Visitor[?, OutputUnit] = {
-    val ctx = DefaultContext(registry, config)
+    val dialect =
+      if (config.resolveDialect) Dialect.tryDialect(schema, registry = registry).getOrElse(config.dialect)
+      else config.dialect
+    val ctx = DefaultContext(registry, config.copy(dialect = dialect))
     PointerDelegate(ctx, SchemaValidator(schema, ctx))
   }
 
