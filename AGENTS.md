@@ -99,6 +99,18 @@ Some keywords depend on others (e.g. `else` on `if`, `unevaluatedItems` on `item
 - `shared/src/main/scala` — added as an extra source root to both modules via `build-helper-maven-plugin`. Likewise `shared/src/test/scala` and `shared/src/test/resources`.
 - `jvm/src/main/scala` / `js/src/main/scala` — platform-specific overrides (currently just `vocab/Idn.scala`).
 
+## Checking bowtie.report failures
+
+[bowtie.report](https://bowtie.report/#/implementations/scala-json-schema) tracks this implementation (id `scala-json-schema`) against the official test suite. The page is a client-rendered SPA — fetching the URL directly only returns the empty shell. The underlying data is plain NDJSON, fetched per dialect:
+
+```bash
+curl -s https://bowtie.report/draft2020-12.json -o /tmp/draft2020-12.json
+```
+
+Format: line 0 is `{"implementations": {...}, ...}` (metadata, keyed by impl id). Every other line is either a test case (`{"seq", "case": {"description", "schema", "tests": [{"description", "instance", "valid"}, ...]}}`) or a per-implementation result (`{"seq", "implementation", "expected": [...], "results": [{"valid": ...}, ...]}`, one entry per test aligned by index) — join case and result lines on `seq`, then filter results on `implementation == "scala-json-schema"` and compare `expected` vs `results[i].valid` to find failures.
+
+**Gotcha when reproducing a failure locally**: `TestSuiteTest` reads each fixture file once via `ujson.read(...)` into a single `ujson.Value` AST, then calls `.transform(...)` a second time on extracted `schema`/`data` sub-nodes. That round-trip silently collapses number representation (e.g. an integer literal `0` can come back as `Float64` instead of `Int64`), which can mask bugs that only show up when a number keeps its original int-vs-decimal notation (as it would coming off a real streaming parse, which is what bowtie's harness does). To faithfully reproduce a reported failure, drive the schema/instance through `ujson.Readable.fromString(rawJsonText).transform(...)` directly instead — see `EnumConstEqualityTest.scala` for the pattern.
+
 ## Conventions worth knowing
 
 - All source files carry the Apache-2.0 header from `src/build/license-header.txt`; `mvn license:format -pl '.'` rewrites them. CI fails on missing headers (`license:check` in the root `pom.yaml`).
