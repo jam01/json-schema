@@ -43,6 +43,13 @@ class EnumConstEqualityTest {
     assertFalse(isValid(v, """{"foo": 12, "boo": 42}"""), "extra property must not match")
   }
 
+  @Test def enum_array_matches_int_and_float_representation_of_same_number_1(): Unit = {
+    val v = mkValidator("""{"enum": [[1]]}""")
+    assertTrue(isValid(v, "[1]"), "[1] should match enum entry [1]")
+    assertTrue(isValid(v, "[1.0]"), "[1.0] should match enum entry [1] (same numeric value)")
+    assertFalse(isValid(v, "[true]"), "[true] must not match enum entry [1]")
+  }
+
   @Test def const_array_and_object_match_across_numeric_representation(): Unit = {
     val arrV = mkValidator("""{"const": [1]}""")
     assertTrue(isValid(arrV, "[1]"))
