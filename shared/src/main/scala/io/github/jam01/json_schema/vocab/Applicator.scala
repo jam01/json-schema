@@ -21,7 +21,7 @@ final class Applicator private(schema: ObjectSchema,
   private val addlPropsVis: Option[Visitor[?, OutputUnit]] = schema.getSchemaOpt(AdditionalProperties)
     .map(sch => SchemaValidator(sch, ctx, path.appended(AdditionalProperties), Some(this)))
   private val patternPropsViss: Option[collection.Map[Regex, Visitor[?, OutputUnit]]] = schema.getSchemaObjectOpt(PatternProperties)
-    .map(obj => obj.map((pttrn, sch) => (new Regex(pttrn).unanchored, SchemaValidator(sch, ctx, path.appended(PatternProperties, pttrn), Some(Applicator.this)))))
+    .map(obj => obj.map((pttrn, sch) => (RegexSupport.compilePattern(pttrn), SchemaValidator(sch, ctx, path.appended(PatternProperties, pttrn), Some(Applicator.this)))))
   private val propsViss: Option[collection.Map[String, Visitor[?, OutputUnit]]] = schema.getSchemaObjectOpt(Properties)
     .map(obj => obj.map((key, sch) => (key, SchemaValidator(sch, ctx, path.appended(Properties, key), Some(this)))))
   private val depSchsViss: Option[collection.Map[String, Visitor[?, OutputUnit]]] = schema.getSchemaObjectOpt(DependentSchemas)

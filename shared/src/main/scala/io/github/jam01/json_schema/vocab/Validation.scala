@@ -28,7 +28,7 @@ final class Validation private(schema: ObjectSchema,
   private val multipleOf: Option[Num] = schema.getNumber(MultipleOf)
   private val maxLength: Option[Int] = schema.getInt(MaxLength)
   private val minLength: Option[Int] = schema.getInt(MinLength)
-  private val pattern: Option[Regex] = schema.getString(Pattern).map(s => new Regex(s).unanchored)
+  private val pattern: Option[Regex] = schema.getString(Pattern).map(RegexSupport.compilePattern)
   private val maxItems: Option[Int] = schema.getInt(MaxItems)
   private val minItems: Option[Int] = schema.getInt(MinItems)
   private val uniqueItems: Option[Boolean] = schema.getBoolean(UniqueItems)
