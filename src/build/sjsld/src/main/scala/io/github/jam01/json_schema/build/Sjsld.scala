@@ -5,7 +5,7 @@
 package io.github.jam01.json_schema.build
 
 import org.scalajs.linker.{PathIRContainer, PathOutputDirectory, StandardImpl}
-import org.scalajs.linker.interface.{ModuleInitializer, ModuleKind, StandardConfig}
+import org.scalajs.linker.interface.{ESVersion, ModuleInitializer, ModuleKind, StandardConfig}
 import org.scalajs.linker.interface.unstable.IRContainerImpl
 import org.scalajs.logging.ScalaConsoleLogger
 
@@ -51,6 +51,9 @@ object Sjsld {
     val config = StandardConfig()
       .withModuleKind(ModuleKind.NoModule)
       .withCheckIR(false)
+      // ES2018+ needed for RegExp Unicode property escapes (\p{...}), e.g. via the `pattern`
+      // keyword's `(?U)`-flagged patterns; see vocab.RegexSupport.
+      .withESFeatures(_.withESVersion(ESVersion.ES2018))
     val linker = StandardImpl.linker(config)
     val initializers = List(ModuleInitializer.mainMethodWithArgs(mainClass, "main"))
     val logger = new ScalaConsoleLogger
