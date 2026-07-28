@@ -11,32 +11,32 @@ without building an instance AST. Passes the official
 JVM:
 ```scala
 // sbt
-libraryDependencies += "io.github.jam01" %% "json-schema" % "0.2.0"
+libraryDependencies += "io.github.jam01" %% "json-schema" % "0.3.0"
 // Mill
-ivy"io.github.jam01::json-schema::0.2.0"
+ivy"io.github.jam01::json-schema::0.3.0"
 ```
 ```xml
 <!-- Maven -->
 <dependency>
   <groupId>io.github.jam01</groupId>
   <artifactId>json-schema_3</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
 Scala.js:
 ```scala
 // sbt
-libraryDependencies += "io.github.jam01" %%% "json-schema" % "0.2.0"
+libraryDependencies += "io.github.jam01" %%% "json-schema" % "0.3.0"
 // Mill
-ivy"io.github.jam01::json-schema::0.2.0"
+ivy"io.github.jam01::json-schema::0.3.0"
 ```
 ```xml
 <!-- Maven -->
 <dependency>
   <groupId>io.github.jam01</groupId>
   <artifactId>json-schema_sjs1_3</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
