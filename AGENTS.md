@@ -52,7 +52,7 @@ The library is a **push-style streaming validator**: the JSON instance is pushed
 
 ### Vocabularies (the keyword implementations)
 
-Validation logic is split into **vocabularies**, each implementing a `Vocab[T]` (which itself is a `JsonVisitor[T, Seq[OutputUnit]]`). Built-in vocabs live in `shared/.../json_schema/vocab/`: `Core`, `Validation`, `Applicator`, `Unevaluated`, `Format`, `FormatAssertion`, `Metadata`, `Content`. The `Idn.scala` (IDN hostname/email) implementation is split: the JVM version (`jvm/src/main/.../vocab/Idn.scala`) wraps `com.networknt`'s RFC 5892 utility for full IDNA 2008 conformance; the Scala.js version (`js/src/main/.../vocab/Idn.scala`) is a best-effort structural validator with documented gaps — no IDNA 2008 character eligibility, no Punycode decoding, no Bidi (see Scala.js limitations below).
+Validation logic is split into **vocabularies**, each implementing a `Vocab[T]` (which itself is a `JsonVisitor[T, Seq[OutputUnit]]`). Built-in vocabs live in `shared/.../json_schema/vocab/`: `Core`, `Validation`, `Applicator`, `Unevaluated`, `Format`, `FormatAssertion`, `Metadata`, `Content`. Two pieces those vocabs depend on are platform-specific (see `CompiledPattern`/`Idn` in `shared/` for the interfaces they implement): `RegexSupport` (`pattern`/`patternProperties`/`format: regex`) — the JVM version (`jvm/src/main/.../vocab/RegexSupport.scala`) hand-patches `java.util.regex.Pattern`'s divergences from ECMA-262 (`\p{Letter}`-style long-form Unicode aliases, `\s`/`\S`'s whitespace set, `\c<letter>` case sensitivity); the Scala.js version (`js/src/main/.../vocab/RegexSupport.scala`) forwards straight to the native `RegExp` engine under the `u` flag, which needs no patching since it already implements ECMA-262. `Idn.scala` (IDN hostname/email): the JVM version (`jvm/src/main/.../vocab/Idn.scala`) wraps `com.networknt`'s RFC 5892 utility for full IDNA 2008 conformance; the Scala.js version (`js/src/main/.../vocab/Idn.scala`) is a best-effort structural validator with documented gaps — no IDNA 2008 character eligibility, no Punycode decoding, no Bidi (see Scala.js limitations below).
 
 ### Scala.js limitations
 
@@ -97,7 +97,7 @@ Some keywords depend on others (e.g. `else` on `if`, `unevaluatedItems` on `item
 - `pom.yaml` (root, aggregator) → modules `jvm`, `src/build/sjsld`, `js` (in reactor order; sjsld must build before `js` consumes it).
 - `src/build/pom.yaml` — the **parent POM** for `jvm` and `js` (compiler config, scala-maven-plugin, license header, surefire, flatten). `sjsld` is standalone, does not inherit.
 - `shared/src/main/scala` — added as an extra source root to both modules via `build-helper-maven-plugin`. Likewise `shared/src/test/scala` and `shared/src/test/resources`.
-- `jvm/src/main/scala` / `js/src/main/scala` — platform-specific overrides (currently just `vocab/Idn.scala`).
+- `jvm/src/main/scala` / `js/src/main/scala` — platform-specific overrides (`vocab/Idn.scala`, `vocab/RegexSupport.scala`).
 
 ## Checking bowtie.report failures
 

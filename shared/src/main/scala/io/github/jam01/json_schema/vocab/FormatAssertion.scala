@@ -10,7 +10,6 @@ import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, Visitor}
 
 import java.net.{URI, URISyntaxException}
 import java.util.UUID
-import java.util.regex.{Pattern, PatternSyntaxException}
 
 // provided by scala-java-time on sjs/native
 import java.time.format.DateTimeFormatter.{ISO_LOCAL_DATE, ISO_OFFSET_DATE_TIME, ISO_OFFSET_TIME}
@@ -61,8 +60,7 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "uri-template" => UriTemplate_r.matches(s)
       case "json-pointer" => isJsPtr(s)
       case "relative-json-pointer" => isRelJsPtr(s)
-      case "regex" => try { Pattern.compile(s.toString); true } catch // perf: compiled then discarded, sec: ?
-        case _: PatternSyntaxException => false
+      case "regex" => try { RegexSupport.isValidPattern(s.toString) } catch // perf: compiled then discarded, sec: ?
         case _: UnsupportedOperationException => false // as thrown by scala native implementation
       case unk => true
 
