@@ -12,7 +12,8 @@ package io.github.jam01.json_schema
  * own linker/runner wiring. This is intentionally minimal — broader behavior is covered by the
  * JVM suite. Cases here target platform divergence between JVM and JS:
  *
- *   - `java.util.regex.Pattern` — semantics differ when emulated by JS RegExp
+ *   - `RegexSupport` — platform-specific implementations (JVM patches `java.util.regex.Pattern`
+ *     divergences from ECMA-262 by hand; Scala.js forwards straight to the native `RegExp` engine)
  *   - `java.time.*` via scala-java-time
  *   - `Idn.isHostname` — platform-specific implementations
  *
@@ -56,9 +57,18 @@ object Smoke {
     check( basic("""{"type":"integer","multipleOf":3}""", ujson.Num(9)).vvalid,  "multipleOf:3 accepts 9")
     check(!basic("""{"type":"integer","multipleOf":3}""", ujson.Num(10)).vvalid, "multipleOf:3 rejects 10")
 
-    // pattern: exercises java.util.regex.Pattern under JS
+    // pattern: exercises RegexSupport's native js.RegExp backend
     check( basic("""{"type":"string","pattern":"^[a-z]+$"}""", ujson.Str("abc")).vvalid,  "pattern accepts match")
     check(!basic("""{"type":"string","pattern":"^[a-z]+$"}""", ujson.Str("ABC")).vvalid,  "pattern rejects non-match")
+
+    // Canary that native js.RegExp (compiled under the "u" flag) gives the same ECMA-262 results
+    // here as the JVM's hand-patched java.util.regex.Pattern does for the same cases.
+    check( basic("""{"pattern":"\\p{Letter}cole"}""", ujson.Str("Nicole")).vvalid, "\\p{Letter} alias matches Nicole")
+    check(!basic("""{"pattern":"\\p{Letter}cole"}""", ujson.Str("7cole")).vvalid,  "\\p{Letter} alias rejects 7cole")
+    check( basic("""{"pattern":"^\\s$"}""", ujson.Str(" ")).vvalid,          "\\s matches latin-1 non-breaking-space")
+    check( basic("""{"pattern":"^\\s$"}""", ujson.Str("﻿")).vvalid,          "\\s matches zero-width whitespace (BOM)")
+    check(!basic("""{"pattern":"^\\S$"}""", ujson.Str(" ")).vvalid,          "\\S rejects latin-1 non-breaking-space")
+    check( basic("""{"pattern":"^\\cc$"}""", ujson.Str("")).vvalid,         "\\cc matches control-C case-insensitively")
 
     // format assertions
     check( fmt("""{"format":"date"}""",     ujson.Str("2024-01-15")).vvalid,      "format:date accepts valid")
@@ -67,6 +77,10 @@ object Smoke {
     check(!fmt("""{"format":"ipv4"}""",     ujson.Str("999.999.999.999")).vvalid, "format:ipv4 rejects invalid")
     check( fmt("""{"format":"hostname"}""", ujson.Str("example.com")).vvalid,     "format:hostname accepts valid")
     check(!fmt("""{"format":"hostname"}""", ujson.Str("hello world")).vvalid,     "format:hostname rejects space")
+
+    // format:regex — RegexSupport.isValidPattern's Java-only-\a rejection
+    check( fmt("""{"format":"regex"}""", ujson.Str("^[a-z]+$")).vvalid, "format:regex accepts valid pattern")
+    check(!fmt("""{"format":"regex"}""", ujson.Str("\\a")).vvalid,      "format:regex rejects \\a (Java-only escape)")
 
     // idn-hostname: canary for the platform-specific Idn implementation
     check( fmt("""{"format":"idn-hostname"}""", ujson.Str("example.com")).vvalid, "format:idn-hostname accepts valid")
