@@ -71,4 +71,19 @@ class EnumConstEqualityTest {
     val enumV = mkValidator("""{"enum": ["foo", true, null]}""")
     assertFalse(isValid(enumV, "42"))
   }
+
+  @Test def unique_items_compares_bignums_beyond_the_128_bit_anchor(): Unit = {
+    // Regression guard: Int128/Dec128's anchor binds *schema*-embedded literals only (enforced by
+    // SchemaR.checkAnchor at compile time) - it must not reject an *instance* number nested in an
+    // array under uniqueItems (or const/enum), which LiteralVisitor also builds Int128/Dec128 for
+    // (see Schema.scala's Int128/Dec128 scaladoc). uniqueItems needs no schema-side literal, so it
+    // isolates the instance-only path (unlike const/enum, whose own value is itself a schema
+    // literal, correctly anchored). Before this fix, this threw IllegalArgumentException instead
+    // of comparing.
+    val v = mkValidator("""{"uniqueItems": true}""")
+    val bignum = "1" * 60
+    val otherBignum = "2" * 60
+    assertFalse(isValid(v, s"[$bignum, $bignum]"), "duplicate bignums beyond 128 bits should compare equal, not throw")
+    assertTrue(isValid(v, s"[$bignum, $otherBignum]"), "distinct bignums beyond 128 bits should compare unequal, not throw")
+  }
 }

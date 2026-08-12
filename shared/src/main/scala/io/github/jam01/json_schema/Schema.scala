@@ -152,11 +152,33 @@ abstract class Num extends Value
 
 case class Int64(value: Long) extends Num
 case class Float64(value: Double) extends Num
-case class Int128(value: BigInt) extends Num {
-  if (value.bitLength > 127) throw new IllegalArgumentException("Integer value exceeds 128 bits")
+
+/**
+ * An integer literal too large for [[Int64]]. `SchemaR` anchors *schema-embedded* number literals
+ * (e.g. a `maximum` or `const` value) to 128 bits, rejecting anything larger via
+ * [[Int128.exceedsAnchor]] at schema-compile time - see `SchemaR.checkAnchor`. The case class
+ * itself does not enforce that bound: it also backs *instance*-side literal collection (deep
+ * `const`/`enum`/`uniqueItems` comparison of numbers nested in arrays/objects, see
+ * `Validation.visitArray`/`visitObject`), which is intentionally arbitrary-precision, matching the
+ * JSON Schema spec's `integer`/`number` types.
+ */
+case class Int128(value: BigInt) extends Num
+
+object Int128 {
+  /** True if `value` is too large for [[Schema]] to accept as a schema-embedded literal. */
+  def exceedsAnchor(value: BigInt): Boolean = value.bitLength > 127
 }
-case class Dec128(value: BigDecimal) extends Num {
-  if (value.mc != MathContext.DECIMAL128) throw new IllegalArgumentException("Decimal value exceeds 128 bits")
+
+/**
+ * A decimal literal too large for [[Float64]] to hold without precision loss. Same split as
+ * [[Int128]]: unchecked here, anchored to Decimal128 (34 significant digits) only for
+ * schema-embedded literals, via [[Dec128.exceedsAnchor]] at schema-compile time.
+ */
+case class Dec128(value: BigDecimal) extends Num
+
+object Dec128 {
+  /** True if `value` is too large for [[Schema]] to accept as a schema-embedded literal. */
+  def exceedsAnchor(value: BigDecimal): Boolean = value.mc != MathContext.DECIMAL128
 }
 
 sealed abstract class Bool extends Value {
@@ -188,6 +210,16 @@ case object Null extends Value {
  * @param cause The underlying cause (if any)
  */
 class SchemaRetrievalException(message: String, cause: Throwable = null)
+  extends RuntimeException(message, cause)
+
+/**
+ * Exception thrown when a schema fails to compile, e.g. a schema-embedded number literal exceeds
+ * [[Int128]]/[[Dec128]]'s anchor.
+ *
+ * @param message A description of the failure
+ * @param cause The underlying cause (if any)
+ */
+class SchemaCompileException(message: String, cause: Throwable = null)
   extends RuntimeException(message, cause)
 
 /**

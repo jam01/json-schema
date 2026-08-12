@@ -281,7 +281,34 @@ object Validation extends VocabFactory[Validation] {
 
   private[json_schema] def numOf(s: String, decIndex: Int, expIndex: Int): Any = {
     if (decIndex == -1 && expIndex == -1) s.toLongOption.getOrElse(BigInt(s))
-    else s.toDoubleOption.getOrElse(BigDecimal(s))
+    // NB: unlike toLongOption, String.toDoubleOption never signals precision loss - Double.parseDouble
+    // silently rounds (or overflows to Infinity) rather than failing, for a literal of any magnitude.
+    // So `s.toDoubleOption.getOrElse(BigDecimal(s))` used to always take the Double branch, silently
+    // rounding e.g. a 26-significant-digit decimal literal down to Double's ~15-17 digits. Route by
+    // significant-digit count instead, mirroring the magnitude-based Long/BigInt split above: Double
+    // is guaranteed to round-trip any value of <=15 significant digits exactly, so only fall back to
+    // BigDecimal beyond that.
+    else if (sigDigits(s, decIndex, expIndex) <= DoubleSafeDigits) s.toDoubleOption.getOrElse(BigDecimal(s))
+    else BigDecimal(s)
+  }
+
+  private val DoubleSafeDigits = 15
+
+  /** Counts significant digits in `s`'s mantissa (i.e., excluding sign, '.', and any exponent). */
+  private def sigDigits(s: String, decIndex: Int, expIndex: Int): Int = {
+    val mantissaEnd = if (expIndex == -1) s.length else expIndex
+    var i = 0
+    var digits = 0
+    var seenNonZero = false
+    while (i < mantissaEnd) {
+      val c = s.charAt(i)
+      if (c >= '0' && c <= '9') {
+        if (c != '0') seenNonZero = true
+        if (seenNonZero) digits += 1
+      }
+      i += 1
+    }
+    if (digits == 0) 1 else digits // e.g. "0.0" - no non-zero digit, but still 1 significant digit
   }
   private def isWhole(n: Any) = n match
     case d: Double => d.isWhole
