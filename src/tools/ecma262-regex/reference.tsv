@@ -39,7 +39,7 @@ esc:v:negcls	true
 esc:nul	true
 esc:hex	true
 esc:uni	true
-esc:unibrace	false
+esc:unibrace	true
 esc:cC	true
 esc:cc	true
 esc:cJ	true
@@ -1523,7 +1523,7 @@ prop:bin:Emoji:5	false
 prop:bin:Emoji:6	false
 prop:bin:Emoji:7	false
 prop:bin:Emoji:8	false
-prop:bin:Emoji:9	false
+prop:bin:Emoji:9	true
 prop:bin:Emoji:10	true
 prop:bin:Emoji:11	false
 prop:bin:Emoji_Component:0	false
@@ -1607,7 +1607,7 @@ prop:bin:Emoji_Presentation:5	false
 prop:bin:Emoji_Presentation:6	false
 prop:bin:Emoji_Presentation:7	false
 prop:bin:Emoji_Presentation:8	false
-prop:bin:Emoji_Presentation:9	false
+prop:bin:Emoji_Presentation:9	true
 prop:bin:Emoji_Presentation:10	false
 prop:bin:Emoji_Presentation:11	false
 prop:bin:EPres:0	false
@@ -1619,7 +1619,7 @@ prop:bin:EPres:5	false
 prop:bin:EPres:6	false
 prop:bin:EPres:7	false
 prop:bin:EPres:8	false
-prop:bin:EPres:9	false
+prop:bin:EPres:9	true
 prop:bin:EPres:10	false
 prop:bin:EPres:11	false
 prop:bin:Extended_Pictographic:0	false
@@ -1631,7 +1631,7 @@ prop:bin:Extended_Pictographic:5	false
 prop:bin:Extended_Pictographic:6	false
 prop:bin:Extended_Pictographic:7	false
 prop:bin:Extended_Pictographic:8	false
-prop:bin:Extended_Pictographic:9	false
+prop:bin:Extended_Pictographic:9	true
 prop:bin:Extended_Pictographic:10	true
 prop:bin:Extended_Pictographic:11	false
 prop:bin:ExtPict:0	false
@@ -1643,7 +1643,7 @@ prop:bin:ExtPict:5	false
 prop:bin:ExtPict:6	false
 prop:bin:ExtPict:7	false
 prop:bin:ExtPict:8	false
-prop:bin:ExtPict:9	false
+prop:bin:ExtPict:9	true
 prop:bin:ExtPict:10	true
 prop:bin:ExtPict:11	false
 prop:bin:Extender:0	false
@@ -1679,7 +1679,7 @@ prop:bin:Grapheme_Base:5	true
 prop:bin:Grapheme_Base:6	true
 prop:bin:Grapheme_Base:7	true
 prop:bin:Grapheme_Base:8	false
-prop:bin:Grapheme_Base:9	false
+prop:bin:Grapheme_Base:9	true
 prop:bin:Grapheme_Base:10	true
 prop:bin:Grapheme_Base:11	true
 prop:bin:Gr_Base:0	true
@@ -1691,7 +1691,7 @@ prop:bin:Gr_Base:5	true
 prop:bin:Gr_Base:6	true
 prop:bin:Gr_Base:7	true
 prop:bin:Gr_Base:8	false
-prop:bin:Gr_Base:9	false
+prop:bin:Gr_Base:9	true
 prop:bin:Gr_Base:10	true
 prop:bin:Gr_Base:11	true
 prop:bin:Grapheme_Extend:0	false
@@ -3488,8 +3488,8 @@ prop:gc:S:7	false
 prop:gceq:S:7	false
 prop:gc:S:8	false
 prop:gceq:S:8	false
-prop:gc:S:9	false
-prop:gceq:S:9	false
+prop:gc:S:9	true
+prop:gceq:S:9	true
 prop:gc:S:10	false
 prop:gceq:S:10	false
 prop:gc:S:11	false
@@ -3512,8 +3512,8 @@ prop:gc:Symbol:7	false
 prop:gceq:Symbol:7	false
 prop:gc:Symbol:8	false
 prop:gceq:Symbol:8	false
-prop:gc:Symbol:9	false
-prop:gceq:Symbol:9	false
+prop:gc:Symbol:9	true
+prop:gceq:Symbol:9	true
 prop:gc:Symbol:10	false
 prop:gceq:Symbol:10	false
 prop:gc:Symbol:11	false
@@ -3680,8 +3680,8 @@ prop:gc:So:7	false
 prop:gceq:So:7	false
 prop:gc:So:8	false
 prop:gceq:So:8	false
-prop:gc:So:9	false
-prop:gceq:So:9	false
+prop:gc:So:9	true
+prop:gceq:So:9	true
 prop:gc:So:10	false
 prop:gceq:So:10	false
 prop:gc:So:11	false
@@ -3704,8 +3704,8 @@ prop:gc:Other_Symbol:7	false
 prop:gceq:Other_Symbol:7	false
 prop:gc:Other_Symbol:8	false
 prop:gceq:Other_Symbol:8	false
-prop:gc:Other_Symbol:9	false
-prop:gceq:Other_Symbol:9	false
+prop:gc:Other_Symbol:9	true
+prop:gceq:Other_Symbol:9	true
 prop:gc:Other_Symbol:10	false
 prop:gceq:Other_Symbol:10	false
 prop:gc:Other_Symbol:11	false
@@ -3920,8 +3920,8 @@ prop:gc:C:7	false
 prop:gceq:C:7	false
 prop:gc:C:8	true
 prop:gceq:C:8	true
-prop:gc:C:9	true
-prop:gceq:C:9	true
+prop:gc:C:9	false
+prop:gceq:C:9	false
 prop:gc:C:10	false
 prop:gceq:C:10	false
 prop:gc:C:11	false
@@ -3944,8 +3944,8 @@ prop:gc:Other:7	false
 prop:gceq:Other:7	false
 prop:gc:Other:8	true
 prop:gceq:Other:8	true
-prop:gc:Other:9	true
-prop:gceq:Other:9	true
+prop:gc:Other:9	false
+prop:gceq:Other:9	false
 prop:gc:Other:10	false
 prop:gceq:Other:10	false
 prop:gc:Other:11	false
@@ -4136,8 +4136,8 @@ prop:gc:Co:7	false
 prop:gceq:Co:7	false
 prop:gc:Co:8	false
 prop:gceq:Co:8	false
-prop:gc:Co:9	true
-prop:gceq:Co:9	true
+prop:gc:Co:9	false
+prop:gceq:Co:9	false
 prop:gc:Co:10	false
 prop:gceq:Co:10	false
 prop:gc:Co:11	false
@@ -4160,8 +4160,8 @@ prop:gc:Private_Use:7	false
 prop:gceq:Private_Use:7	false
 prop:gc:Private_Use:8	false
 prop:gceq:Private_Use:8	false
-prop:gc:Private_Use:9	true
-prop:gceq:Private_Use:9	true
+prop:gc:Private_Use:9	false
+prop:gceq:Private_Use:9	false
 prop:gc:Private_Use:10	false
 prop:gceq:Private_Use:10	false
 prop:gc:Private_Use:11	false
@@ -4400,8 +4400,8 @@ prop:sc:Common:7	true
 prop:scx:Common:7	true
 prop:sc:Common:8	true
 prop:scx:Common:8	true
-prop:sc:Common:9	false
-prop:scx:Common:9	false
+prop:sc:Common:9	true
+prop:scx:Common:9	true
 prop:sc:Common:10	true
 prop:scx:Common:10	true
 prop:sc:Common:11	false
