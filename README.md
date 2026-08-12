@@ -224,29 +224,57 @@ Known limitations:
 - `duration` does not reject `P…W` combined with non-week units (the ISO 8601 ambiguity is left
   to upstream `java.time`).
 - `idn-hostname` / `idn-email` are fully compliant on JVM but only best-effort on Scala.js — see *Scala.js limitations* below.
-- `regex` accepts some patterns that are valid `java.util.regex` but not valid ECMA-262 — see
-  *Regular expressions* below.
+- `regex` rejects a few patterns that are valid ECMA-262 but have no `java.util.regex`
+  equivalent — see *Regular expressions* below.
 
 ## Regular expressions
 
 `pattern`, `patternProperties` and `format: regex` are specified against **ECMA-262** regular
 expressions. Scala.js hands them to the platform's own `RegExp`, so they are exact there. The JVM
-target has no ECMA-262 engine available and translates the divergences it knows about into
-`java.util.regex` — `\p{…}` long-form Unicode category names, `\c` + lowercase letter, and `\s`'s
-whitespace set. **It is an approximation, not a conformant engine.** The differences currently
-known and not translated, all JVM-only:
+has no ECMA-262 engine available, so patterns are rewritten into `java.util.regex` before
+compiling.
+
+**Within the portable subset the spec recommends** — literal characters, `[abc]`, `[a-z]`,
+`[^abc]`, `+ * ?` and their lazy forms, `{x}`, `{x,y}`, `{x,}`, `^`, `$`, `(…)` and `|` — the two
+targets behave identically. Beyond it, the JVM target is an approximation, and this is its budget.
+
+Rewritten, so they mean what ECMA-262 says:
+
+| construct | would otherwise be |
+| --- | --- |
+| `$` | end of *line*: `^abc$` matching `"abc\n"` |
+| `.` | also excluding U+0085 NEXT LINE |
+| `\v` | any vertical whitespace, including `\n` |
+| `\s`, `\S`, including inside `[…]` | a narrower set: no U+FEFF, and `\S` over-matching NBSP |
+| `\p{…}` long-form category names, `\p{General_Category=…}`, 15 binary properties | unknown, or — for `\p{Alpha}`, `\p{Lower}`, `\p{Upper}`, `\p{space}` — silently ASCII-only |
+| `\c` + lowercase letter | a different control code |
+| `\0`, `\u{…}`, `[\b]`, `[]`, `[^]` | a syntax error |
+| `[` and `&&` inside `[…]` | a nested class and a class intersection |
+
+`\d`, `\w` and `\b` stay ASCII-only as ECMA-262 requires, including in patterns that also use a
+Unicode property.
+
+Not rewritten — the remaining differences, all JVM-only:
 
 | construct | ECMA-262 | this library on JVM |
 | --- | --- | --- |
-| `$` (and `^`) | end/start of input | also matches around a trailing newline |
-| `\v` | vertical tab only | any vertical whitespace, including `\n` |
-| `\S` inside `[…]` | excludes NBSP, `﻿` | matches them |
-| `\Q…\E`, `\A`, `\z`, `\Z`, `\G`, `\h`, `\R`, `\X`, `a*+`, `[a-z&&[b]]`, `\p{Is…}` | invalid | accepted by `format: regex`, and usable in `pattern` |
+| `\p{Math}`, `\p{ID_Start}`, `\p{Dash}` and 35 other binary properties | valid | rejected — `java.util.regex` has no equivalent, and the near misses are different sets |
+| `\p{Script_Extensions=…}` | valid | rejected — `Script=` of the same name is a different set |
+| a group name that is not alphanumeric, e.g. `(?<$x>a)` | valid | rejected by `java.util.regex` |
+| a forward reference to a later group, e.g. `(\2)(a)` | matches empty | does not match |
+| a bare `}` or `]`, `\-`, `\ `, `a{,3}`, `\101`, `[a-z&&[b]]` | a syntax error under `u` | accepted, with the meaning ECMA-262 gives them without `u` |
 
-The first three are silent wrong matches rather than errors. If your patterns depend on any of
-this, validate on Scala.js, or keep to the common subset. Conversely, Scala.js compiles patterns
-in Unicode mode, which is *stricter* than ECMA-262's default: a few legacy-but-tolerated spellings
-(`a{,3}`, a bare `}` or `]`, `\-`) are a syntax error there while the JVM accepts them.
+The first three are errors rather than wrong answers: a rejected pattern throws from `validator`,
+and `format: regex` reports it invalid. Only the forward reference is a silent wrong match.
+`format: regex` and `pattern` always agree — a string is valid `format: regex` exactly when
+`pattern` will compile it.
+
+The last row is the one place the JVM accepts *more* than ECMA-262: Scala.js compiles patterns
+in Unicode mode, which is stricter than ECMA-262 without it, so those spellings are a syntax
+error there while the JVM takes them.
+
+Constructs that are `java.util.regex` and not ECMA-262 — `\Q…\E`, `\A`, `\z`, `\Z`, `\G`, `\h`,
+`\R`, `\X`, `\a`, `\e`, `\N{…}`, `a*+`, `(?i)`, `(?>…)`, `\p{Is…}` — are rejected on both targets.
 
 ## Numbers
 
