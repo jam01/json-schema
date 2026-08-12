@@ -15,7 +15,12 @@ Source is deliberately ASCII: every non-ASCII probe character is built with chr(
 import sys
 
 def hx(s):
-    return " ".join("%04X" % ord(c) for c in s) or "-"
+    # UTF-16 code units, not code points: a supplementary character is a surrogate pair, which
+    # is what String.fromCharCode and (char) on the other two sides can reconstruct. surrogatepass
+    # keeps the deliberately lone surrogate in the corpus encodable.
+    units = s.encode("utf-16-be", "surrogatepass")
+    return " ".join("%04X" % int.from_bytes(units[i:i + 2], "big")
+                    for i in range(0, len(units), 2)) or "-"
 
 CASES = []
 

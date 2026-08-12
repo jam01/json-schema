@@ -102,7 +102,7 @@ object TestSuiteTest {
     // Dialect.FullSpec (format is annotation-only there) — so "format": "regex" is never
     // asserted here, unlike optional/format/*.json which args_provider_format forces under
     // Dialect.FormatAssertion. Covered directly (under the right dialect) by
-    // RegexSupportTest.format_regex_rejects_java_only_bell_escape.
+    // RegexSupportTest.format_regex_rejects_java_only_constructs.
     "when used as a pattern",
   )
 
