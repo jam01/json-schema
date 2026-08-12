@@ -5,11 +5,12 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
+import io.github.jam01.json_schema.vocab.Validation
 import org.junit.jupiter.api.{Assertions, Disabled}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 import ujson.StringRenderer
-import upickle.core.Visitor
+import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
 
 import java.nio.file.{Files, Path, Paths}
 import scala.util.Using
@@ -17,8 +18,8 @@ import scala.util.Using
 class TestSuiteTest {
   @ParameterizedTest
   @MethodSource(value = Array("args_provider"))
-  def test_suite(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
-    val res = try { data.transform(vis) } catch
+  def test_suite(path: String, desc: String, tdesc: String, data: Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
+    val res = try { SchemaW.transform(data, vis) } catch
       case exc: ValidationException => exc.result
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
@@ -26,8 +27,8 @@ class TestSuiteTest {
 
   @ParameterizedTest
   @MethodSource(value = Array("args_provider_format"))
-  def optional_format(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
-    val res = try { data.transform(vis) } catch
+  def optional_format(path: String, desc: String, tdesc: String, data: Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
+    val res = try { SchemaW.transform(data, vis) } catch
       case exc: ValidationException => exc.result
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
@@ -44,8 +45,8 @@ class TestSuiteTest {
    */
   @ParameterizedTest
   @MethodSource(value = Array("args_provider_optional"))
-  def optional_suite(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
-    val res = try { data.transform(vis) } catch
+  def optional_suite(path: String, desc: String, tdesc: String, data: Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
+    val res = try { SchemaW.transform(data, vis) } catch
       case exc: ValidationException => exc.result
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
   }
@@ -58,8 +59,8 @@ class TestSuiteTest {
    */
   @ParameterizedTest
   @MethodSource(value = Array("args_provider_invalid_detailed"))
-  def error_shape(path: String, desc: String, tdesc: String, data: ujson.Value, vis: Visitor[?, OutputUnit]): Unit = {
-    val res = try { data.transform(vis) } catch
+  def error_shape(path: String, desc: String, tdesc: String, data: Value, vis: Visitor[?, OutputUnit]): Unit = {
+    val res = try { SchemaW.transform(data, vis) } catch
       case exc: ValidationException => exc.result
     val label = path + ": " + desc + ": " + tdesc
     Assertions.assertFalse(res.vvalid, "expected invalid: " + label)
@@ -76,11 +77,23 @@ object TestSuiteTest {
   // optional/*.json files (besides optional/format/, covered separately) with known pre-existing
   // failures/errors, not regressions from this change — root-cause deferred, see the handoff plan.
   val NotSupportedOptional: Seq[String] = Seq(
-    "dependencies-compatibility.json", // multiple assertion failures
-    "bignum.json", // maximum/minimum integer comparison fails for very large/negative numbers
-    "format-assertion.json", // custom-metaschema format-assertion:true/false cases fail
-    "refOfUnknownKeyword.json", // Obj cannot be cast to Schema when $ref targets a non-schema keyword location
-    "cross-draft.json", // harness/registry only carries 2020-12 remotes; can't resolve draft2019-09 cross-refs
+    // Legacy draft4-7 `dependencies` keyword, kept optional in later drafts purely for backwards
+    // compatibility. Never implemented by this library - that's a missing optional feature, not a
+    // bug, and nobody's asked for it. Deliberately left unsupported.
+    "dependencies-compatibility.json",
+    // The library resolves one `Dialect` for the whole validation run, from the root schema's
+    // `$schema` (SchemaValidator.apply always applies `ctx.config.dialect`, never re-resolved per
+    // schema resource). Per Core § Schema References, a `$ref`'d resource's dialect is determined
+    // independently by *that* resource's own `$schema`, not inherited from the referrer - so a
+    // 2020-12 schema `$ref`-ing a 2019-09 resource must switch to 2019-09's vocabulary/keyword
+    // semantics for that resource. Fixing this needs two things this library doesn't have: (1)
+    // per-resource dialect resolution at `$ref`/anchor boundaries, and (2) actual historic-draft
+    // vocabularies (this library only implements 2020-12 semantics - e.g. no 2019-09
+    // `items`-as-tuple-validation/`additionalItems`). That's a multi-draft-support feature, not a
+    // bug fix; out of scope for a patch release. Confirmed it's not merely a missing-fixture/harness
+    // gap: the referenced remote (test-suite/remotes/draft2019-09/ignore-prefixItems.json) *is*
+    // loaded into the registry - the library just has no mechanism to apply it under 2019-09 rules.
+    "cross-draft.json",
   )
 
   // Individual test-case descriptions (within otherwise-included optional/*.json files) skipped
@@ -92,6 +105,29 @@ object TestSuiteTest {
     // Dialect.FormatAssertion. Covered directly (under the right dialect) by
     // RegexSupportTest.format_regex_rejects_java_only_bell_escape.
     "when used as a pattern",
+  )
+
+  // (testcase description, test description) pairs skipped by args_provider_optional only - like
+  // NotSupportedOptionalTests, but keyed by both descriptions since bignum.json reuses the same
+  // inner test description ("comparison works for high/very negative numbers") across a case we
+  // want genuinely exercised and one we don't.
+  val NotSupportedOptionalCases: Seq[(String, String)] = Seq(
+    // Int128/Dec128's 128-bit/Decimal128 (34 significant digit) anchor (see Schema.scala) only
+    // binds numbers *embedded in a schema* (parsed via SchemaR/LiteralVisitor, e.g. a `maximum` or
+    // `const` value) - Validation's own number handling for *instance* data never constructs
+    // Int128/Dec128 at all, so magnitude alone doesn't bound what can be validated (confirmed
+    // against the real packaged jar: bignum.json's "integer"/"number"/"string" groups - the
+    // instance-only ones - pass with 0 failures). This file's GracefulLiteralVisitor loader can't
+    // preserve that distinction (it treats "data" the same as "schema" to build a Value for
+    // JUnit's Arguments), but for type-checking that doesn't matter: a whole number rounded to
+    // Float64 is still whole, so isWhole-based type: integer/number checks are unaffected by the
+    // fallback. Only "float comparison with high precision" genuinely needs the excluded fallback
+    // guard: it depends on exact-digit comparison, and the two values here differ only in their
+    // 35th/36th significant digit - rounding either to fit the fallback would make them equal,
+    // "passing" for the wrong reason (the same false-positive risk the old ujson.read()-based
+    // loader had before this file started preserving precision at all).
+    ("float comparison with high precision", "comparison works for high numbers"),
+    ("float comparison with high precision on negative numbers", "comparison works for very negative numbers"),
   )
 
   // Files whose invalid cases don't currently produce an error in the result tree under Detailed format.
@@ -173,6 +209,7 @@ object TestSuiteTest {
             args_provider(p).stream()
               .filter(args => !NotSupportedTests.contains(args.get()(1)))
               .filter(args => !NotSupportedOptionalTests.contains(args.get()(2)))
+              .filter(args => !NotSupportedOptionalCases.contains((args.get()(1), args.get()(2))))
               .forEach(args0 => args.add(args0))
           })
     }
@@ -200,29 +237,83 @@ object TestSuiteTest {
   private def hasError(u: OutputUnit): Boolean =
     (!u.vvalid && u.error != null) || u.details.exists(hasError)
 
+  /**
+   * Like `LiteralVisitor`, but falls back to `Float64` instead of throwing when a number exceeds
+   * `Int128`/`Dec128`'s deliberate 128-bit/Decimal128 bound (see `Schema.scala`) - the library
+   * itself keeps throwing there, by design; this is test-loading only. Exists so that one such
+   * number, deep in a big file (optional/bignum.json), can't take down that whole file's test
+   * discovery - see `args_provider`'s catch-all below for what happens when it does anyway. The
+   * specific cases this affects are excluded via `NotSupportedOptionalCases` rather than left to
+   * (possibly coincidentally) pass here.
+   */
+  private object GracefulLiteralVisitor extends JsonVisitor[Value, Value] {
+    override def visitNull(index: Int): Value = Null
+    override def visitFalse(index: Int): Value = False
+    override def visitTrue(index: Int): Value = True
+    override def visitFloat64(d: Double, index: Int): Value = Float64(d)
+    override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Value =
+      Validation.numOf(s.toString, decIndex, expIndex) match
+        case l: Long => Int64(l)
+        case d: Double => Float64(d)
+        case i: BigInt => try Int128(i) catch case _: IllegalArgumentException => Float64(i.toDouble)
+        case d: BigDecimal => try Dec128(d) catch case _: IllegalArgumentException => Float64(d.toDouble)
+    override def visitInt64(i: Long, index: Int): Value = Int64(i)
+    override def visitString(s: CharSequence, index: Int): Value = Str(s.toString)
+    override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(GracefulLiteralVisitor, length, index)
+    override def visitArray(length: Int, index: Int): ArrVisitor[Value, Arr] = new CollectArrVisitor(GracefulLiteralVisitor, length, index)
+  }
+
   def args_provider(path: Path, dial0: Dialect = null, errorShape: Boolean = false): java.util.List[Arguments] = {
-    val suite = ujson.read(ujson.Readable.fromPath(path)).arr
-    val args = new java.util.ArrayList[Arguments]()
+    try {
+      // Parsed via GracefulLiteralVisitor (io.github.jam01.json_schema.Value), not ujson.read
+      // (ujson.Value) - ujson.Value's number storage is Double-only, which silently rounds
+      // anything past ~15-17 significant digits before it ever reaches the library. That made
+      // optional/bignum.json's integer-comparison cases pass by coincidence (18446744073709551615
+      // and 18446744073709551600 both round to the same Double) rather than actually exercising
+      // bignum precision. GracefulLiteralVisitor promotes big numbers to Int128/Dec128 during the
+      // single parse pass, same as SchemaR does for schemas; SchemaW then replays a Value tree
+      // into any other visitor losslessly.
+      val suite = ujson.Readable.transform(ujson.Readable.fromPath(path), GracefulLiteralVisitor).arr
+      val args = new java.util.ArrayList[Arguments]()
 
-    suite.foreach { testcase =>
-      testcase.obj.get("tests").get.arr.foreach(test => {
-        val sch = testcase.obj.get("schema").get.transform(SchemaR(registry = Registry))
-        val dial = Dialect.tryDialect(sch, registry = Registry).getOrElse(Dialect.Basic)
-        val cfg =
-          if (errorShape) Config(if (dial0 != null) dial0 else dial, format = OutputFormat.Detailed, ffast = false)
-          else Config(if (dial0 != null) dial0 else dial)
+      suite.foreach { testcase =>
+        testcase.obj.get("tests").get.arr.foreach(test => {
+          val sch = SchemaW.transform(testcase.obj.get("schema").get, SchemaR(registry = Registry))
+          val dial = Dialect.tryDialect(sch, registry = Registry).getOrElse(Dialect.Basic)
+          val cfg =
+            if (errorShape) Config(if (dial0 != null) dial0 else dial, format = OutputFormat.Detailed, ffast = false)
+            else Config(if (dial0 != null) dial0 else dial)
 
+          args.add(Arguments.of(
+            resource("test-suite/tests/draft2020-12/").relativize(path).toString,
+            testcase.obj.get("description").get.str,
+            test.obj.get("description").get.str,
+            test.obj.get("data").get,
+            test.obj.get("valid").get.bool,
+            json_schema.validator(sch, cfg, Registry)))
+        })
+      }
+
+      args
+    } catch {
+      case e: Throwable =>
+        // Every caller of this method drives a `Files.walk(...).forEach(p => args_provider(p)...)`
+        // loop; an uncaught exception here aborts that whole `Stream#forEach` - and every file
+        // after this one in the walk - with *no* visible signal to mvn/JUnit (confirmed: the
+        // resulting @MethodSource silently produced a fraction of its real argument count, and
+        // `mvn test` still reported BUILD SUCCESS). Fail loudly instead: TrueSchema always
+        // validates, so pairing it with `valid = false` guarantees a visible assertion failure
+        // carrying the real exception in `tdesc`, rather than quietly vanishing.
+        val args = new java.util.ArrayList[Arguments]()
         args.add(Arguments.of(
           resource("test-suite/tests/draft2020-12/").relativize(path).toString,
-          testcase.obj.get("description").get.str,
-          test.obj.get("description").get.str,
-          test.obj.get("data").get,
-          test.obj.get("valid").get.bool,
-          json_schema.validator(sch, cfg, Registry)))
-      })
+          "FILE FAILED TO LOAD",
+          e.toString,
+          Null,
+          false,
+          json_schema.validator(TrueSchema)))
+        args
     }
-
-    args
   }
 
   def resource(s: String): Path = Paths.get(getClass.getClassLoader.getResource(s).toURI)

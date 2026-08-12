@@ -42,7 +42,9 @@ final class Format private(schema: ObjectSchema,
 object Format extends VocabFactory[Format] {
   val FormatKw: String = "format"
   
-  override def uri: String = "https://json-schema.org/draft/2020-12/meta/format-annotation"
+  // this is the *vocabulary* identifier used in `$vocabulary` (not the meta-schema `$id`,
+  // which is https://json-schema.org/draft/2020-12/meta/format-annotation)
+  override def uri: String = "https://json-schema.org/draft/2020-12/vocab/format-annotation"
   override def shouldApply(schema: ObjectSchema): Boolean = schema.value.contains(FormatKw)
   override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Format =
     new Format(schema, ctx, path, dynParent)

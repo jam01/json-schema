@@ -15,8 +15,8 @@ import upickle.core.Visitor
 class IdnTest {
   @ParameterizedTest
   @MethodSource(value = Array("args_provider_idn"))
-  def idn(path: String, desc: String, tdesc: String, data: ujson.Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
-    val res = try { data.transform(vis) } catch
+  def idn(path: String, desc: String, tdesc: String, data: Value, valid: Boolean, vis: Visitor[?, OutputUnit]): Unit = {
+    val res = try { SchemaW.transform(data, vis) } catch
       case exc: ValidationException => exc.result
     //println(OutputUnitW.transform(res, StringRenderer()).toString)
     Assertions.assertEquals(valid, res.vvalid, path + ": " + desc + ": " + tdesc)
