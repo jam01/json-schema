@@ -69,6 +69,15 @@ object Smoke {
     check( basic("""{"pattern":"^\\s$"}""", ujson.Str("﻿")).vvalid,          "\\s matches zero-width whitespace (BOM)")
     check(!basic("""{"pattern":"^\\S$"}""", ujson.Str(" ")).vvalid,          "\\S rejects latin-1 non-breaking-space")
     check( basic("""{"pattern":"^\\cc$"}""", ujson.Str("")).vvalid,         "\\cc matches control-C case-insensitively")
+    check(!basic("""{"pattern":"^[\\S]$"}""", ujson.Str(" ")).vvalid,        "[\\S] rejects latin-1 non-breaking-space")
+    check(!basic("""{"pattern":"^abc$"}""", ujson.Str("abc\n")).vvalid,      "$ rejects a trailing newline")
+    check( basic("""{"pattern":"^.$"}""", ujson.Str("")).vvalid,             ". matches NEXT LINE")
+    check(!basic("""{"pattern":"^\\v$"}""", ujson.Str("\n")).vvalid,         "\\v rejects a line feed")
+    check(!basic("""{"pattern":"^[]$"}""", ujson.Str("a")).vvalid,           "[] never matches")
+    check( basic("""{"pattern":"^[^]$"}""", ujson.Str("a")).vvalid,          "[^] matches anything")
+    check( basic("""{"pattern":"^[a&&b]$"}""", ujson.Str("&")).vvalid,       "&& in a class is two literals")
+    check( basic("""{"pattern":"^\\p{General_Category=Letter}$"}""", ujson.Str("a")).vvalid, "General_Category=Letter matches a")
+    check( basic("""{"pattern":"^\\p{Alpha}$"}""", ujson.Str("é")).vvalid,   "\\p{Alpha} is Unicode, not ASCII")
 
     // format assertions
     check( fmt("""{"format":"date"}""",     ujson.Str("2024-01-15")).vvalid,      "format:date accepts valid")
@@ -78,9 +87,11 @@ object Smoke {
     check( fmt("""{"format":"hostname"}""", ujson.Str("example.com")).vvalid,     "format:hostname accepts valid")
     check(!fmt("""{"format":"hostname"}""", ujson.Str("hello world")).vvalid,     "format:hostname rejects space")
 
-    // format:regex — RegexSupport.isValidPattern's Java-only-\a rejection
+    // format:regex — RegexSupport.isValidPattern rejecting java.util.regex-only constructs
     check( fmt("""{"format":"regex"}""", ujson.Str("^[a-z]+$")).vvalid, "format:regex accepts valid pattern")
     check(!fmt("""{"format":"regex"}""", ujson.Str("\\a")).vvalid,      "format:regex rejects \\a (Java-only escape)")
+    check(!fmt("""{"format":"regex"}""", ujson.Str("\\Qa+b\\E")).vvalid, "format:regex rejects \\Q...\\E (Java-only)")
+    check( fmt("""{"format":"regex"}""", ujson.Str("^[]$")).vvalid,     "format:regex accepts the empty class")
 
     // idn-hostname: canary for the platform-specific Idn implementation
     check( fmt("""{"format":"idn-hostname"}""", ujson.Str("example.com")).vvalid, "format:idn-hostname accepts valid")
