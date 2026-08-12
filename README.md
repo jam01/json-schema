@@ -262,7 +262,7 @@ Not rewritten — the remaining differences, all JVM-only:
 | `\p{Script_Extensions=…}` | valid | rejected — `Script=` of the same name is a different set |
 | a group name that is not alphanumeric, e.g. `(?<$x>a)` | valid | rejected by `java.util.regex` |
 | a forward reference to a later group, e.g. `(\2)(a)` | matches empty | does not match |
-| a bare `}` or `]`, `\-`, `\ `, `a{,3}`, `\101`, `[a-z&&[b]]` | a syntax error under `u` | accepted, with the meaning ECMA-262 gives them without `u` |
+| a bare `}` or `]`, `\-`, `\ `, `\101`, `\1` with no group, `[a-d[x-z]]`, `[a-z&&[b]]` | a syntax error under `u` | accepted, with the meaning ECMA-262 gives them without `u` |
 
 The first three are errors rather than wrong answers: a rejected pattern throws from `validator`,
 and `format: regex` reports it invalid. Only the forward reference is a silent wrong match.
