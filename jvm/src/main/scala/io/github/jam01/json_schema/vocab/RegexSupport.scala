@@ -11,150 +11,248 @@ import java.util.regex.PatternSyntaxException
  * JVM regex compilation for the `pattern` and `patternProperties` keywords (and validity
  * checking for `format: regex`), backed by `java.util.regex.Pattern`.
  *
- * JSON Schema specifies ECMA-262 regex semantics, which `java.util.regex.Pattern` diverges from
- * in a few well-defined, bounded ways. Each divergence below is translated away from the pattern
- * string before compiling, rather than attempting a general ECMA-262 engine — translation keeps
- * the fix scoped to what the official test suite actually exercises (verified directly against a
- * real JDK, `java.util.regex.Pattern`). Contrast the Scala.js target's `RegexSupport`, which
- * forwards straight to the native `RegExp` engine and needs none of this, since that engine
- * already implements ECMA-262 exactly.
+ * JSON Schema specifies ECMA-262 regex semantics, which `java.util.regex.Pattern` is not. The
+ * pattern is rewritten into the equivalent `java.util.regex` construct before compiling, rather
+ * than embedding an ECMA-262 engine — see [[https://github.com/jam01/json-schema/blob/main/docs/decisions/009-ecma-262-regex.md decision-009]]
+ * for the alternatives measured and rejected. Contrast the Scala.js target's `RegexSupport`,
+ * which forwards straight to the native `RegExp` engine and needs none of this.
  *
- *  1. `\p{...}` Unicode property escapes: ECMA-262 allows long-form `General_Category` names
- *     (e.g. `\p{Letter}`), but Java only recognizes short codes (`\p{L}`) or `Is`-prefixed
- *     aliases (`\p{IsLetter}`) — never bare long-form names. Translated via the standard alias
- *     table from the Unicode standard / ECMA-262 spec
- *     (https://tc39.es/ecma262/#table-unicode-general-category-values).
- *  2. `\c<letter>` control-letter escapes: ECMA-262 computes the control code via
- *     `charCode & 0x1F` (case-insensitive), Java via `charCode ^ 0x40` (effectively
- *     uppercase-only) — the two agree only for uppercase letters. Lowercase letters after `\c`
- *     are upper-cased before compiling so Java computes the same code ECMA-262 would.
- *  3. `\s`/`\S`: ECMA-262's whitespace class (WhiteSpace + LineTerminator) is a fixed, wider set
- *     than what Java's `\s` matches even with `UNICODE_CHARACTER_CLASS` — notably it includes
- *     `﻿` (zero-width no-break space), which Unicode's own `White_Space` property excludes.
- *     Both are expanded to ECMA-262's exact set — tab/LF/VT/FF/CR, `\p{Z}` (Unicode `Separator`,
- *     i.e. `Zs`+`Zl`+`Zp`, covering space, NBSP, EM SPACE and the line/paragraph separators), and
- *     `﻿` — as an explicit Java character class, or, for a `\s` already inside a `[...]`
- *     class, as the bare member list to union in. The one case left untranslated is `\S` *inside*
- *     a `[...]` class: a negated set isn't expressible as a union there. It keeps Java's `\S`,
- *     which — being the complement of Java's narrower `\s` — is *wider* than ECMA-262's, so e.g.
- *     `[\S]` over-matches NBSP and `﻿`. No pattern in the official suite exercises it.
+ * [[translate]] is a single escape- and class-aware scan, which is what makes the rewrites below
+ * safe: a construct is only rewritten where it actually has that meaning, so a literal backslash
+ * followed by `p{Letter}` or `cc` stays literal. It rewrites:
  *
- * Separately, some property names are recognized only under `UNICODE_CHARACTER_CLASS`, and others
- * are recognized either way but match ASCII-only semantics without it. Rather than sort out which
- * is which per name, compile plain first and only retry with the flag — via the `(?U)` embedded
- * flag expression, since `scala.util.matching.Regex`'s public constructor only accepts a pattern
- * string, not a pre-built `java.util.regex.Pattern` — if that fails. `\p{digit}` is an example of
- * the first kind: plain compilation throws `Unknown character property name {digit}` (Java's POSIX
- * spelling is the capitalized `\p{Digit}`, which is ASCII-only), and the `(?U)` retry both compiles
- * it and gives it the Unicode semantics the suite's Bengali-digit case expects. Keeping the retry
- * second means the overwhelming majority of patterns stay on the plain path, which matters because
- * `UNICODE_CHARACTER_CLASS` also broadens `\d`/`\w` beyond ECMA-262 (both are ASCII-only in
- * ECMA-262, always).
+ *  1. `$` to `\z`. `java.util.regex`'s `$` also matches *before* a final line terminator, so
+ *     `^abc$` matches `"abc\n"`; ECMA-262's matches at the very end of input only. JSON Schema
+ *     patterns never carry flags, so multiline `$` never applies. (`^` needs no rewrite: without
+ *     `MULTILINE` it already means start-of-input, exactly as in ECMA-262.)
+ *  2. `.` to an explicit class. Both dialects exclude the line terminators from `.`, but
+ *     `java.util.regex`'s set additionally contains U+0085 NEXT LINE, which ECMA-262's does not.
+ *  3. `\v` to `\x0B`. In ECMA-262 it is the vertical tab; in `java.util.regex` it is a class of
+ *     every vertical whitespace character, including `\n`.
+ *  4. `\s`/`\S` to ECMA-262's exact set — tab/LF/VT/FF/CR, `\p{Z}` (`Zs`+`Zl`+`Zp`, covering
+ *     space, NBSP, EM SPACE and the line/paragraph separators) and `\uFEFF`, which Unicode's own
+ *     `White_Space` property excludes so no `java.util.regex` class spells it. `\S` becomes a
+ *     nested negated class, which unions correctly inside a positive class (`[a\S]`) and, being a
+ *     single member, negates correctly inside a negated one (`[^a\S]`).
+ *  5. `\p{...}` property names, via [[property]].
+ *  6. `\c<letter>` to the code point it denotes. ECMA-262 computes it as `charCode & 0x1F`,
+ *     `java.util.regex` as `charCode ^ 0x40`; the two agree only for uppercase letters.
+ *  7. `\0`, `\u{...}` and `[\b]` to the `java.util.regex` spellings of the same code points
+ *     (`\x00`, `\x{...}`, `\x08`), none of which `java.util.regex` accepts as written.
+ *  8. `[]` and `[^]` — legal in ECMA-262, where they never and always match respectively, and a
+ *     syntax error in `java.util.regex` — to an empty and a universal class.
+ *  9. `[` and `&` inside a class to literals. ECMA-262 has neither nested classes nor `&&`
+ *     intersection, so `[a&&b]` is the three characters `a`, `&`, `b`; left alone,
+ *     `java.util.regex` reads it as an intersection and matches nothing.
  *
- * OPEN (deferred to a dedicated spike, do not re-litigate piecemeal): this translation table grew
- * reactively, one suite failure at a time. Two questions to settle in one pass — (a) is there a
- * known, maintained ECMA-262 → `java.util.regex` translation to adopt instead of hand-rolling, or
- * an embeddable ECMA-262 engine cheap enough to depend on (Graal's TRegex, Joni in ECMAScript
- * syntax mode) that other JVM validators have converged on; and (b) is there a de-facto accepted
- * compatibility bound implementations agree to stop at, so the remaining divergences can be
- * declared out of scope rather than discovered one at a time. Until then the rule is: translate
- * only what the official suite exercises, and document what is left.
+ * Constructs that `java.util.regex` accepts but ECMA-262 does not are rejected with a
+ * `PatternSyntaxException`: the escapes `\a \e \A \z \Z \G \h \H \R \X \N{...} \Q...\E`,
+ * possessive quantifiers (`a*+`), and the non-ECMA-262 group forms (`(?i)`, `(?x)`, `(?>...)`).
+ * Rejecting rather than passing them through is what lets `format: regex` answer for the same
+ * language `pattern` compiles: a string is valid `format: regex` exactly when `pattern` accepts it.
+ *
+ * The whole scan runs without `UNICODE_CHARACTER_CLASS`. That flag is a property of the entire
+ * pattern, so switching it on to recognize one property name also widens `\d`/`\w`/`\b` in the
+ * rest of it — and in ECMA-262 those are always ASCII-only. Mapping each property name explicitly
+ * keeps the two independent.
+ *
+ * What is left untranslated is written down in README § Regular expressions: the ECMA-262 binary
+ * properties and `\p{Script_Extensions=...}` that `java.util.regex` cannot express (rejected, so
+ * they surface as an error rather than a wrong match), a few backreference edge cases, and the
+ * legacy spellings ECMA-262 rejects under `u` but this target still accepts.
  */
 private[vocab] object RegexSupport {
-  // ECMA-262 long-form Unicode General_Category alias -> Java short code.
-  private val GeneralCategoryAliases: Map[String, String] = Map(
+  /**
+   * ECMA-262 `General_Category` values — long names, short codes, and the additional value
+   * aliases Unicode's `PropertyValueAliases.txt` defines — to the short code `java.util.regex`
+   * knows. `java.util.regex` recognizes short codes and `Is`-prefixed aliases, never bare
+   * long-form names like `Letter`.
+   */
+  private val GeneralCategories: Map[String, String] = Map(
     "Cased_Letter" -> "LC", "Close_Punctuation" -> "Pe", "Connector_Punctuation" -> "Pc",
-    "Control" -> "Cc", "Currency_Symbol" -> "Sc", "Dash_Punctuation" -> "Pd",
-    "Decimal_Number" -> "Nd", "Enclosing_Mark" -> "Me", "Final_Punctuation" -> "Pf",
-    "Format" -> "Cf", "Initial_Punctuation" -> "Pi", "Letter" -> "L", "Letter_Number" -> "Nl",
-    "Line_Separator" -> "Zl", "Lowercase_Letter" -> "Ll", "Mark" -> "M", "Math_Symbol" -> "Sm",
+    "Control" -> "Cc", "cntrl" -> "Cc", "Currency_Symbol" -> "Sc", "Dash_Punctuation" -> "Pd",
+    "Decimal_Number" -> "Nd", "digit" -> "Nd", "Enclosing_Mark" -> "Me",
+    "Final_Punctuation" -> "Pf", "Format" -> "Cf", "Initial_Punctuation" -> "Pi",
+    "Letter" -> "L", "Letter_Number" -> "Nl", "Line_Separator" -> "Zl",
+    "Lowercase_Letter" -> "Ll", "Mark" -> "M", "Combining_Mark" -> "M", "Math_Symbol" -> "Sm",
     "Modifier_Letter" -> "Lm", "Modifier_Symbol" -> "Sk", "Nonspacing_Mark" -> "Mn",
     "Number" -> "N", "Open_Punctuation" -> "Ps", "Other" -> "C", "Other_Letter" -> "Lo",
     "Other_Number" -> "No", "Other_Punctuation" -> "Po", "Other_Symbol" -> "So",
-    "Paragraph_Separator" -> "Zp", "Private_Use" -> "Co", "Punctuation" -> "P",
+    "Paragraph_Separator" -> "Zp", "Private_Use" -> "Co", "Punctuation" -> "P", "punct" -> "P",
     "Separator" -> "Z", "Space_Separator" -> "Zs", "Spacing_Mark" -> "Mc",
     "Surrogate" -> "Cs", "Symbol" -> "S", "Titlecase_Letter" -> "Lt",
     "Unassigned" -> "Cn", "Uppercase_Letter" -> "Lu",
-  )
-
-  private val PropertyEscape: Regex = raw"\\([pP])\{([A-Za-z_]+)\}".r
-
-  private def translateAliases(s: String): String =
-    PropertyEscape.replaceAllIn(s, m =>
-      Regex.quoteReplacement(GeneralCategoryAliases.get(m.group(2)).fold(m.matched)(short => s"\\${m.group(1)}{$short}")))
-
-  private val ControlEscape: Regex = raw"\\c([a-zA-Z])".r
-
-  private def translateControlEscapes(s: String): String =
-    ControlEscape.replaceAllIn(s, m => Regex.quoteReplacement("\\c" + m.group(1).toUpperCase))
-
-  // tab, LF, VT, FF, CR, Unicode Separator (Zs+Zl+Zp), ZWNBSP — exactly ECMA-262's \s set.
-  private val EcmaWhitespaceMembers = raw"\t\n\x0B\f\r\p{Z}\uFEFF"
+  ) ++ "L LC Lu Ll Lt Lm Lo M Mn Mc Me N Nd Nl No P Pc Pd Ps Pe Pi Pf Po S Sm Sc Sk So Z Zs Zl Zp C Cc Cf Cs Co Cn"
+    .split(' ').map(short => short -> short)
 
   /**
-   * Expands standalone (not already inside a `[...]` class) `\s`/`\S` to an explicit class with
-   * ECMA-262's exact whitespace set. `\s`/`\S` found nested inside a `[...]` class are left as-is
-   * — translating a negated class there isn't expressible via simple union, and no test in the
-   * official suite exercises that nesting — so they keep Java's narrower (but not wrong, just
-   * incomplete) semantics.
+   * The ECMA-262 binary property names, and their aliases, that `java.util.regex` can express
+   * exactly. Several of these — `Alpha`, `Lower`, `Upper`, `space` — collide with POSIX class
+   * names `java.util.regex` reads as ASCII-only, so leaving them alone is a silent wrong match
+   * rather than an error. The emoji properties require a JDK 21 runtime, which is this library's
+   * floor. ECMA-262's remaining binary properties have no `java.util.regex` equivalent and are
+   * rejected; approximating them with a near-miss class would trade an error for a wrong answer.
    */
-  private def translateWhitespaceEscapes(s: String): String = {
-    val sb = new StringBuilder(s.length)
-    var inClass = false
-    var i = 0
-    while (i < s.length) {
-      val c = s.charAt(i)
-      if (c == '\\' && i + 1 < s.length) {
-        s.charAt(i + 1) match {
-          case 's' => sb.append(if (inClass) EcmaWhitespaceMembers else s"[$EcmaWhitespaceMembers]")
-          case 'S' if !inClass => sb.append(s"[^$EcmaWhitespaceMembers]")
-          case other => sb.append(c).append(other)
-        }
-        i += 2
-      } else {
-        if (c == '[' && !inClass) inClass = true
-        else if (c == ']' && inClass) inClass = false
-        sb.append(c)
-        i += 1
-      }
-    }
-    sb.result()
+  private val BinaryProperties: Map[String, String] = Map(
+    "ASCII" -> "ASCII",
+    "Alphabetic" -> "IsAlphabetic", "Alpha" -> "IsAlphabetic",
+    "Assigned" -> "IsAssigned",
+    "Emoji" -> "IsEmoji",
+    "Emoji_Component" -> "IsEmoji_Component", "EComp" -> "IsEmoji_Component",
+    "Emoji_Modifier" -> "IsEmoji_Modifier", "EMod" -> "IsEmoji_Modifier",
+    "Emoji_Modifier_Base" -> "IsEmoji_Modifier_Base", "EBase" -> "IsEmoji_Modifier_Base",
+    "Emoji_Presentation" -> "IsEmoji_Presentation", "EPres" -> "IsEmoji_Presentation",
+    "Extended_Pictographic" -> "IsExtended_Pictographic", "ExtPict" -> "IsExtended_Pictographic",
+    "Ideographic" -> "IsIdeographic", "Ideo" -> "IsIdeographic",
+    "Join_Control" -> "IsJoin_Control", "Join_C" -> "IsJoin_Control",
+    "Lowercase" -> "IsLowercase", "Lower" -> "IsLowercase",
+    "Noncharacter_Code_Point" -> "IsNoncharacter_Code_Point", "NChar" -> "IsNoncharacter_Code_Point",
+    "Uppercase" -> "IsUppercase", "Upper" -> "IsUppercase",
+    "White_Space" -> "IsWhite_Space", "space" -> "IsWhite_Space",
+  )
+
+  /** Escapes `java.util.regex` recognizes and ECMA-262 does not. `\E` closes a `\Q` quotation. */
+  private val JavaOnlyEscapes = "aeAzZGhHRXNQE"
+
+  /** ECMA-262's `\s`: tab, LF, VT, FF, CR, Unicode `Separator` and ZWNBSP. */
+  private val Whitespace = raw"\t\n\x0B\f\r\p{Z}\uFEFF"
+
+  /** ECMA-262's `.`: anything but the four LineTerminator code points. */
+  private val Dot = raw"[^\n\r\u2028\u2029]"
+
+  private val AnyCodePoint = raw"\x00-\x{10FFFF}"
+
+  private def isAsciiLetter(c: Char): Boolean = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+
+  /**
+   * The `java.util.regex` class body for an ECMA-262 property name, or `None` where no equivalent
+   * exists. `Script=`/`sc=` pass through, which `java.util.regex` understands as written;
+   * `Script_Extensions=` has no equivalent, and the plain script of the same name is a different
+   * set.
+   */
+  private def property(name: String): Option[String] = name.indexOf('=') match {
+    case -1 => GeneralCategories.get(name).orElse(BinaryProperties.get(name))
+    case eq =>
+      val (key, value) = (name.substring(0, eq), name.substring(eq + 1))
+      if (key == "General_Category" || key == "gc") GeneralCategories.get(value)
+      else if (key == "Script" || key == "sc") Some(name)
+      else None
   }
 
-  private def translate(s: String): String =
-    translateWhitespaceEscapes(translateControlEscapes(translateAliases(s)))
+  /** Rewrites an ECMA-262 pattern into the equivalent `java.util.regex` one. */
+  private def translate(s: String): String = {
+    def invalid(desc: String, at: Int): Nothing = throw new PatternSyntaxException(desc, s, at)
+
+    val sb = new StringBuilder(s.length + 16)
+    var inClass = false
+    var i = 0
+
+    while (i < s.length) {
+      val c = s.charAt(i)
+
+      if (c == '\\') {
+        if (i + 1 == s.length) invalid("Trailing backslash", i)
+        val esc = s.charAt(i + 1)
+        val at = i
+        i += 2
+
+        esc match {
+          case 's' => sb.append(if (inClass) Whitespace else s"[$Whitespace]")
+          case 'S' => sb.append(s"[^$Whitespace]")
+          case 'v' => sb.append(raw"\x0B")
+          case 'b' if inClass => sb.append(raw"\x08")            // in a class, ECMA-262's backspace
+          // ECMA-262's DecimalDigit is ASCII, so `Char.isDigit` would be too broad here.
+          case '0' if i == s.length || s.charAt(i) < '0' || s.charAt(i) > '9' => sb.append(raw"\x00")
+
+          case 'p' | 'P' =>
+            if (i == s.length || s.charAt(i) != '{') invalid(s"\\$esc without a {name}", at)
+            val close = s.indexOf('}', i)
+            if (close < 0) invalid(s"Unclosed \\$esc{", at)
+            val name = s.substring(i + 1, close)
+            i = close + 1
+            if (name == "Any") sb.append(if (esc == 'p') s"[$AnyCodePoint]" else s"[^$AnyCodePoint]")
+            else property(name) match {
+              case Some(body) => sb.append('\\').append(esc).append('{').append(body).append('}')
+              case None => invalid(s"\\$esc{$name} has no java.util.regex equivalent", at)
+            }
+
+          case 'u' if i < s.length && s.charAt(i) == '{' =>
+            val close = s.indexOf('}', i)
+            if (close < 0) invalid("Unclosed \\u{", at)
+            sb.append(raw"\x{").append(s.substring(i + 1, close)).append('}')
+            i = close + 1
+
+          case 'c' if i < s.length && isAsciiLetter(s.charAt(i)) =>
+            sb.append("\\x%02X".format(s.charAt(i) % 32))
+            i += 1
+          case 'c' => invalid("\\c must be followed by a control letter", at)
+
+          case _ if JavaOnlyEscapes.indexOf(esc.toInt) >= 0 =>
+            invalid(s"\\$esc is not an ECMA-262 escape", at)
+
+          case _ => sb.append('\\').append(esc)
+        }
+      } else if (inClass) {
+        c match {
+          case ']' => inClass = false; sb.append(']')
+          case '[' => sb.append(raw"\[")     // ECMA-262 has no nested classes
+          case '&' => sb.append(raw"\&")     // nor `&&` intersection
+          case _ => sb.append(c)
+        }
+        i += 1
+      } else {
+        c match {
+          case '[' =>
+            if (i + 1 < s.length && s.charAt(i + 1) == ']') {
+              sb.append(s"[^$AnyCodePoint]"); i += 2
+            } else if (i + 2 < s.length && s.charAt(i + 1) == '^' && s.charAt(i + 2) == ']') {
+              sb.append(s"[$AnyCodePoint]"); i += 3
+            } else {
+              inClass = true
+              sb.append('[')
+              i += 1
+              if (i < s.length && s.charAt(i) == '^') { sb.append('^'); i += 1 }
+            }
+
+          case '$' => sb.append(raw"\z"); i += 1
+          case '.' => sb.append(Dot); i += 1
+
+          case '*' | '+' | '?' | '}' =>
+            sb.append(c)
+            i += 1
+            if (i < s.length && s.charAt(i) == '+')
+              invalid("Possessive quantifiers are not ECMA-262", i)
+
+          case '(' =>
+            sb.append(c)
+            i += 1
+            if (i < s.length && s.charAt(i) == '?') {
+              val kind = if (i + 1 < s.length) s.charAt(i + 1) else ' '
+              val named = kind == '<' && i + 2 < s.length &&
+                (s.charAt(i + 2) == '=' || s.charAt(i + 2) == '!' ||
+                  s.charAt(i + 2).isLetter || s.charAt(i + 2) == '_' || s.charAt(i + 2) == '$')
+              if (!(kind == ':' || kind == '=' || kind == '!' || named))
+                invalid(s"(?$kind is not an ECMA-262 group", i)
+            }
+
+          case _ => sb.append(c); i += 1
+        }
+      }
+    }
+
+    if (inClass) invalid("Unclosed character class", s.length)
+    sb.result()
+  }
 
   private final class JavaCompiledPattern(rgx: Regex) extends CompiledPattern {
     def matches(s: CharSequence): Boolean = rgx.matches(s)
   }
 
-  def compilePattern(s: String): CompiledPattern = {
-    val translated = translate(s)
-    val rgx = try new Regex(translated).unanchored
-      catch {
-        case _: PatternSyntaxException => new Regex(s"(?U)$translated").unanchored
-      }
-    new JavaCompiledPattern(rgx)
-  }
-
-  // `\a` (alert/bell) is a Java-recognized escape with no ECMA-262 equivalent — under the
-  // Unicode-mode semantics `\p{...}` support above already commits this implementation to, it's
-  // a JS SyntaxError, but `java.util.regex.Pattern` compiles it without complaint. Checked
-  // heuristically (odd number of preceding backslashes) rather than via a full escape-aware scan,
-  // matching this file's existing bounded-not-exhaustive approach.
-  private val JavaOnlyBellEscape: Regex = raw"(?<!\\)(?:\\\\)*\\a".r
+  def compilePattern(s: String): CompiledPattern =
+    new JavaCompiledPattern(new Regex(translate(s)).unanchored)
 
   /** True if `s` is a syntactically valid ECMA-262 pattern, for `format: regex`. */
-  def isValidPattern(s: String): Boolean = {
-    if (JavaOnlyBellEscape.findFirstIn(s).isDefined) false
-    else {
-      val translated = translate(s)
-      try { new Regex(translated); true }
-      catch {
-        case _: PatternSyntaxException =>
-          try { new Regex(s"(?U)$translated"); true }
-          catch { case _: PatternSyntaxException => false }
-      }
-    }
-  }
+  def isValidPattern(s: String): Boolean =
+    try { new Regex(translate(s)); true }
+    catch { case _: PatternSyntaxException => false }
 }
