@@ -80,4 +80,15 @@ class RegexSupportTest {
     val v = mkValidator("""{"format": "regex"}""", Dialect.FormatAssertion)
     assertFalse(isValid(v, "\"\\\\a\""), "\\a is not a valid ECMA-262 regex escape")
   }
+
+  @Test def format_regex_accepts_patterns_that_only_compile_after_translation(): Unit = {
+    // `format: regex` asks whether the string is a valid *ECMA-262* pattern, so it has to answer
+    // for the translated form. \p{Letter} is valid ECMA-262 and unrecognized by java.util.regex
+    // (with or without UNICODE_CHARACTER_CLASS); compiling the raw string would report it invalid.
+    val v = mkValidator("""{"format": "regex"}""", Dialect.FormatAssertion)
+    assertTrue(isValid(v, "\"\\\\p{Letter}cole\""), "\\p{Letter} is a valid ECMA-262 pattern")
+    assertTrue(isValid(v, "\"^\\\\p{digit}+$\""), "\\p{digit} is accepted by ECMA-262 engines")
+    assertTrue(isValid(v, "\"^\\\\cc$\""), "\\c + lowercase letter is a valid ECMA-262 control escape")
+    assertFalse(isValid(v, "\"[\""), "an unbalanced class is still invalid")
+  }
 }
