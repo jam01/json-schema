@@ -257,7 +257,6 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   }
 
   override def schBy0(ptr: JsonPointer): Schema = {
-    var i = 0
     var res: Value = this
     val it = ptr.refTokens.iterator; it.next() // skip first empty string token
     for (key <- it) {
@@ -269,11 +268,20 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
           if (value.length <= i) throw refError(ptr)
           value(i)
         case x: Any => throw new IllegalStateException(s"Unsupported type ${x.getClass.getName} for reference $ptr")
-
-      i = i + 1
     }
 
-    res.asInstanceOf[Schema]
+    res match
+      // The location wasn't recognized as a schema-bearing keyword while parsing (e.g. nested under
+      // an unknown/arbitrary keyword, or under a known non-applicator like `examples`), so it's still
+      // a raw literal here. Per Core § Fragment Identifiers, a JSON Pointer fragment resolves against
+      // the schema resource as plain JSON; any object/boolean found this way is a valid subschema
+      // regardless of which keyword contains it - compile it lazily now, anchored to this schema so
+      // its `location`/`base` resolve the same as if it had been recognized up front.
+      case sch: Schema => sch
+      case Obj(value) => new ObjectSchema(value, docbase, Some(this), Some(ptr.toString))
+      case True => TrueSchema
+      case False => FalseSchema
+      case _ => throw refError(ptr)
   }
 }
 

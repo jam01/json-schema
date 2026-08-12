@@ -285,7 +285,11 @@ object Validation extends VocabFactory[Validation] {
   }
   private def isWhole(n: Any) = n match
     case d: Double => d.isWhole
-    case _: Long | BigInt  => true
+    // NB: `case _: Long | BigInt` (without repeating `_:`) never matches a BigInt at runtime -
+    // Scala parses it as pattern alternation with `BigInt` as a bare stable-id pattern (comparing
+    // equality to the BigInt companion object), not as a `Long | BigInt` type-union ascription.
+    // Silently fell through to MatchError for any BigInt-valued number.
+    case _: Long | _: BigInt => true
     case d: BigDecimal => d.isWhole
 
   private val NilArrayVis = new ArrVisitor[Any, Seq[OutputUnit]] {

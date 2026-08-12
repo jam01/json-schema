@@ -66,7 +66,14 @@ object Dialect {
    * @return optionally the found or constructed [[Dialect]]
    */
   def tryDialect(schema: Schema,
-                 dialects: Seq[Dialect] = Seq(Dialect.FullSpec),
+                 // `FullSpec` alone omits `vocab.FormatAssertion` (it only carries the annotation-only
+                 // `vocab.Format`), so a custom meta-schema declaring the format-assertion vocabulary -
+                 // with either true or false in `$vocabulary` - could never resolve it: `found0` would
+                 // always be empty, silently dropping the vocab (or, if required, aborting to `None`
+                 // entirely). Including `FormatAssertion` here just widens the pool of vocab factories
+                 // available to build a custom dialect from; it doesn't change resolution of any
+                 // `dialectUri` that's already a known top-level dialect.
+                 dialects: Seq[Dialect] = Seq(Dialect.FullSpec, Dialect.FormatAssertion),
                  registry: Registry): Option[Dialect] = {
     if (schema.isInstanceOf[BooleanSchema]) return Some(Dialect.Basic)
 
