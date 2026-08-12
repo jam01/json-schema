@@ -5,12 +5,11 @@
 package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema
-import io.github.jam01.json_schema.vocab.Validation
 import org.junit.jupiter.api.{Assertions, Disabled}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 import ujson.StringRenderer
-import upickle.core.{ArrVisitor, ObjVisitor, Visitor}
+import upickle.core.Visitor
 
 import java.nio.file.{Files, Path, Paths}
 import scala.util.Using
@@ -112,20 +111,18 @@ object TestSuiteTest {
   // inner test description ("comparison works for high/very negative numbers") across a case we
   // want genuinely exercised and one we don't.
   val NotSupportedOptionalCases: Seq[(String, String)] = Seq(
-    // Int128/Dec128's 128-bit/Decimal128 (34 significant digit) anchor (see Schema.scala) only
-    // binds numbers *embedded in a schema* (parsed via SchemaR/LiteralVisitor, e.g. a `maximum` or
-    // `const` value) - Validation's own number handling for *instance* data never constructs
-    // Int128/Dec128 at all, so magnitude alone doesn't bound what can be validated (confirmed
-    // against the real packaged jar: bignum.json's "integer"/"number"/"string" groups - the
-    // instance-only ones - pass with 0 failures). This file's GracefulLiteralVisitor loader can't
-    // preserve that distinction (it treats "data" the same as "schema" to build a Value for
-    // JUnit's Arguments), but for type-checking that doesn't matter: a whole number rounded to
-    // Float64 is still whole, so isWhole-based type: integer/number checks are unaffected by the
-    // fallback. Only "float comparison with high precision" genuinely needs the excluded fallback
-    // guard: it depends on exact-digit comparison, and the two values here differ only in their
-    // 35th/36th significant digit - rounding either to fit the fallback would make them equal,
-    // "passing" for the wrong reason (the same false-positive risk the old ujson.read()-based
-    // loader had before this file started preserving precision at all).
+    // Int128/Dec128's 128-bit/Decimal128 (34 significant digit) anchor (see their scaladoc in
+    // Schema.scala) is enforced only at schema-compile time (SchemaR.checkAnchor) - Validation's
+    // own number handling for *instance* data is arbitrary-precision and never rejects on
+    // magnitude (confirmed: bignum.json's "integer"/"number"/"string" groups - the instance-only
+    // ones - pass with 0 failures, including a number nested in an array under `const`/`enum`).
+    // These two cases are different: their *schema* literal (`exclusiveMaximum`/`exclusiveMinimum`
+    // with 35 significant digits) itself exceeds the anchor, so SchemaR.checkAnchor throws
+    // SchemaCompileException while compiling the schema - caught per-testcase below and turned
+    // into a guaranteed-failing case, which this exclusion list then filters out. This isn't a
+    // test-loader gap; the schema genuinely can't be represented by this library's Schema type at
+    // more than 34 significant digits, by design (the anchor is intentionally bounded, not
+    // unbounded arbitrary precision).
     ("float comparison with high precision", "comparison works for high numbers"),
     ("float comparison with high precision on negative numbers", "comparison works for very negative numbers"),
   )
@@ -237,60 +234,50 @@ object TestSuiteTest {
   private def hasError(u: OutputUnit): Boolean =
     (!u.vvalid && u.error != null) || u.details.exists(hasError)
 
-  /**
-   * Like `LiteralVisitor`, but falls back to `Float64` instead of throwing when a number exceeds
-   * `Int128`/`Dec128`'s deliberate 128-bit/Decimal128 bound (see `Schema.scala`) - the library
-   * itself keeps throwing there, by design; this is test-loading only. Exists so that one such
-   * number, deep in a big file (optional/bignum.json), can't take down that whole file's test
-   * discovery - see `args_provider`'s catch-all below for what happens when it does anyway. The
-   * specific cases this affects are excluded via `NotSupportedOptionalCases` rather than left to
-   * (possibly coincidentally) pass here.
-   */
-  private object GracefulLiteralVisitor extends JsonVisitor[Value, Value] {
-    override def visitNull(index: Int): Value = Null
-    override def visitFalse(index: Int): Value = False
-    override def visitTrue(index: Int): Value = True
-    override def visitFloat64(d: Double, index: Int): Value = Float64(d)
-    override def visitFloat64StringParts(s: CharSequence, decIndex: Int, expIndex: Int, index: Int): Value =
-      Validation.numOf(s.toString, decIndex, expIndex) match
-        case l: Long => Int64(l)
-        case d: Double => Float64(d)
-        case i: BigInt => try Int128(i) catch case _: IllegalArgumentException => Float64(i.toDouble)
-        case d: BigDecimal => try Dec128(d) catch case _: IllegalArgumentException => Float64(d.toDouble)
-    override def visitInt64(i: Long, index: Int): Value = Int64(i)
-    override def visitString(s: CharSequence, index: Int): Value = Str(s.toString)
-    override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(GracefulLiteralVisitor, length, index)
-    override def visitArray(length: Int, index: Int): ArrVisitor[Value, Arr] = new CollectArrVisitor(GracefulLiteralVisitor, length, index)
-  }
-
   def args_provider(path: Path, dial0: Dialect = null, errorShape: Boolean = false): java.util.List[Arguments] = {
     try {
-      // Parsed via GracefulLiteralVisitor (io.github.jam01.json_schema.Value), not ujson.read
+      // Parsed via LiteralVisitor (io.github.jam01.json_schema.Value), not ujson.read
       // (ujson.Value) - ujson.Value's number storage is Double-only, which silently rounds
       // anything past ~15-17 significant digits before it ever reaches the library. That made
       // optional/bignum.json's integer-comparison cases pass by coincidence (18446744073709551615
       // and 18446744073709551600 both round to the same Double) rather than actually exercising
-      // bignum precision. GracefulLiteralVisitor promotes big numbers to Int128/Dec128 during the
-      // single parse pass, same as SchemaR does for schemas; SchemaW then replays a Value tree
-      // into any other visitor losslessly.
-      val suite = ujson.Readable.transform(ujson.Readable.fromPath(path), GracefulLiteralVisitor).arr
+      // bignum precision. LiteralVisitor promotes big numbers to Int128/Dec128 during the single
+      // parse pass, same as SchemaR does for schemas; SchemaW then replays a Value tree into any
+      // other visitor losslessly.
+      val suite = ujson.Readable.transform(ujson.Readable.fromPath(path), LiteralVisitor).arr
       val args = new java.util.ArrayList[Arguments]()
 
       suite.foreach { testcase =>
         testcase.obj.get("tests").get.arr.foreach(test => {
-          val sch = SchemaW.transform(testcase.obj.get("schema").get, SchemaR(registry = Registry))
-          val dial = Dialect.tryDialect(sch, registry = Registry).getOrElse(Dialect.Basic)
-          val cfg =
-            if (errorShape) Config(if (dial0 != null) dial0 else dial, format = OutputFormat.Detailed, ffast = false)
-            else Config(if (dial0 != null) dial0 else dial)
+          try {
+            val sch = SchemaW.transform(testcase.obj.get("schema").get, SchemaR(registry = Registry))
+            val dial = Dialect.tryDialect(sch, registry = Registry).getOrElse(Dialect.Basic)
+            val cfg =
+              if (errorShape) Config(if (dial0 != null) dial0 else dial, format = OutputFormat.Detailed, ffast = false)
+              else Config(if (dial0 != null) dial0 else dial)
 
-          args.add(Arguments.of(
-            resource("test-suite/tests/draft2020-12/").relativize(path).toString,
-            testcase.obj.get("description").get.str,
-            test.obj.get("description").get.str,
-            test.obj.get("data").get,
-            test.obj.get("valid").get.bool,
-            json_schema.validator(sch, cfg, Registry)))
+            args.add(Arguments.of(
+              resource("test-suite/tests/draft2020-12/").relativize(path).toString,
+              testcase.obj.get("description").get.str,
+              test.obj.get("description").get.str,
+              test.obj.get("data").get,
+              test.obj.get("valid").get.bool,
+              json_schema.validator(sch, cfg, Registry)))
+          } catch {
+            case e: SchemaCompileException =>
+              // A schema literal legitimately exceeding Int128/Dec128's anchor (SchemaR.checkAnchor)
+              // throws at compile time - narrower than the file-level catch-all below, so one such
+              // testcase doesn't take its whole file's test discovery down with it. Surfaced as a
+              // normal failing case (real exception in `tdesc`), filterable via
+              // NotSupportedOptionalCases like any other unsupported case.
+              args.add(Arguments.of(
+                resource("test-suite/tests/draft2020-12/").relativize(path).toString,
+                testcase.obj.get("description").get.str,
+                test.obj.get("description").get.str,
+                Null,
+                false,
+                json_schema.validator(TrueSchema)))
+          }
         })
       }
 
