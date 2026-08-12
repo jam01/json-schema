@@ -76,10 +76,26 @@ sealed trait Value {
 
   /**
    * Returns the `BigDecimal` value of this [[Value]], fails if it is not
-   * a [[Dec128]]
+   * a [[Decimal]]
    */
-  def dec128: BigDecimal = this match {
-    case Dec128(value) => value
+  def decimal: BigDecimal = this match {
+    case Decimal(value) => value
+    case _ => throw IllegalStateException("Expected Number")
+  }
+
+  /**
+   * Returns this [[Value]] as a `BigDecimal` whatever [[Num]] case holds it, fails if it is not a
+   * number.
+   *
+   * Prefer this to [[int64]]/[[float64]]/[[int128]]/[[decimal]] when reading a number out of a
+   * schema: which case a JSON literal parses to depends on its width (see `Validation.numOf`), so
+   * `{"maximum": 1.5}` yields a [[Float64]] while `{"maximum": 1.2345678901234567}` yields a
+   * [[Decimal]], and a reader that assumed one of them would fail on the other.
+   *
+   * @throws NumberFormatException if this is a [[Float64]] holding `NaN` or an infinity
+   */
+  def num: BigDecimal = this match {
+    case n: Num => n.toBigDecimal
     case _ => throw IllegalStateException("Expected Number")
   }
 
@@ -113,7 +129,7 @@ object Value {
   given Conversion[Float, Num] = (i: Float) => Float64(i)
   given Conversion[Double, Num] = (i: Double) => Float64(i)
   given Conversion[BigInt, Num] = (i: BigInt) => Int128(i)
-  given Conversion[BigDecimal, Num] = (i: BigDecimal) => Dec128(i)
+  given Conversion[BigDecimal, Num] = (i: BigDecimal) => Decimal(i)
   given Conversion[Null, Null.type] = (i: Null) => Null
   given Conversion[CharSequence, Str] = (s: CharSequence) => Str(s.toString)
 }
@@ -148,38 +164,40 @@ object Arr {
   def apply(): Arr = new Arr(Nil)
 }
 
-abstract class Num extends Value
+abstract class Num extends Value {
+  /**
+   * This number widened to `BigDecimal`, exactly, whichever case holds it.
+   *
+   * @throws NumberFormatException if this is a [[Float64]] holding `NaN` or an infinity
+   */
+  def toBigDecimal: BigDecimal = this match {
+    case Int64(l) => BigDecimal(l)
+    case Float64(d) => BigDecimal(d)
+    case Int128(i) => BigDecimal(i, MathContext.UNLIMITED)
+    case Decimal(d) => d
+  }
+}
 
 case class Int64(value: Long) extends Num
 case class Float64(value: Double) extends Num
 
 /**
- * An integer literal too large for [[Int64]]. `SchemaR` anchors *schema-embedded* number literals
- * (e.g. a `maximum` or `const` value) to 128 bits, rejecting anything larger via
- * [[Int128.exceedsAnchor]] at schema-compile time - see `SchemaR.checkAnchor`. The case class
- * itself does not enforce that bound: it also backs *instance*-side literal collection (deep
- * `const`/`enum`/`uniqueItems` comparison of numbers nested in arrays/objects, see
- * `Validation.visitArray`/`visitObject`), which is intentionally arbitrary-precision, matching the
- * JSON Schema spec's `integer`/`number` types.
+ * An integer literal too large for [[Int64]]. Arbitrary precision: no magnitude bound is enforced,
+ * on either schema literals or instance data, matching the JSON Schema spec's unbounded `integer`
+ * type. `Validation`'s comparisons ([[vocab.Validation]]'s `compareTo`/`mod`) are exact at any
+ * width, so widening here costs correctness nothing; the cost of a comparison scales with the
+ * *length of the JSON text*, not with the value's magnitude - see README § Numbers.
+ *
+ * The `128` in the name is historical - the case originally capped itself at 128 bits - and is
+ * kept as the name for integers wider than `Long`.
  */
 case class Int128(value: BigInt) extends Num
 
-object Int128 {
-  /** True if `value` is too large for [[Schema]] to accept as a schema-embedded literal. */
-  def exceedsAnchor(value: BigInt): Boolean = value.bitLength > 127
-}
-
 /**
- * A decimal literal too large for [[Float64]] to hold without precision loss. Same split as
- * [[Int128]]: unchecked here, anchored to Decimal128 (34 significant digits) only for
- * schema-embedded literals, via [[Dec128.exceedsAnchor]] at schema-compile time.
+ * A decimal literal too precise, or too large in magnitude, for [[Float64]] to hold exactly. Same
+ * as [[Int128]]: arbitrary precision, no bound on either side.
  */
-case class Dec128(value: BigDecimal) extends Num
-
-object Dec128 {
-  /** True if `value` is too large for [[Schema]] to accept as a schema-embedded literal. */
-  def exceedsAnchor(value: BigDecimal): Boolean = value.mc != MathContext.DECIMAL128
-}
+case class Decimal(value: BigDecimal) extends Num
 
 sealed abstract class Bool extends Value {
   def value: Boolean
@@ -210,16 +228,6 @@ case object Null extends Value {
  * @param cause The underlying cause (if any)
  */
 class SchemaRetrievalException(message: String, cause: Throwable = null)
-  extends RuntimeException(message, cause)
-
-/**
- * Exception thrown when a schema fails to compile, e.g. a schema-embedded number literal exceeds
- * [[Int128]]/[[Dec128]]'s anchor.
- *
- * @param message A description of the failure
- * @param cause The underlying cause (if any)
- */
-class SchemaCompileException(message: String, cause: Throwable = null)
   extends RuntimeException(message, cause)
 
 /**

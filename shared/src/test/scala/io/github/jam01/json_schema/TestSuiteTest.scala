@@ -106,26 +106,12 @@ object TestSuiteTest {
     "when used as a pattern",
   )
 
-  // (testcase description, test description) pairs skipped by args_provider_optional only - like
-  // NotSupportedOptionalTests, but keyed by both descriptions since bignum.json reuses the same
-  // inner test description ("comparison works for high/very negative numbers") across a case we
-  // want genuinely exercised and one we don't.
-  val NotSupportedOptionalCases: Seq[(String, String)] = Seq(
-    // Int128/Dec128's 128-bit/Decimal128 (34 significant digit) anchor (see their scaladoc in
-    // Schema.scala) is enforced only at schema-compile time (SchemaR.checkAnchor) - Validation's
-    // own number handling for *instance* data is arbitrary-precision and never rejects on
-    // magnitude (confirmed: bignum.json's "integer"/"number"/"string" groups - the instance-only
-    // ones - pass with 0 failures, including a number nested in an array under `const`/`enum`).
-    // These two cases are different: their *schema* literal (`exclusiveMaximum`/`exclusiveMinimum`
-    // with 35 significant digits) itself exceeds the anchor, so SchemaR.checkAnchor throws
-    // SchemaCompileException while compiling the schema - caught per-testcase below and turned
-    // into a guaranteed-failing case, which this exclusion list then filters out. This isn't a
-    // test-loader gap; the schema genuinely can't be represented by this library's Schema type at
-    // more than 34 significant digits, by design (the anchor is intentionally bounded, not
-    // unbounded arbitrary precision).
-    ("float comparison with high precision", "comparison works for high numbers"),
-    ("float comparison with high precision on negative numbers", "comparison works for very negative numbers"),
-  )
+  // (testcase description, test description) pairs skipped by args_provider_optional only - keyed
+  // by both descriptions because bignum.json reuses the same inner test description across
+  // different cases. Empty: bignum.json's "float comparison with high precision" pair used to sit
+  // here, when schema literals past 34 significant digits were rejected outright; numbers are
+  // arbitrary-precision on both sides now, so both cases pass.
+  val NotSupportedOptionalCases: Seq[(String, String)] = Seq.empty
 
   // Files whose invalid cases don't currently produce an error in the result tree under Detailed format.
   val NotSupportedErrorShape: Seq[String] = Seq.empty
@@ -241,7 +227,7 @@ object TestSuiteTest {
       // anything past ~15-17 significant digits before it ever reaches the library. That made
       // optional/bignum.json's integer-comparison cases pass by coincidence (18446744073709551615
       // and 18446744073709551600 both round to the same Double) rather than actually exercising
-      // bignum precision. LiteralVisitor promotes big numbers to Int128/Dec128 during the single
+      // bignum precision. LiteralVisitor promotes big numbers to Int128/Decimal during the single
       // parse pass, same as SchemaR does for schemas; SchemaW then replays a Value tree into any
       // other visitor losslessly.
       val suite = ujson.Readable.transform(ujson.Readable.fromPath(path), LiteralVisitor).arr
@@ -264,16 +250,16 @@ object TestSuiteTest {
               test.obj.get("valid").get.bool,
               json_schema.validator(sch, cfg, Registry)))
           } catch {
-            case e: SchemaCompileException =>
-              // A schema literal legitimately exceeding Int128/Dec128's anchor (SchemaR.checkAnchor)
-              // throws at compile time - narrower than the file-level catch-all below, so one such
-              // testcase doesn't take its whole file's test discovery down with it. Surfaced as a
-              // normal failing case (real exception in `tdesc`), filterable via
-              // NotSupportedOptionalCases like any other unsupported case.
+            case e: Throwable =>
+              // A testcase whose schema won't compile is surfaced as one visibly failing case
+              // rather than being allowed to reach the file-level catch below, which would take
+              // that whole file's remaining testcases down with it. TrueSchema always validates,
+              // so pairing it with `valid = false` guarantees the failure is seen; the real
+              // exception rides along in `tdesc`.
               args.add(Arguments.of(
                 resource("test-suite/tests/draft2020-12/").relativize(path).toString,
                 testcase.obj.get("description").get.str,
-                test.obj.get("description").get.str,
+                test.obj.get("description").get.str + " [SCHEMA FAILED TO COMPILE: " + e + "]",
                 Null,
                 false,
                 json_schema.validator(TrueSchema)))

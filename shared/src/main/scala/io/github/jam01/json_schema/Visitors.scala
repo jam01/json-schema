@@ -96,7 +96,7 @@ object LiteralVisitor extends JsonVisitor[Value, Value] {
     case l: Long => Int64(l)
     case d: Double => Float64(d)
     case i: BigInt => Int128(i)
-    case d: BigDecimal => Dec128(d)
+    case d: BigDecimal => Decimal(d)
   override def visitInt64(i: Long, index: Int): Value = Int64(i)
   override def visitString(s: CharSequence, index: Int): Value = Str(s.toString)
   override def visitObject(length: Int, index: Int): ObjVisitor[Value, Obj] = new CollectObjVisitor(LiteralVisitor, length, index)

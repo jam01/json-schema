@@ -191,11 +191,13 @@ final class Validation private(schema: ObjectSchema,
 }
 
 object Validation extends VocabFactory[Validation] {
-  private def decOf(i: BigInt): BigDecimal = {
-    val d = BigDecimal(i)
-    if (d.precision > MathContext.DECIMAL128.getPrecision) throw new ArithmeticException("Decimal128 overflow")
-    d
-  }
+  // NB: must be exact. `BigDecimal(i)` alone applies Scala's default MathContext, and this used to
+  // additionally throw an ArithmeticException past Decimal128's 34 digits - which made the most
+  // ordinary schemas crash on a large instance (`{"minimum": 1.5}` against a 60-digit integer went
+  // through this and blew up). Nothing downstream needs the bound: `compareTo` never consults a
+  // MathContext, and `mod` goes through `%`/`divideToIntegralValue`, which is exact and always
+  // terminating at any width. See README § Numbers.
+  private def decOf(i: BigInt): BigDecimal = BigDecimal(i, MathContext.UNLIMITED)
 
   private def gt(a: Any, b: Any) = compareTo(a, b) == 1
   private def lt(a: Any, b: Any) = compareTo(a, b) == -1
@@ -279,22 +281,38 @@ object Validation extends VocabFactory[Validation] {
     case (x: BigDecimal, y: BigDecimal) => x % y == 0
   }
 
+  /**
+   * Narrowest exact representation of a JSON number literal: `Long`, `Double`, `BigInt` or
+   * `BigDecimal`. `decIndex`/`expIndex` are the literal's '.' and 'e' offsets, as handed over by
+   * `Visitor.visitFloat64StringParts`, or -1 when absent.
+   *
+   * The whole point here is that `String.toDoubleOption` cannot be used the way `toLongOption` is.
+   * `toLongOption` returns `None` when the literal doesn't fit, so falling back on it is sound.
+   * `Double.parseDouble` never fails: it rounds silently past ~15-17 significant digits, saturates
+   * to an infinity past ~1.8e308, and flushes to zero below ~4.9e-324 - all reported as a
+   * successful parse. Every one of those has to be ruled out by hand before trusting the result.
+   */
   private[json_schema] def numOf(s: String, decIndex: Int, expIndex: Int): Any = {
     if (decIndex == -1 && expIndex == -1) s.toLongOption.getOrElse(BigInt(s))
-    // NB: unlike toLongOption, String.toDoubleOption never signals precision loss - Double.parseDouble
-    // silently rounds (or overflows to Infinity) rather than failing, for a literal of any magnitude.
-    // So `s.toDoubleOption.getOrElse(BigDecimal(s))` used to always take the Double branch, silently
-    // rounding e.g. a 26-significant-digit decimal literal down to Double's ~15-17 digits. Route by
-    // significant-digit count instead, mirroring the magnitude-based Long/BigInt split above: Double
-    // is guaranteed to round-trip any value of <=15 significant digits exactly, so only fall back to
-    // BigDecimal beyond that.
-    else if (sigDigits(s, decIndex, expIndex) <= DoubleSafeDigits) s.toDoubleOption.getOrElse(BigDecimal(s))
-    else BigDecimal(s)
+    else {
+      val digits = sigDigits(s, decIndex, expIndex)
+      if (digits > DoubleSafeDigits) BigDecimal(s) // more precision than Double can round-trip
+      else s.toDoubleOption match
+        case Some(d) if digits == 0 => d // the literal is zero, whatever its exponent
+        // Rules out both saturation to +/-Infinity and flush-to-zero, and keeps subnormals - where
+        // Double loses precision well before 15 digits - on the exact path too.
+        case Some(d) if d.isFinite && Math.abs(d) >= java.lang.Double.MIN_NORMAL => d
+        case _ => BigDecimal(s)
+    }
   }
 
+  /** The most significant decimal digits `Double` is guaranteed to round-trip exactly. */
   private val DoubleSafeDigits = 15
 
-  /** Counts significant digits in `s`'s mantissa (i.e., excluding sign, '.', and any exponent). */
+  /**
+   * Counts significant digits in `s`'s mantissa (i.e. excluding sign, '.', and any exponent).
+   * Returns 0 for a literal whose mantissa is all zeros, which `numOf` reads as "this is zero".
+   */
   private def sigDigits(s: String, decIndex: Int, expIndex: Int): Int = {
     val mantissaEnd = if (expIndex == -1) s.length else expIndex
     var i = 0
@@ -308,7 +326,7 @@ object Validation extends VocabFactory[Validation] {
       }
       i += 1
     }
-    if (digits == 0) 1 else digits // e.g. "0.0" - no non-zero digit, but still 1 significant digit
+    digits
   }
   private def isWhole(n: Any) = n match
     case d: Double => d.isWhole
