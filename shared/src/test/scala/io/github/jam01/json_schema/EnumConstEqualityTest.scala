@@ -72,6 +72,37 @@ class EnumConstEqualityTest {
     assertFalse(isValid(enumV, "42"))
   }
 
+  @Test def unique_items_compares_numbers_by_value_not_representation(): Unit = {
+    // Spec: two instances are equal if they are both numbers with the same mathematical value.
+    // uniqueItems detects duplicates with a HashSet, so it needs numbers canonicalized first -
+    // otherwise Int64(1) and Float64(1.0) are distinct keys and this reported `unique`. The
+    // official suite's case for this is [1.0, 1.0, 1], whose first pair collides on
+    // representation alone, so it passes either way and does not cover the mixed comparison.
+    val v = mkValidator("""{"uniqueItems": true}""")
+    assertFalse(isValid(v, "[1, 1.0]"), "1 and 1.0 are the same number")
+    assertFalse(isValid(v, "[0, 0.0]"), "0 and 0.0 are the same number")
+    assertFalse(isValid(v, "[0, -0.0]"), "0 and -0.0 are the same number")
+    assertFalse(isValid(v, "[1, 1e0]"), "1 and 1e0 are the same number")
+    assertFalse(isValid(v, "[1.5, 1.50]"), "1.5 and 1.50 are the same number")
+    assertFalse(isValid(v, "[[1], [1.0]]"), "nested in arrays too")
+    assertFalse(isValid(v, """[{"a": 1}, {"a": 1.0}]"""), "nested in objects too")
+    assertFalse(isValid(v, s"[1, ${"1" * 40}, ${"1" * 40}.0]"), "and past Long/Double range")
+
+    // Distinctness that must survive: booleans are not numbers, and unequal numbers stay unequal.
+    assertTrue(isValid(v, "[1, 2]"))
+    assertTrue(isValid(v, "[0, false]"), "false is not equal to zero")
+    assertTrue(isValid(v, "[1, true]"), "true is not equal to one")
+    assertTrue(isValid(v, "[1.5, 1.6]"))
+  }
+
+  @Test def unique_items_false_imposes_nothing_even_alongside_const(): Unit = {
+    // `uniqueItems: false` is a no-op. It was only skipped when it was the sole reason to collect
+    // the array, so pairing it with const/enum re-enabled the check and rejected valid instances.
+    val v = mkValidator("""{"const": [1, 1], "uniqueItems": false}""")
+    assertTrue(isValid(v, "[1, 1]"), "uniqueItems:false must not reject a repeated element")
+    assertFalse(isValid(v, "[1, 2]"), "const must still apply")
+  }
+
   @Test def unique_items_compares_bignums_wider_than_128_bits(): Unit = {
     // Regression guard: numbers nested inside an array or object are collected by LiteralVisitor
     // into Int128/Decimal for deep uniqueItems/const/enum comparison, and those carry no magnitude
