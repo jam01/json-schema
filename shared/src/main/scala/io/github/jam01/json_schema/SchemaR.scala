@@ -102,4 +102,21 @@ object SchemaR {
    */
   def apply(docbase: Uri = Uri.random,
             registry: MutableRegistry = new MutableRegistry): SchemaR = new SchemaR(docbase, registry)
+
+  /**
+   * A reader for a subschema of an already-compiled schema, used by `ObjSchema.schBy0` to compile
+   * a raw literal a JSON Pointer landed on (see the comment there).
+   *
+   * Takes no registry: with a `parent` set, `SchemaR` neither registers the schema it builds nor
+   * flushes the `$id`/`$anchor`s it collects, so a subschema compiled this way is reachable only
+   * through the pointer that produced it - never by its own `$id` or `$anchor`. That matches what
+   * happened before it was compiled at all, and `$ref`s *inside* it still resolve normally, against
+   * the [[Registry]] handed to `json_schema.validator`.
+   *
+   * @param docbase the base Uri of the enclosing schema
+   * @param parent the enclosing schema
+   * @param prel the JSON Pointer to the literal, relative to `parent`
+   */
+  private[json_schema] def subschema(docbase: Uri, parent: ObjectSchema, prel: String): SchemaR =
+    new SchemaR(docbase, new MutableRegistry, parent = Some(parent), prel = Some(prel))
 }
