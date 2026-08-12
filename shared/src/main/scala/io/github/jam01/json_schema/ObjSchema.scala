@@ -112,7 +112,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
       case Int64(i) if i.isValidInt => i.toInt
       case Int128(i) if i.isValidInt => i.toInt
       case Float64(i) if i.isValidInt => i.toInt
-      case Dec128(i) if i.isValidInt => i.toInt
+      case Decimal(i) if i.isValidInt => i.toInt
       case _ => throw IllegalStateException("Expected Integer")
     }
   }

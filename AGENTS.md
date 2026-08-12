@@ -44,7 +44,7 @@ The library is a **push-style streaming validator**: the JSON instance is pushed
 
 ### Schema ADT
 
-`Schema.scala` defines the schema ADT and the broader `Value` ADT (`Str`, `Obj`, `Arr`, `Int64`, `Float64`, `Int128`, `Dec128`, `Bool`, `Null`). A `Schema` is either:
+`Schema.scala` defines the schema ADT and the broader `Value` ADT (`Str`, `Obj`, `Arr`, `Int64`, `Float64`, `Int128`, `Decimal`, `Bool`, `Null`). A `Schema` is either:
 - `BooleanSchema` (`TrueSchema` / `FalseSchema`), or
 - `ObjectSchema` — a JSON object backed by a `collection.Map[String, Value]` plus `docbase: Uri`, `parent: Option[ObjectSchema]`, and `prel` (relative pointer from parent). `ObjectSchema.equals`/`hashCode` deliberately ignore `parent` to avoid cycles, since children reference back to it (see comment in `Schema.scala`).
 

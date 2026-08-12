@@ -215,6 +215,37 @@ Known limitations:
   to upstream `java.time`).
 - `idn-hostname` / `idn-email` are fully compliant on JVM but only best-effort on Scala.js — see *Scala.js limitations* below.
 
+## Numbers
+
+Numbers are arbitrary precision, on both sides of a validation. A JSON number literal — in a schema
+or in an instance — is parsed to the narrowest representation that holds it exactly:
+
+| literal | `Value` case | backed by |
+| --- | --- | --- |
+| an integer that fits `Long` | `Int64` | `Long` |
+| a decimal of ≤ 15 significant digits | `Float64` | `Double` |
+| a wider integer | `Int128` | `BigInt` |
+| a finer decimal | `Decimal` | `BigDecimal` |
+
+`Int128` is a historical name — it is not capped at 128 bits. Every comparison
+(`maximum`, `minimum`, `exclusive*`, `const`, `enum`, `uniqueItems`, `multipleOf`) is exact at any
+width, and mixes widths freely, so `{"minimum": 1.5}` gives the right answer against a 500-digit
+integer. This goes beyond what the spec requires — `optional/bignum.json` in the official suite is
+optional precisely because rounding to a double is a conforming choice — so a schema written for
+this library may not port to a validator that rounds.
+
+The 15-significant-digit cutoff is where `Double` stops round-tripping decimals exactly. Below it
+you get the `Double` fast path; above it, exactness. `1e400` still overflows to `Float64(Infinity)`,
+since its mantissa is one digit.
+
+**Cost, if you validate untrusted input.** Arbitrary precision means the work scales with the
+*length of the JSON text*, not with the value's magnitude — exponent notation is free, because
+`BigDecimal` keeps the scale separate from the significand. `{"multipleOf": 7}` against
+`1234567890123456789e100000000` (a 30-byte literal) returns in well under a millisecond, while the
+same keyword against a literal 300,000 digits long takes ~1.4s. So the only lever is payload size,
+and the mitigation is the ordinary one: bound the request body. There is no `Config` knob for this
+today — if you want one, open an issue and say what shape it should take.
+
 ## Streaming
 
 The validator pushes the instance through a `Visitor` without ever building an instance-side AST.

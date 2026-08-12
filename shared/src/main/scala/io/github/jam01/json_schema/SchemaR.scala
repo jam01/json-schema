@@ -77,29 +77,10 @@ final class SchemaR private(docbase: Uri,
       case _ => LiteralVisitor
 
     override def visitValue(v: Value, index: Int): Unit = {
-      checkAnchor(v)
       lhm.addOne(key, v)
       if ("$id".equals(key)) ids.addOne(v.str, sch)
       else if ("$anchor".equals(key)) anchors.addOne(v.str, false, sch)
       else if ("$dynamicAnchor".equals(key)) anchors.addOne(v.str, true, sch)
-    }
-
-    /**
-     * Rejects a schema-embedded number literal (at any depth - e.g. inside `enum`'s array, or a
-     * `const` object) that exceeds [[Int128]]/[[Dec128]]'s 128-bit/Decimal128 anchor. Those types
-     * don't enforce the bound themselves (see their scaladoc) - this is the one place schema
-     * literals are meant to be anchored; instance-side literal collection deliberately doesn't
-     * call this, so `const`/`enum`/`uniqueItems` comparisons against instance data stay
-     * arbitrary-precision.
-     */
-    def checkAnchor(v: Value): Unit = v match {
-      case Int128(i) if Int128.exceedsAnchor(i) =>
-        throw new SchemaCompileException(s"\"$key\": integer literal exceeds the 128-bit anchor for schema-embedded numbers ($i)")
-      case Dec128(d) if Dec128.exceedsAnchor(d) =>
-        throw new SchemaCompileException(s"\"$key\": decimal literal exceeds the Decimal128 (34 significant digit) anchor for schema-embedded numbers ($d)")
-      case Arr(items) => items.foreach(checkAnchor)
-      case Obj(fields) => fields.values.foreach(checkAnchor)
-      case _ => ()
     }
 
     override def visitEnd(index: Int): ObjectSchema = {
