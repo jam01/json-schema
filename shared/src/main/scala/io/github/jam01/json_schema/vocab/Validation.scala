@@ -115,10 +115,13 @@ final class Validation private(schema: ObjectSchema,
         val buff0 = new ListBuffer[OutputUnit]
         const.foreach(c => accumulate(buff0, valueEquals(c, jsVal), Const, "Array does not match expected constant"))
         enuum.foreach(e => accumulate(buff0, e.exists(v => valueEquals(v, jsVal)), Enuum, "Array not found in enumeration"))
-        uniqueItems.foreach(b => {
+        // `uniqueItems: false` imposes nothing; the check below only makes sense for `true`. The
+        // NilArrayVis branch above already skips it on that basis, but not when const/enum put us
+        // on this branch anyway.
+        if (uniqueItems.contains(true)) {
           val set = new mutable.HashSet[Value](jsVal.arr.size, 1) // perf: avoid Set
-          accumulate(buff0, jsVal.arr.forall(e => set.add(e)), UniqueItems, "Values in array are not unique")
-        })
+          accumulate(buff0, jsVal.arr.forall(e => set.add(canonical(e))), UniqueItems, "Values in array are not unique")
+        }
         buff0.result()
       })
 
@@ -209,6 +212,28 @@ object Validation extends VocabFactory[Validation] {
    * subtype (e.g. `0` and `0.0` are equal even though they're represented as [[Int64]] and
    * [[Float64]] respectively), and arrays/objects compare deeply using the same rule.
    */
+  /**
+   * `v` with every number rewritten to one canonical [[Num]] case, at any depth, so that hashing a
+   * [[Value]] agrees with [[valueEquals]] on numbers: `1`, `1.0`, `1e0` and `1.00` all collapse to
+   * the same key, while `0`/`false` and `1`/`true` stay distinct.
+   *
+   * `uniqueItems` needs this because it detects duplicates with a `HashSet`, i.e. by `Value`
+   * equality, which is per-case - so without canonicalizing it reported `[1, 1.0]` as unique. The
+   * alternative, comparing every pair with `valueEquals`, would make the keyword quadratic.
+   *
+   * Whole numbers canonicalize to [[Int64]] where they fit, which keeps the overwhelmingly common
+   * array-of-integers case allocation-free.
+   */
+  private def canonical(v: Value): Value = v match
+    case i: Int64 => i
+    case Float64(d) if !d.isFinite => v // no BigDecimal form; NaN/Infinity can only be built by hand
+    case n: Num =>
+      val d = n.toBigDecimal
+      if (d.isValidLong) Int64(d.toLong) else Decimal(d)
+    case Arr(items) => Arr(items.map(canonical))
+    case Obj(fields) => Obj(fields.map((k, fv) => (k, canonical(fv))))
+    case _ => v
+
   private[json_schema] def valueEquals(a: Value, b: Value): Boolean = (a, b) match {
     case (an: Num, bn: Num) => compareTo(an.value, bn.value) == 0
     case (Arr(as), Arr(bs)) => as.length == bs.length && as.lazyZip(bs).forall(valueEquals)
