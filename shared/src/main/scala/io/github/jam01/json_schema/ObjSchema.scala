@@ -275,10 +275,15 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
       // an unknown/arbitrary keyword, or under a known non-applicator like `examples`), so it's still
       // a raw literal here. Per Core § Fragment Identifiers, a JSON Pointer fragment resolves against
       // the schema resource as plain JSON; any object/boolean found this way is a valid subschema
-      // regardless of which keyword contains it - compile it lazily now, anchored to this schema so
-      // its `location`/`base` resolve the same as if it had been recognized up front.
+      // regardless of which keyword contains it - compile it now, anchored to this schema so its
+      // `location`/`base` resolve the same as if it had been recognized up front.
+      //
+      // This runs the literal back through SchemaR rather than just wrapping it in an ObjectSchema:
+      // ObjectSchema's keyword accessors don't parse, they assume SchemaR already turned every
+      // schema-position child into a Schema, so a wrap-only conversion is one node deep and any
+      // applicator inside (`properties`, `items`, `allOf`, ...) blows up on `Value.sch`.
       case sch: Schema => sch
-      case Obj(value) => new ObjectSchema(value, docbase, Some(this), Some(ptr.toString))
+      case obj: Obj => SchemaW.transform(obj, SchemaR.subschema(docbase, this, ptr.toString))
       case True => TrueSchema
       case False => FalseSchema
       case _ => throw refError(ptr)
