@@ -124,6 +124,16 @@ val v = js.validator(orderSch, Config.Default, registry = reg)
 `Registry` is read-only; `MutableRegistry extends Registry`. Pre-populate it once, share it
 across validators.
 
+**One dialect per validation run.** The dialect is fixed for the whole run: either the one in
+`Config`, or — with `Config(resolveDialect = true)` — the one resolved from the *root* schema's
+`$schema`. Per JSON Schema Core § Schema References, a referenced schema resource's dialect is
+determined by that resource's own `$schema`, not inherited from whoever referenced it, so a
+`$ref` that crosses into a resource with a different `$schema` is still evaluated under the
+referrer's dialect here. In practice this only shows up when a `$ref`'d resource declares a
+different `$vocabulary` — for example one that turns format assertion on while the referrer has it
+off. Referencing a resource written for an *earlier draft* is a separate matter and is out of
+scope regardless: only 2020-12 keyword semantics are implemented.
+
 ## Output formats
 
 Selected via `Config(format = …)`. Mirrors the four formats described in
@@ -214,6 +224,29 @@ Known limitations:
 - `duration` does not reject `P…W` combined with non-week units (the ISO 8601 ambiguity is left
   to upstream `java.time`).
 - `idn-hostname` / `idn-email` are fully compliant on JVM but only best-effort on Scala.js — see *Scala.js limitations* below.
+- `regex` accepts some patterns that are valid `java.util.regex` but not valid ECMA-262 — see
+  *Regular expressions* below.
+
+## Regular expressions
+
+`pattern`, `patternProperties` and `format: regex` are specified against **ECMA-262** regular
+expressions. Scala.js hands them to the platform's own `RegExp`, so they are exact there. The JVM
+target has no ECMA-262 engine available and translates the divergences it knows about into
+`java.util.regex` — `\p{…}` long-form Unicode category names, `\c` + lowercase letter, and `\s`'s
+whitespace set. **It is an approximation, not a conformant engine.** The differences currently
+known and not translated, all JVM-only:
+
+| construct | ECMA-262 | this library on JVM |
+| --- | --- | --- |
+| `$` (and `^`) | end/start of input | also matches around a trailing newline |
+| `\v` | vertical tab only | any vertical whitespace, including `\n` |
+| `\S` inside `[…]` | excludes NBSP, `﻿` | matches them |
+| `\Q…\E`, `\A`, `\z`, `\Z`, `\G`, `\h`, `\R`, `\X`, `a*+`, `[a-z&&[b]]`, `\p{Is…}` | invalid | accepted by `format: regex`, and usable in `pattern` |
+
+The first three are silent wrong matches rather than errors. If your patterns depend on any of
+this, validate on Scala.js, or keep to the common subset. Conversely, Scala.js compiles patterns
+in Unicode mode, which is *stricter* than ECMA-262's default: a few legacy-but-tolerated spellings
+(`a{,3}`, a bare `}` or `]`, `\-`) are a syntax error there while the JVM accepts them.
 
 ## Numbers
 

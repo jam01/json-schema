@@ -30,21 +30,35 @@ import java.util.regex.PatternSyntaxException
  *     are upper-cased before compiling so Java computes the same code ECMA-262 would.
  *  3. `\s`/`\S`: ECMA-262's whitespace class (WhiteSpace + LineTerminator) is a fixed, wider set
  *     than what Java's `\s` matches even with `UNICODE_CHARACTER_CLASS` — notably it includes
- *     `\uFEFF` (zero-width no-break space), which Unicode's own `White_Space` property excludes.
- *     Standalone `\s`/`\S` (i.e. not already nested inside a `[...]` character class, where
- *     translating a negated class isn't expressible via simple union) are expanded to an
- *     explicit Java class covering exactly ECMA-262's set: tab/LF/VT/FF/CR, `\p{Z}` (Unicode
- *     `Separator`, i.e. `Zs`+`Zl`+`Zp` — covers space, NBSP, EM SPACE, line/paragraph
- *     separators), and `\uFEFF`.
+ *     `﻿` (zero-width no-break space), which Unicode's own `White_Space` property excludes.
+ *     Both are expanded to ECMA-262's exact set — tab/LF/VT/FF/CR, `\p{Z}` (Unicode `Separator`,
+ *     i.e. `Zs`+`Zl`+`Zp`, covering space, NBSP, EM SPACE and the line/paragraph separators), and
+ *     `﻿` — as an explicit Java character class, or, for a `\s` already inside a `[...]`
+ *     class, as the bare member list to union in. The one case left untranslated is `\S` *inside*
+ *     a `[...]` class: a negated set isn't expressible as a union there. It keeps Java's `\S`,
+ *     which — being the complement of Java's narrower `\s` — is *wider* than ECMA-262's, so e.g.
+ *     `[\S]` over-matches NBSP and `﻿`. No pattern in the official suite exercises it.
  *
- * Separately, some property names Java *does* recognize by name (e.g. `\p{digit}`) are only
- * matched with correct (Unicode, not just ASCII) semantics when compiled with
- * `UNICODE_CHARACTER_CLASS`. Rather than guess which names need it, compile plain first and
- * only retry with the flag — via the `(?U)` embedded flag expression, since
- * `scala.util.matching.Regex`'s public constructor only accepts a pattern string, not a
- * pre-built `java.util.regex.Pattern` — if that fails. This keeps the overwhelming majority of
- * patterns on the plain (zero-flag) path, since `UNICODE_CHARACTER_CLASS` also broadens `\d`/`\w`
- * semantics beyond ECMA-262 (both are ASCII-only in ECMA-262, always).
+ * Separately, some property names are recognized only under `UNICODE_CHARACTER_CLASS`, and others
+ * are recognized either way but match ASCII-only semantics without it. Rather than sort out which
+ * is which per name, compile plain first and only retry with the flag — via the `(?U)` embedded
+ * flag expression, since `scala.util.matching.Regex`'s public constructor only accepts a pattern
+ * string, not a pre-built `java.util.regex.Pattern` — if that fails. `\p{digit}` is an example of
+ * the first kind: plain compilation throws `Unknown character property name {digit}` (Java's POSIX
+ * spelling is the capitalized `\p{Digit}`, which is ASCII-only), and the `(?U)` retry both compiles
+ * it and gives it the Unicode semantics the suite's Bengali-digit case expects. Keeping the retry
+ * second means the overwhelming majority of patterns stay on the plain path, which matters because
+ * `UNICODE_CHARACTER_CLASS` also broadens `\d`/`\w` beyond ECMA-262 (both are ASCII-only in
+ * ECMA-262, always).
+ *
+ * OPEN (deferred to a dedicated spike, do not re-litigate piecemeal): this translation table grew
+ * reactively, one suite failure at a time. Two questions to settle in one pass — (a) is there a
+ * known, maintained ECMA-262 → `java.util.regex` translation to adopt instead of hand-rolling, or
+ * an embeddable ECMA-262 engine cheap enough to depend on (Graal's TRegex, Joni in ECMAScript
+ * syntax mode) that other JVM validators have converged on; and (b) is there a de-facto accepted
+ * compatibility bound implementations agree to stop at, so the remaining divergences can be
+ * declared out of scope rather than discovered one at a time. Until then the rule is: translate
+ * only what the official suite exercises, and document what is left.
  */
 private[vocab] object RegexSupport {
   // ECMA-262 long-form Unicode General_Category alias -> Java short code.
