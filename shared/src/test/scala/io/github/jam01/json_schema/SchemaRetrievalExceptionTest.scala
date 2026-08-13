@@ -44,6 +44,31 @@ class SchemaRetrievalExceptionTest {
     assertThrows(classOf[SchemaRetrievalException], () => sch.schBy(JsonPointer("/arr/0")))
   }
 
+  // RFC 6901 § 4 spells an array index as "0" or a digit sequence with no leading zero, and gives
+  // "-" the element after the last. Anything else addresses nothing, and § 5 makes a pointer that
+  // addresses nothing an error — the same SchemaRetrievalException every other unresolvable
+  // reference reports, rather than the token parse escaping as a NumberFormatException or an
+  // IndexOutOfBoundsException.
+  @Test def array_index_tokens_in_a_pointer(): Unit = {
+    val sch = ujson.Readable.fromString("""{"unknown": [{"type": "integer"}, {"type": "string"}]}""")
+      .transform(SchemaR())
+
+    assertTrue(sch.schBy(JsonPointer("/unknown/0")).isInstanceOf[ObjectSchema], "an index in range resolves")
+    assertTrue(sch.schBy(JsonPointer("/unknown/1")).isInstanceOf[ObjectSchema], "and so does the last")
+
+    assertThrows(classOf[SchemaRetrievalException], () => sch.schBy(JsonPointer("/unknown/x")))
+    assertThrows(classOf[SchemaRetrievalException], () => sch.schBy(JsonPointer("/unknown/-1")))
+    assertThrows(classOf[SchemaRetrievalException], () => sch.schBy(JsonPointer("/unknown/9")))
+    assertThrows(classOf[SchemaRetrievalException], () => { sch.schBy(JsonPointer("/unknown/99999999999")); () },
+      "wider than Int, so it addresses nothing")
+    assertThrows(classOf[SchemaRetrievalException], () => { sch.schBy(JsonPointer("/unknown/01")); () },
+      "a leading zero is not an index")
+    assertThrows(classOf[SchemaRetrievalException], () => { sch.schBy(JsonPointer("/unknown/-")); () },
+      "'-' is the element after the last, which no array has")
+    assertThrows(classOf[SchemaRetrievalException], () => { sch.schBy(JsonPointer("/unknown/١")); () },
+      "a non-ASCII decimal digit is not an index")
+  }
+
   // The literal is compiled through SchemaR, not merely wrapped in an ObjectSchema, so keywords
   // nested inside it are real subschemas too. Wrapping only converted the outermost node, leaving
   // every child a raw Obj, and any applicator reaching for one got "Expected Schema" instead.

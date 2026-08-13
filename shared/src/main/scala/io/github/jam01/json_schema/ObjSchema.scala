@@ -4,7 +4,7 @@
  */
 package io.github.jam01.json_schema
 
-import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
+import io.github.jam01.json_schema.ObjSchema.{arrayIndex, getOrThrow, refError}
 
 import scala.collection.{Map, mutable}
 
@@ -279,8 +279,8 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
         case ObjectSchema(value) => getOrThrow(value, key, ptr)
         case Obj(value) => getOrThrow(value, key, ptr)
         case Arr(value) =>
-          val i = key.toInt
-          if (value.length <= i) throw refError(ptr)
+          val i = arrayIndex(key)
+          if (i < 0 || value.length <= i) throw refError(ptr)
           value(i)
         case x: Any => throw new IllegalStateException(s"Unsupported type ${x.getClass.getName} for reference $ptr")
     }
@@ -337,5 +337,24 @@ object ObjSchema {
 
   private def refError(ptr: JsonPointer): Exception =
     new SchemaRetrievalException(s"Invalid reference location $ptr")
+
+  /**
+   * The array index a reference token denotes, or -1 if it denotes none.
+   *
+   * RFC 6901 § 4 spells an index as `0` or a digit sequence with no leading zero, and gives `-`
+   * the element after the last - which no array has. Every other token, including one too wide for
+   * `Int`, addresses nothing, and per § 5 a pointer that addresses nothing is an error: the same
+   * `SchemaRetrievalException` any unresolvable reference reports, not the token parse escaping.
+   */
+  private def arrayIndex(key: String): Int = {
+    if (key.isEmpty || (key.charAt(0) == '0' && key.length > 1)) return -1
+    var i = 0
+    while (i < key.length) {
+      val c = key.charAt(i)
+      if (c < '0' || c > '9') return -1 // Char.isDigit would take non-ASCII decimal digits too
+      i += 1
+    }
+    key.toIntOption.getOrElse(-1)
+  }
 }
 
