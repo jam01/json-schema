@@ -60,8 +60,7 @@ final class FormatAssertion private(schema: ObjectSchema,
       case "uri-template" => UriTemplate_r.matches(s)
       case "json-pointer" => isJsPtr(s)
       case "relative-json-pointer" => isRelJsPtr(s)
-      case "regex" => try { RegexSupport.isValidPattern(s.toString) } catch // perf: compiled then discarded, sec: ?
-        case _: UnsupportedOperationException => false // as thrown by scala native implementation
+      case "regex" => RegexSupport.isValidPattern(s.toString) // perf: compiled then discarded, sec: ?
       case unk => true
 
     if (isValid) Seq(mkUnit(true, FormatKw, annotation = format))
