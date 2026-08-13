@@ -17,6 +17,10 @@ import java.util.regex.PatternSyntaxException
  * for the alternatives measured and rejected. Contrast the Scala.js target's `RegexSupport`,
  * which forwards straight to the native `RegExp` engine and needs none of this.
  *
+ * The dialect targeted is ECMA-262 **under the `u` flag**, which is the one Scala.js compiles and
+ * the one the suite's `\p{...}` cases require — the two modes of the ECMA-262 grammar are mutually
+ * exclusive, and Annex B's legacy spellings are what `u` gives up to get property escapes.
+ *
  * [[translate]] is a single escape- and class-aware scan, which is what makes the rewrites below
  * safe: a construct is only rewritten where it actually has that meaning, so a literal backslash
  * followed by `p{Letter}` or `cc` stays literal. It rewrites:
@@ -45,9 +49,19 @@ import java.util.regex.PatternSyntaxException
  *     intersection, so `[a&&b]` is the three characters `a`, `&`, `b`; left alone,
  *     `java.util.regex` reads it as an intersection and matches nothing.
  *
- * Constructs that `java.util.regex` accepts but ECMA-262 does not are rejected with a
- * `PatternSyntaxException`: the escapes `\a \e \A \z \Z \G \h \H \R \X \N{...} \Q...\E`,
- * possessive quantifiers (`a*+`), and the non-ECMA-262 group forms (`(?i)`, `(?x)`, `(?>...)`).
+ * Constructs that `java.util.regex` accepts and ECMA-262 under `u` does not are rejected with a
+ * `PatternSyntaxException`:
+ *
+ *  - any `\<char>` that is not a defined escape. Under `u` an identity escape may only take a
+ *    SyntaxCharacter or `/` (and `-` inside a class), so this covers `java.util.regex`'s own
+ *    `\a \e \A \z \Z \G \h \H \R \X \N{...} \Q...\E` and equally `\-`, `\ ` and `\%`.
+ *  - `\0` followed by a digit, and any `\<digits>` naming a group the pattern does not define
+ *    before it. Both are legacy octal escapes without `u`; `java.util.regex` reads them as
+ *    backreferences and then never matches, which is a wrong answer rather than an error.
+ *  - a literal `]` or `}`, and a `{` opening no quantifier — punctuation under `u`, characters to
+ *    `java.util.regex`.
+ *  - possessive quantifiers (`a*+`) and the non-ECMA-262 group forms (`(?i)`, `(?x)`, `(?>...)`).
+ *
  * Rejecting rather than passing them through is what lets `format: regex` answer for the same
  * language `pattern` compiles: a string is valid `format: regex` exactly when `pattern` accepts it.
  *
@@ -56,10 +70,10 @@ import java.util.regex.PatternSyntaxException
  * rest of it — and in ECMA-262 those are always ASCII-only. Mapping each property name explicitly
  * keeps the two independent.
  *
- * What is left untranslated is written down in README § Regular expressions: the ECMA-262 binary
- * properties and `\p{Script_Extensions=...}` that `java.util.regex` cannot express (rejected, so
- * they surface as an error rather than a wrong match), a few backreference edge cases, and the
- * legacy spellings ECMA-262 rejects under `u` but this target still accepts.
+ * What is left is written down in README § Regular expressions, and is now entirely constructs
+ * `java.util.regex` cannot express: the ECMA-262 binary properties and `\p{Script_Extensions=...}`
+ * with no equivalent, non-alphanumeric group names, and forward references. All are rejected, so
+ * every remaining divergence is an error rather than a silent wrong match.
  */
 private[vocab] object RegexSupport {
   /**
@@ -111,8 +125,18 @@ private[vocab] object RegexSupport {
     "White_Space" -> "IsWhite_Space", "space" -> "IsWhite_Space",
   )
 
-  /** Escapes `java.util.regex` recognizes and ECMA-262 does not. `\E` closes a `\Q` quotation. */
-  private val JavaOnlyEscapes = "aeAzZGhHRXNQE"
+  /**
+   * Escapes ECMA-262 defines, beyond the ones [[translate]] rewrites case by case. `\b` is the
+   * word boundary here; inside a class it is the backspace and is rewritten before this is reached.
+   */
+  private val KnownEscapes = "dDwWfnrtbBkxu"
+
+  /**
+   * ECMA-262's SyntaxCharacter. Under `u` these, plus `/`, are the only characters an identity
+   * escape may take - `\-` inside a class is the one addition, and every other `\<char>` is a
+   * syntax error rather than the character itself.
+   */
+  private val SyntaxCharacters = "^$\\.*+?()[]{}|"
 
   /** ECMA-262's `\s`: tab, LF, VT, FF, CR, Unicode `Separator` and ZWNBSP. */
   private val Whitespace = raw"\t\n\x0B\f\r\p{Z}\uFEFF"
@@ -139,6 +163,23 @@ private[vocab] object RegexSupport {
       else None
   }
 
+  /**
+   * The index just past a `{n}`, `{n,}` or `{n,m}` quantifier opening at `at`, or -1 if the brace
+   * opens no quantifier - which under `u` is a syntax error rather than a literal brace.
+   */
+  private def quantifierEnd(s: String, at: Int): Int = {
+    def digits(from: Int): Int = {
+      var i = from
+      while (i < s.length && s.charAt(i) >= '0' && s.charAt(i) <= '9') i += 1
+      i
+    }
+
+    var i = digits(at + 1)
+    if (i == at + 1) return -1 // {} or {,3}: ECMA-262 requires the lower bound
+    if (i < s.length && s.charAt(i) == ',') i = digits(i + 1)
+    if (i < s.length && s.charAt(i) == '}') i + 1 else -1
+  }
+
   /** Rewrites an ECMA-262 pattern into the equivalent `java.util.regex` one. */
   private def translate(s: String): String = {
     def invalid(desc: String, at: Int): Nothing = throw new PatternSyntaxException(desc, s, at)
@@ -146,6 +187,9 @@ private[vocab] object RegexSupport {
     val sb = new StringBuilder(s.length + 16)
     var inClass = false
     var i = 0
+    var groups = 0    // capturing groups opened so far
+    var badRef = 0    // the first `\N` naming none of them, and where it was
+    var badRefAt = -1
 
     while (i < s.length) {
       val c = s.charAt(i)
@@ -163,6 +207,20 @@ private[vocab] object RegexSupport {
           case 'b' if inClass => sb.append(raw"\x08")            // in a class, ECMA-262's backspace
           // ECMA-262's DecimalDigit is ASCII, so `Char.isDigit` would be too broad here.
           case '0' if i == s.length || s.charAt(i) < '0' || s.charAt(i) > '9' => sb.append(raw"\x00")
+          case '0' => invalid("\\0 followed by a digit is a legacy octal escape", at)
+
+          // A DecimalEscape is a backreference, never an octal escape: the octal spellings are
+          // Annex B, which `u` withdraws. `java.util.regex` reads `\1` as a backreference too, so
+          // this passes through - but only once the group it names is known to exist.
+          case _ if esc >= '1' && esc <= '9' =>
+            if (inClass) invalid(s"\\$esc is not a character class escape", at)
+            var j = i
+            while (j < s.length && s.charAt(j) >= '0' && s.charAt(j) <= '9') j += 1
+            val digits = s.substring(i - 1, j)
+            i = j
+            val num = digits.toIntOption.getOrElse(Int.MaxValue)
+            if (num > groups && badRefAt < 0) { badRef = num; badRefAt = at }
+            sb.append('\\').append(digits)
 
           case 'p' | 'P' =>
             if (i == s.length || s.charAt(i) != '{') invalid(s"\\$esc without a {name}", at)
@@ -187,10 +245,10 @@ private[vocab] object RegexSupport {
             i += 1
           case 'c' => invalid("\\c must be followed by a control letter", at)
 
-          case _ if JavaOnlyEscapes.indexOf(esc.toInt) >= 0 =>
-            invalid(s"\\$esc is not an ECMA-262 escape", at)
-
-          case _ => sb.append('\\').append(esc)
+          case _ if KnownEscapes.indexOf(esc.toInt) >= 0 => sb.append('\\').append(esc)
+          case '-' if inClass => sb.append(raw"\-")
+          case _ if SyntaxCharacters.indexOf(esc.toInt) >= 0 || esc == '/' => sb.append('\\').append(esc)
+          case _ => invalid(s"\\$esc is not an ECMA-262 escape", at)
         }
       } else if (inClass) {
         c match {
@@ -217,7 +275,21 @@ private[vocab] object RegexSupport {
           case '$' => sb.append(raw"\z"); i += 1
           case '.' => sb.append(Dot); i += 1
 
-          case '*' | '+' | '?' | '}' =>
+          // Under `u` a brace or a bracket is punctuation, not a character: one that closes
+          // nothing, and one that opens no quantifier, are both syntax errors - where
+          // `java.util.regex` takes the closers as literals.
+          case ']' => invalid("A literal ] must be escaped", i)
+          case '}' => invalid("A literal } must be escaped", i)
+
+          case '{' =>
+            val end = quantifierEnd(s, i)
+            if (end < 0) invalid("{ opens no quantifier", i)
+            sb.append(s.substring(i, end))
+            i = end
+            if (i < s.length && s.charAt(i) == '+')
+              invalid("Possessive quantifiers are not ECMA-262", i)
+
+          case '*' | '+' | '?' =>
             sb.append(c)
             i += 1
             if (i < s.length && s.charAt(i) == '+')
@@ -228,12 +300,14 @@ private[vocab] object RegexSupport {
             i += 1
             if (i < s.length && s.charAt(i) == '?') {
               val kind = if (i + 1 < s.length) s.charAt(i + 1) else ' '
-              val named = kind == '<' && i + 2 < s.length &&
-                (s.charAt(i + 2) == '=' || s.charAt(i + 2) == '!' ||
-                  s.charAt(i + 2).isLetter || s.charAt(i + 2) == '_' || s.charAt(i + 2) == '$')
-              if (!(kind == ':' || kind == '=' || kind == '!' || named))
+              val after = if (i + 2 < s.length) s.charAt(i + 2) else ' '
+              val lookbehind = kind == '<' && (after == '=' || after == '!')
+              val named = kind == '<' && !lookbehind &&
+                (after.isLetter || after == '_' || after == '$')
+              if (!(kind == ':' || kind == '=' || kind == '!' || lookbehind || named))
                 invalid(s"(?$kind is not an ECMA-262 group", i)
-            }
+              if (named) groups += 1
+            } else groups += 1
 
           case _ => sb.append(c); i += 1
         }
@@ -241,6 +315,13 @@ private[vocab] object RegexSupport {
     }
 
     if (inClass) invalid("Unclosed character class", s.length)
+    // Deferred to here because a group the reference names may still have been ahead of it, which
+    // separates the two verdicts: ECMA-262 permits a forward reference and `java.util.regex`
+    // cannot express one, while a reference to a group the pattern never defines is invalid under
+    // `u` (and an octal escape only under Annex B, which `u` withdraws).
+    if (badRefAt >= 0)
+      if (badRef <= groups) invalid(s"\\$badRef is a forward reference, which java.util.regex cannot express", badRefAt)
+      else invalid(s"\\$badRef is a backreference to a group that does not exist", badRefAt)
     sb.result()
   }
 

@@ -234,6 +234,12 @@ expressions. Scala.js hands them to the platform's own `RegExp`, so they are exa
 has no ECMA-262 engine available, so patterns are rewritten into `java.util.regex` before
 compiling.
 
+The dialect both targets implement is ECMA-262 **under the `u` flag**. ECMA-262 is two mutually
+exclusive grammars, not one: `u` matches by code point and makes `\p{…}` real syntax, and gives up
+Annex B's legacy spellings to do it — without `u` there are no property escapes at all, and
+`\p{Letter}` silently means the literal text `p{Letter}`. Property escapes are required to pass the
+official suite, so `u` it is, and the legacy spellings below are rejected on both targets.
+
 **Within the portable subset the spec recommends** — literal characters, `[abc]`, `[a-z]`,
 `[^abc]`, `+ * ?` and their lazy forms, `{x}`, `{x,y}`, `{x,}`, `^`, `$`, `(…)` and `|` — the two
 targets behave identically. Beyond it, the JVM target is an approximation, and this is its budget.
@@ -254,27 +260,27 @@ Rewritten, so they mean what ECMA-262 says:
 `\d`, `\w` and `\b` stay ASCII-only as ECMA-262 requires, including in patterns that also use a
 Unicode property.
 
-Not rewritten — the remaining differences, all JVM-only:
+Not rewritten — the remaining differences, all JVM-only, and all of them errors:
 
-| construct | ECMA-262 | this library on JVM |
+| construct | ECMA-262 under `u` | this library on JVM |
 | --- | --- | --- |
 | `\p{Math}`, `\p{ID_Start}`, `\p{Dash}` and 35 other binary properties | valid | rejected — `java.util.regex` has no equivalent, and the near misses are different sets |
 | `\p{Script_Extensions=…}` | valid | rejected — `Script=` of the same name is a different set |
 | a group name that is not alphanumeric, e.g. `(?<$x>a)` | valid | rejected by `java.util.regex` |
-| a forward reference to a later group, e.g. `(\2)(a)` | matches empty | does not match |
-| a bare `}` or `]`, `\-`, `\ `, `\101`, `\1` with no group, `[a-d[x-z]]`, `[a-z&&[b]]` | a syntax error under `u` | accepted, with the meaning ECMA-262 gives them without `u` |
+| a forward reference to a later group, e.g. `(\2)(a)` | matches empty | rejected — `java.util.regex` cannot express one |
 
-The first three are errors rather than wrong answers: a rejected pattern throws from `validator`,
-and `format: regex` reports it invalid. Only the forward reference is a silent wrong match.
-`format: regex` and `pattern` always agree — a string is valid `format: regex` exactly when
-`pattern` will compile it.
+**No pattern compiles into a wrong answer.** Every difference above is a rejection: the pattern
+throws from `validator`, and `format: regex` reports it invalid. `format: regex` and `pattern`
+always agree — a string is valid `format: regex` exactly when `pattern` will compile it. The
+conformance harness in `src/tools/ecma262-regex/` holds this to 4,435 cases against Node, and its
+checked-in divergence set now contains only rejections.
 
-The last row is the one place the JVM accepts *more* than ECMA-262: Scala.js compiles patterns
-in Unicode mode, which is stricter than ECMA-262 without it, so those spellings are a syntax
-error there while the JVM takes them.
-
-Constructs that are `java.util.regex` and not ECMA-262 — `\Q…\E`, `\A`, `\z`, `\Z`, `\G`, `\h`,
-`\R`, `\X`, `\a`, `\e`, `\N{…}`, `a*+`, `(?i)`, `(?>…)`, `\p{Is…}` — are rejected on both targets.
+Rejected on both targets, because `u` is the dialect: the Annex B legacy spellings — `\101` and
+`\1` with no such group (backreferences here, octal escapes only without `u`), `\0` followed by a
+digit, a bare `}` or `]`, `\-`, `\ ` and other identity escapes outside `u`'s allowance,
+`[a-d[x-z]]` and `[a-z&&[b]]` (whose trailing `]` closes nothing), and a `{` opening no quantifier.
+Also rejected on both: constructs that are `java.util.regex` and not ECMA-262 at all — `\Q…\E`,
+`\A`, `\z`, `\Z`, `\G`, `\h`, `\R`, `\X`, `\a`, `\e`, `\N{…}`, `a*+`, `(?i)`, `(?>…)`, `\p{Is…}`.
 
 ## Numbers
 

@@ -1,5 +1,6 @@
 ---
 date: 2026-08-12
+amended: 2026-08-13
 ---
 # How should ECMA-262 regex semantics be provided on each platform?
 ## Context and Problem Statement
@@ -30,6 +31,20 @@ Chosen option: **(B)**, with (C) and (C′) measured and rejected rather than de
 
 Scala.js constructs `new js.RegExp(s, "u")` and calls `.test`. The `u` flag is not optional — without it `\p{…}` does not error, it *silently fails to match*, and the suite requires `\p{Letter}` and `\p{digit}` to work. `v` (ES2024) was measured and is strictly more restrictive than `u`, not less.
 
+### Which ECMA-262 — `u` is the dialect (amended 2026-08-13)
+
+ECMA-262 is **two mutually exclusive grammars**, and "the ECMA-262 dialect" does not pick between them. Under `u`, matching is by code point and `\p{…}`/`\u{…}` are syntax; without it, Annex B's legacy spellings are live — octal escapes (`\101`), identity escapes of any character (`\-`, `\ `), a bare `}` or `]` — and property escapes do not exist at all. You cannot have both.
+
+`u` is the one this library targets, on both targets:
+
+* Property escapes are a suite requirement, and they exist only under `u`. That already decided Scala.js; leaving the JVM aimed elsewhere gave it a dialect that was *neither* — `\p{…}` from `u` mode, Annex B leniency from the other, and `\101` read as neither (see below).
+* The conformance harness has always compared against Node under `u` and called it the reference, so the baseline was already `u` while the JVM implementation was not.
+* Annex B is legacy web compatibility. The suite exercises no octal escape and no backreference, and `u`/`v` are where the language is going.
+
+So `translate` rejects what `u` rejects: legacy octal (`\101`, `\0` followed by a digit), a `\<digits>` naming a group the pattern does not define, an identity escape outside SyntaxCharacter/`/` (`\-`, `\ `, `\%`, and `java.util.regex`'s own `\a`, `\z`, `\Q…\E` and friends), a literal `}` or `]`, and a `{` opening no quantifier.
+
+The octal case is why this matters beyond tidiness. `\101` is octal `A` without `u` and a syntax error with it, but `java.util.regex` reads `\1` as a backreference and spells octal `\0101` — so `^\101$` compiled, referenced a group that does not exist, and **matched nothing at all**. Three engines, three answers, and the JVM's was silent.
+
 The JVM rewrites the pattern in a single escape- and class-aware scan. Scanning rather than replacing is what makes the rewrites safe: each construct is rewritten only where it actually has that meaning, so a literal backslash followed by `p{Letter}` or `cc` stays literal. `translate` covers `$`, `.`, `\v`, `\s`/`\S`, `\p{…}` names, `\c<letter>`, `\0`, `\u{…}`, `[\b]`, `[]`, `[^]`, and `[`/`&&` inside a class; the file's scaladoc carries the per-construct reasoning and README § Regular expressions carries the user-facing budget.
 
 Two consequences of scanning are worth calling out:
@@ -41,10 +56,10 @@ Two consequences of scanning are worth calling out:
 
 ### Consequences
 * **The JVM target is exact within the portable subset Core § 6.4 recommends** — literals, `[abc]`, `[a-z]`, `[^abc]`, `+ * ?` and lazy forms, `{x}`/`{x,y}`/`{x,}`, `^`, `$`, `(…)`, `|` — and an approximation outside it. That subset is the de-facto interoperability bound; see *More Information*.
-* What is left is in README § Regular expressions: 38 ECMA-262 binary properties and `\p{Script_Extensions=…}` with no `java.util.regex` equivalent, non-alphanumeric group names, forward references to a later group, and the legacy spellings ECMA-262 rejects under `u` that this target still accepts. All but the forward reference are errors rather than wrong answers.
+* What is left is in README § Regular expressions, and is only what `java.util.regex` cannot express: 38 ECMA-262 binary properties and `\p{Script_Extensions=…}` with no equivalent, non-alphanumeric group names, and forward references to a later group. **All of them are errors; none is a wrong answer.** The forward reference is valid ECMA-262 and is rejected anyway, because the alternative is a pattern that compiles and then cannot match — the harness recorded it as the one remaining `mismatch`, and that category is now empty.
 * Near-miss substitutions were deliberately not made. `\p{IsHex_Digit}` and `Script=` exist for `Hex_Digit` and `Script_Extensions=`, and are *different sets* — taking them would trade a visible error for an invisible wrong answer.
 * Scala.js is the conformant target, so the parity gap runs the *opposite* way from `Idn`'s. It is documented under § Regular expressions rather than § Scala.js limitations, which is about the JS artifact falling short.
-* `u` is also *stricter* than default ECMA-262, so a few legacy-but-tolerated spellings (a bare `}` or `]`, `\-`, `\101`) are a syntax error on Scala.js while the JVM accepts them. `a{,3}` is not among them: `java.util.regex` rejects it too.
+* `u` is *stricter* than the Annex B grammar, so a few legacy-but-tolerated spellings (a bare `}` or `]`, `\-`, `\101`) are a syntax error — on both targets, since the JVM scan now rejects them too. A schema relying on one fails at `validator` construction rather than getting Java's reading of it. `a{,3}` was already rejected by `java.util.regex` and is now rejected by the scan, with the same verdict on both targets.
 * The emoji binary properties need a JDK 21 runtime. That is this library's `-release` floor, so they are always available; on an older runtime they would be rejected, not mismatched.
 * **The suite is not a safety net here.** Of the divergences enumerated it exercises a handful, and its own `$`-versus-trailing-newline fixture cannot fail on any engine: the data is `"abc\\n"`, a literal backslash followed by `n`. `RegexSupportTest` pins each decision directly, and the `js` smoke test carries the same cases as cross-platform canaries so both targets are checked to agree.
 
