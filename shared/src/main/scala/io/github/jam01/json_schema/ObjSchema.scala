@@ -6,7 +6,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjSchema.{getOrThrow, refError}
 
-import scala.collection.Map
+import scala.collection.{Map, mutable}
 
 // see: https://docs.scala-lang.org/tour/self-types.html
 private[json_schema] trait ObjSchema { this: ObjectSchema =>
@@ -283,10 +283,33 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
       // schema-position child into a Schema, so a wrap-only conversion is one node deep and any
       // applicator inside (`properties`, `items`, `allOf`, ...) blows up on `Value.sch`.
       case sch: Schema => sch
-      case obj: Obj => SchemaW.transform(obj, SchemaR.subschema(docbase, this, ptr.toString))
+      case obj: Obj => compiledLiteral(ptr, obj)
       case True => TrueSchema
       case False => FalseSchema
       case _ => throw refError(ptr)
+  }
+
+  private var _compiled: mutable.Map[JsonPointer, Schema] = _ // only allocated if a literal is reached
+
+  /**
+   * The compiled form of the raw literal at `ptr`, compiled once per location.
+   *
+   * Resolution is per-reference and per-`Core`-instance, so without this every `$ref` into the
+   * same literal would run the whole subtree back through `SchemaR` again and hand back a
+   * different `Schema` graph for one location. A self-referential literal makes that per level of
+   * recursion, which left the depth guard as the only bound on repeated compilation.
+   *
+   * Compiling does not resolve `$ref`, so this cannot re-enter; the lock is held only on the
+   * literal path, which every ordinary `$ref` misses.
+   */
+  private def compiledLiteral(ptr: JsonPointer, obj: Obj): Schema = synchronized {
+    if (_compiled == null) _compiled = mutable.Map.empty
+    _compiled.get(ptr) match
+      case Some(sch) => sch
+      case None =>
+        val sch = SchemaW.transform(obj, SchemaR.subschema(docbase, this, ptr.toString))
+        _compiled.update(ptr, sch)
+        sch
   }
 }
 

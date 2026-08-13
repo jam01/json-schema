@@ -9,7 +9,7 @@ import io.github.jam01.json_schema.vocab.Validation.*
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-import java.math.MathContext
+import java.math.{BigInteger, MathContext}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -278,32 +278,52 @@ object Validation extends VocabFactory[Validation] {
   }
 
   private def isMultiple(a: Any, b: Any): Boolean = {
-    try { mod(a, b) } catch {
-      case e: ArithmeticException if e.getMessage.contains("Division impossible") => false
+    try { divides(unwrap(b), unwrap(a)) } catch {
       case e @ (_: ArithmeticException | _: IllegalArgumentException) =>
         throw new IllegalArgumentException("Number overflow while computing multipleOf", e)
     }
   }
-  private def mod(a: Any, b: Any): Boolean = (a, b) match {
-    case (x: Long, y: Long) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: Long, y: Double) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: Long, y: BigInt) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: Long, y: BigDecimal) => BigDecimal(x) % y == 0
 
-    case (x: Double, y: Long) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: Double, y: Double) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: Double, y: BigInt) => BigDecimal(x) % decOf(y) == 0
-    case (x: Double, y: BigDecimal) => BigDecimal(x) % y == 0
+  /** The `java.math.BigDecimal` holding exactly what this number case holds. */
+  private def unwrap(x: Any): java.math.BigDecimal = x match {
+    case x: Long => java.math.BigDecimal.valueOf(x)
+    case x: Double => java.math.BigDecimal.valueOf(x)
+    case x: BigInt => new java.math.BigDecimal(x.bigInteger)
+    case x: BigDecimal => x.bigDecimal
+  }
 
-    case (x: BigInt, y: Long) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: BigInt, y: BigInt) => BigDecimal(x) % BigDecimal(y) == 0
-    case (x: BigInt, y: Double) => decOf(x) % BigDecimal(y) == 0
-    case (x: BigInt, y: BigDecimal) => decOf(x) % y == 0
+  /**
+   * True if `dividend` is an exact multiple of `divisor`.
+   *
+   * Deliberately not `BigDecimal.remainder`. Both operands are `unscaled * 10^-scale`, so the
+   * question is really integer divisibility: with `shift = divisor.scale - dividend.scale`,
+   * `dividend` is a multiple of `divisor` exactly when `unscaled(dividend) * 10^shift` is
+   * divisible by `unscaled(divisor)`, and `10^shift mod n` is one `modPow` away. That matters
+   * because numbers carry no exponent bound - `1e100000000` is thirty bytes of instance whose
+   * scale is -100000000, and any formulation that materializes the value first inflates it into
+   * a hundred-million-digit integer. Here no power of ten is ever built, so cost follows the
+   * digits actually written rather than the magnitude they denote.
+   *
+   * It is also decisive where `remainder` is not: `scala.math.BigDecimal`'s `%` carries
+   * `DECIMAL128` and abandons some divisions as "Division impossible", which is a statement about
+   * the representation of the quotient rather than about divisibility.
+   */
+  private def divides(divisor: java.math.BigDecimal, dividend: java.math.BigDecimal): Boolean = {
+    if (divisor.signum == 0) throw new ArithmeticException("multipleOf is zero")
+    if (dividend.signum == 0) return true
 
-    case (x: BigDecimal, y: Long) => x % BigDecimal(y) == 0
-    case (x: BigDecimal, y: Double) => x % BigDecimal(y) == 0
-    case (x: BigDecimal, y: BigInt) => x % decOf(y) == 0
-    case (x: BigDecimal, y: BigDecimal) => x % y == 0
+    val num = dividend.unscaledValue.abs
+    val den = divisor.unscaledValue.abs
+    val shift = divisor.scale.toLong - dividend.scale.toLong
+    if (shift >= 0)
+      num.mod(den).multiply(BigInteger.TEN.modPow(BigInteger.valueOf(shift), den)).mod(den).signum == 0
+    else {
+      // Scaling the divisor up instead: it can only divide `num` while 10^scaleUp stays within
+      // it, and log10(num) < bitLength * 0.302, so past that there is nothing to compute.
+      val scaleUp = -shift
+      scaleUp <= num.bitLength.toLong * 302 / 1000 + 1 &&
+        num.remainder(den.multiply(BigInteger.TEN.pow(scaleUp.toInt))).signum == 0
+    }
   }
 
   /**

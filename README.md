@@ -296,8 +296,9 @@ optional precisely because rounding to a double is a conforming choice — so a 
 this library may not port to a validator that rounds.
 
 The 15-significant-digit cutoff is where `Double` stops round-tripping decimals exactly. Below it
-you get the `Double` fast path; above it, exactness. `1e400` still overflows to `Float64(Infinity)`,
-since its mantissa is one digit.
+you get the `Double` fast path; above it, exactness. Magnitude is not a cutoff: `1e400` is past
+`Double`'s range, so it takes the exact path too and stays a `Decimal` rather than saturating to
+an infinity.
 
 **Cost, if you validate untrusted input.** Arbitrary precision means the work scales with the
 *length of the JSON text*, not with the value's magnitude — exponent notation is free, because
