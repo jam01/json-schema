@@ -336,14 +336,14 @@ final class Applicator private(schema: ObjectSchema,
         override def visitEnd(index: Int): OutputUnit = compose(Properties, buff.result(), Arr(annot.result()))
       })
 
-      private var matchedPatternSchs: Seq[(String, Visitor[?, OutputUnit])] = Nil // to be assigned based on key visited
+      private var matchedPatternSchs: Seq[Visitor[?, OutputUnit]] = Nil // to be assigned based on key visited
       // returns subVisitor based on assigned matchedPatternSchs
       val patternPropsVisitor: Option[ObjVisitor[Seq[OutputUnit], OutputUnit]] = patternPropsViss.map(_ => new ObjVisitor[Seq[OutputUnit], OutputUnit] {
         private val buff = new ListBuffer[OutputUnit]
         private val annot = new ListBuffer[Value]
         override def visitKey(index: Int): Visitor[?, ?] = throw new IllegalStateException
         override def visitKeyValue(v: Any): Unit = throw new IllegalStateException
-        override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs.map((_, v) => v))
+        override def subVisitor: Visitor[?, ?] = new CompositeVisitor(matchedPatternSchs)
         override def visitValue(us: Seq[OutputUnit], index: Int): Unit = us.foreach(u => { accumulateVec(buff, u); if (u.vvalid) annot.addOne(Str(currentKey))})
         override def visitEnd(index: Int): OutputUnit = compose(PatternProperties, buff.result(), Arr(annot.result()))
       })
@@ -366,7 +366,7 @@ final class Applicator private(schema: ObjectSchema,
           propsVisited.addOne(currentKey)
           matchedPatternSchs = patternPropsViss.map(vismap => vismap
               .withFilter((rgx, _) => rgx.matches(currentKey))
-              .map((rgx, v) => (rgx.toString(), v))
+              .map((_, v) => v)
               .toSeq)
             .getOrElse(Nil)
 

@@ -7,7 +7,6 @@ package io.github.jam01.json_schema
 import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertTrue}
 import org.junit.jupiter.api.{Test, Timeout}
 
-import java.math.BigInteger
 import java.util.concurrent.TimeUnit
 import scala.util.Random
 
@@ -15,18 +14,16 @@ import scala.util.Random
  * `multipleOf` across the whole number model, including magnitudes that exist only because
  * numbers carry no exponent bound.
  *
- * Two hazards are pinned here. The first is cost: `1e100000000` is a thirty-byte literal whose
- * `BigDecimal` scale is -100000000, so any implementation that materializes the value to divide
- * it inflates that into a hundred-million-digit integer — `java.math.BigDecimal.remainder`
- * without a `MathContext` does exactly that, and takes minutes. `scala.math.BigDecimal`'s `%`
- * carries `DECIMAL128`, which bails out instead, and [[Validation.isMultiple]] reads that bail-out
- * as "not a multiple"; the timeouts below are what keeps a future change from quietly reaching
- * the slow path.
+ * The timeouts are the point of two of these. `1e100000000` is a thirty-byte literal whose
+ * `BigDecimal` scale is -100000000, so any formulation that materializes the value before
+ * dividing inflates it into a hundred-million-digit integer: `java.math.BigDecimal.remainder`
+ * with no `MathContext` does exactly that, and takes minutes. `Validation.divides` never builds
+ * a power of ten, and these keep it that way.
  *
- * The second is whether that bail-out is ever the *wrong* answer. [[differential_against_exact_arithmetic]]
- * checks it against an oracle that computes divisibility a deliberately different way — modular
- * arithmetic on the unscaled values, which never materializes a power of ten — so the two share
- * no machinery.
+ * [[differential_against_exact_arithmetic]] is the correctness half, checking the implementation
+ * against the slow formulation it deliberately avoids. The sweep includes mantissas longer than
+ * `DECIMAL128` can hold, since that is where a `BigDecimal.remainder` formulation stops being
+ * decisive.
  */
 class MultipleOfTest {
   private def isMultiple(instance: String, multipleOf: String): Boolean = {
@@ -38,28 +35,16 @@ class MultipleOfTest {
   }
 
   /**
-   * Exact divisibility, by modular arithmetic on the unscaled values. Both operands are
-   * `unscaled * 10^-scale`, so `x` is a multiple of `y` exactly when `10^d * ux` is divisible by
-   * `uy`, and `10^d mod uy` is a `modPow` away — no power of ten is ever built.
+   * Exact divisibility the slow, obvious way: `java.math.BigDecimal.remainder` with no
+   * `MathContext`, which materializes the values and is therefore always decisive. Deliberately
+   * not the implementation's algorithm — an oracle that shared its reasoning would only confirm
+   * that the code agrees with itself. The exponents in the sweep below stay small enough that
+   * materializing is cheap.
    */
   private def exactlyDivides(xs: String, ys: String): Boolean = {
     val x = new java.math.BigDecimal(xs)
     val y = new java.math.BigDecimal(ys)
-    if (y.signum == 0) false
-    else if (x.signum == 0) true
-    else {
-      val ux = x.unscaledValue.abs
-      val uy = y.unscaledValue.abs
-      val d = y.scale.toLong - x.scale.toLong
-      if (d >= 0)
-        ux.mod(uy).multiply(BigInteger.TEN.modPow(BigInteger.valueOf(d), uy)).mod(uy).signum == 0
-      else {
-        val k = -d
-        // uy * 10^k can only divide ux if 10^k <= ux, and log10(ux) < bitLength * 0.302
-        if (k > ux.bitLength.toLong * 302 / 1000 + 1) false
-        else ux.remainder(uy.multiply(BigInteger.TEN.pow(k.toInt))).signum == 0
-      }
-    }
+    y.signum != 0 && x.remainder(y).signum == 0
   }
 
   @Test def small_integers(): Unit = {
@@ -111,14 +96,17 @@ class MultipleOfTest {
   @Test def differential_against_exact_arithmetic(): Unit = {
     val rnd = new Random(20260812) // fixed, so a failure is reproducible
     val cases = collection.mutable.ArrayBuffer(
-      ("1234567890123456789e100000000", "7"), ("1234567890123456789e40", "7"),
+      ("1234567890123456789e40", "7"),
       ("1234567890123456789e1", "2"), ("7e40", "7"), ("1e40", "3"),
       ("0.0075", "0.0001"), ("1.5", "0.5"), ("2e1", "4"), ("1e-40", "1e-41"),
       ("12345678901234567890123456789012345678901234567890.5", "0.5"))
 
     def literal(): String = {
+      // sometimes longer than DECIMAL128's 34 digits, which is where a remainder-based
+      // formulation gives up rather than answering
       val mantissa = ('1' + rnd.nextInt(9)).toChar.toString +
-        (1 to rnd.nextInt(22)).map(_ => ('0' + rnd.nextInt(10)).toChar).mkString
+        (1 to rnd.nextInt(if (rnd.nextInt(4) == 0) 45 else 22))
+          .map(_ => ('0' + rnd.nextInt(10)).toChar).mkString
       val withPoint =
         if (rnd.nextBoolean() && mantissa.length > 1) mantissa.take(1) + "." + mantissa.drop(1)
         else mantissa

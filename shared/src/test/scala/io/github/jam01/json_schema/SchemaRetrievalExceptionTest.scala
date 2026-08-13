@@ -4,7 +4,7 @@
  */
 package io.github.jam01.json_schema
 
-import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertThrows, assertTrue}
+import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertNotSame, assertSame, assertThrows, assertTrue}
 import org.junit.jupiter.api.Test
 
 class SchemaRetrievalExceptionTest {
@@ -66,5 +66,24 @@ class SchemaRetrievalExceptionTest {
     assertTrue(isValid("""{"a": 1}"""), "satisfies the nested properties and allOf")
     assertFalse(isValid("""{"a": "no"}"""), "nested properties must still apply")
     assertFalse(isValid("""{"b": 1}"""), "nested allOf/required must still apply")
+  }
+
+  // Resolution is per-reference and per-Core-instance, so without memoization every `$ref` into
+  // the same literal ran the subtree back through SchemaR and produced a fresh Schema graph for
+  // one location — and a self-referential literal did it once per level of recursion, leaving the
+  // depth guard as the only bound on repeated compilation.
+  @Test def a_literal_is_compiled_once_per_location(): Unit = {
+    val sch = ujson.Readable.fromString(
+      """{"unknown": {"properties": {"a": {"type": "integer"}}},
+        | "other": {"type": "string"}}""".stripMargin).transform(SchemaR())
+
+    val first = sch.schBy(JsonPointer("/unknown"))
+    assertSame(first, sch.schBy(JsonPointer("/unknown")), "same location, same compiled schema")
+    assertSame(first, sch.schBy(JsonPointer("/unknown")), "and again")
+    assertNotSame(first, sch.schBy(JsonPointer("/other")), "a different location is its own schema")
+
+    // a nested literal is cached on the schema that compiled it, not on the root
+    val nested = first.schBy(JsonPointer("/properties/a"))
+    assertSame(nested, first.schBy(JsonPointer("/properties/a")))
   }
 }
