@@ -164,9 +164,14 @@ object Arr {
   def apply(): Arr = new Arr(Nil)
 }
 
-abstract class Num extends Value {
+sealed abstract class Num extends Value {
   /**
    * This number widened to `BigDecimal`, exactly, whichever case holds it.
+   *
+   * `Num` is sealed so this match is exhaustive by construction rather than by inspection.
+   * [[Int128]] keeps `MathContext.UNLIMITED` deliberately: unlike the sized context
+   * `BigDecimal(BigInt)` attaches, it does not round arithmetic a caller goes on to do with the
+   * result.
    *
    * @throws NumberFormatException if this is a [[Float64]] holding `NaN` or an infinity
    */

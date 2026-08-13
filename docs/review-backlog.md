@@ -34,26 +34,12 @@ mantissas longer than `DECIMAL128` can hold.
 
 ## Number precision (`178cb34`, `5196a84`)
 
-Two items resolved: README § Numbers no longer claims `1e400` saturates to `Float64(Infinity)`,
-and the `Dec128` → `Decimal` rename stands as-is — no API is promised yet, so no deprecated alias
-is owed.
-
-- **`Num.toBigDecimal` is a non-exhaustive match on an unsealed class.** `Value` is sealed but
-  `Num` is not, so a downstream `class MyNum extends Num` reaches it and gets `MatchError` rather
-  than the documented exception. Seal `Num` (it has exactly four intended cases) or add a default
-  arm.
-- **`decOf` no longer distinguishes anything.** `BigDecimal.apply(x: BigInt)` is `exact(x)`, which
-  never rounds, so `decOf(i)` and `BigDecimal(i)` are value-identical and differ only in a carried
-  `MathContext` that `compareTo` does not consult. `compareTo` spells the same conversion both
-  ways, which reads as load-bearing and is not. Unify or delete.
-- **`sigDigits` takes a `decIndex` it never reads.** The body derives everything from `expIndex`
-  and skips `'.'` implicitly.
-- **Orphaned scaladoc in `Validation.scala`.** The `valueEquals` equality-contract doc sits above
-  `canonical`, so `valueEquals` is undocumented and the doc attaches to the wrong method.
-- **`uniqueItems` short-circuit fixed in `visitArray` but not `visitObject`.** `visitObject` still
-  reads `(uniqueItems.isEmpty || !uniqueItems.get)`. `uniqueItems` cannot constrain an object at
-  all, so the condition should not mention it — as written, `{"uniqueItems": true}` plus an object
-  instance materializes the whole object through `LiteralVisitor` for nothing.
+Closed out. README no longer claims `1e400` saturates; the `Dec128` → `Decimal` rename stands, as
+no API is promised yet; `Num` is sealed, so `toBigDecimal`'s match is exhaustive by construction;
+`decOf` is gone, since `BigDecimal(BigInt)` attaches a context sized to the value and never
+rounds; `sigDigits` no longer takes the `decIndex` it never read; the equality-contract scaladoc
+sits on `valueEquals` again; and `uniqueItems` no longer has a say in whether an object instance
+is materialized, which it cannot constrain.
 
 ## Regex-adjacent (`31cfad8`)
 
