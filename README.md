@@ -306,9 +306,9 @@ you get the `Double` fast path; above it, exactness. Magnitude is not a cutoff: 
 `Double`'s range, so it takes the exact path too and stays a `Decimal` rather than saturating to
 an infinity.
 
-**Cost, if you validate untrusted input.** Arbitrary precision means the work scales with the
-*length of the JSON text*, not with the value's magnitude — exponent notation is free, because
-`BigDecimal` keeps the scale separate from the significand. `{"multipleOf": 7}` against
+**Cost, if you validate untrusted input.** The work scales with the *length of the JSON text*:
+`BigDecimal` keeps the scale separate from the significand, so the digits are what cost, not the
+exponent that places them. `{"multipleOf": 7}` against
 `1234567890123456789e100000000` (a 30-byte literal) returns in well under a millisecond, while the
 same keyword against a literal 300,000 digits long takes ~1.4s. So the only lever is payload size,
 and the mitigation is the ordinary one: bound the request body. There is no `Config` knob for this
