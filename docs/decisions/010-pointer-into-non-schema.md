@@ -43,7 +43,21 @@ Option (C) is what an earlier iteration did, and it is subtly insufficient — s
 * **`ObjectSchema`'s accessors do not parse.** They assume `SchemaR` already turned every schema-position child into a `Schema`; `getSchemaObjectOpt` bottoms out in `Value.sch`, which throws `IllegalStateException("Expected Schema")` on a raw `Obj`. That is why (C) is not enough: it converts one node and leaves the children raw, so a referenced subschema containing `properties`, `items`, `allOf` — any applicator — crashes. Only leaf subschemas work, which is all the suite file happens to contain.
 * A nested `$ref` inside such a subschema worked even under (C), but incidentally: `Core` reads `$ref` as a *string* and resolves it through the `Registry`, never touching `.sch`. Not evidence that (C) was sound.
 * **`SchemaR.subschema` takes no registry.** With a `parent` set, `SchemaR` neither registers the schema it builds nor flushes the `$id`/`$anchor`s it collects, so a subschema compiled this way is reachable only through the pointer that produced it — never by its own `$id` or `$anchor`. That is exactly its status before it was compiled at all, and `$ref`s *inside* it still resolve normally against the `Registry` handed to `json_schema.validator`.
-* Compilation happens per `schBy0` call, with no cache. `$ref` resolution happens at validator-construction time, so a schema referencing the same location twice compiles it twice. Cheap relative to the traversal that found it; worth revisiting only if it shows up.
+* **A literal reached by pointer does not establish a schema resource**, so `$id` inside one carries no identity: `base` and `location` ignore it, and the whole compiled subtree inherits that, not just its outermost node. `getId` still reads it.
+
+  This closes a hole rather than adding a restriction. `SchemaR` was already declining to register these, while `ObjectSchema.base` went on honouring `$id` — so
+
+  ```json
+  {"$id": "https://ex/root",
+   "unknown": {"$id": "https://ex/sub", "$defs": {"a": {}}, "$ref": "#/$defs/a"},
+   "$ref": "#/unknown"}
+  ```
+
+  resolved its inner `$ref` against a base no `Registry` had heard of and died with `NoSuchElementException: Unavailable schema https://ex/sub#/$defs/a` — not even the `SchemaRetrievalException` a caller would be catching for. It now resolves against the enclosing resource, which is registered.
+
+  Core § 9.4.2 leaves this undefined, and names this exact situation as the reason: nested subschemas under unrecognized keywords "would be subject to the processing rules for `$id`", which is why "having a reference target in such an unrecognized structure cannot be reliably implemented". Registering instead is the branch § 9.4.2 says cannot be done reliably — it needs a parse-time decision about which unknown-keyword objects are resources — and it would only half-work anyway: an external `$ref` to `https://ex/sub` would resolve only if something had already pointed into that literal first, making resolution order-dependent. Not establishing a resource is the reading that never mints an unresolvable URI.
+* **Observable:** schemas inside such a literal report an `absoluteKeywordLocation` under the enclosing resource (`https://ex/root#/unknown/…`) rather than under the phantom one. `ObjectSchema.equals`/`hashCode` include the flag, since two schemas with identical content resolve references differently if one honours `$id` and the other does not.
+* Compilation is memoized per location on the enclosing schema. `$ref` resolution is per-reference and per-`Core`-instance, so without it every reference into one literal re-ran the subtree through `SchemaR` and produced a distinct `Schema` graph for a single location; a self-referential literal did it once per level of recursion, leaving `guardDepth` as the only bound on repeated compilation.
 * The exception type for a pointer to a scalar changed from `ClassCastException` to `SchemaRetrievalException`. A caller catching the former was catching an accident.
 
 ## Pros and Cons of the Options
@@ -64,10 +78,11 @@ Option (C) is what an earlier iteration did, and it is subtly insufficient — s
 * Produces a subschema indistinguishable from one the parser recognized, at any depth.
 * Reuses `SchemaR` rather than reimplementing which keywords are schema-bearing — there is exactly one such list and this does not add a second.
 * Costs a `MutableRegistry` allocation per call that is never written to, which is the price of `SchemaR`'s current constructor shape.
-* Nested `$id`/`$anchor` inside the compiled subtree are not registered. Documented; matches prior behaviour.
+* Nested `$id`/`$anchor` inside the compiled subtree are not registered, and — per the above — establish nothing either.
 
 ## More Information
 * `shared/src/main/scala/io/github/jam01/json_schema/ObjSchema.scala` — `schBy0`'s match on the pointer target.
 * `shared/src/main/scala/io/github/jam01/json_schema/SchemaR.scala` — `SchemaR.subschema`, and the `parent`/`prel` constructor parameters it reuses.
-* `shared/src/test/scala/io/github/jam01/json_schema/SchemaRetrievalExceptionTest.scala` — object/boolean/scalar targets, and a referenced subschema carrying `properties` and `allOf`.
+* `shared/src/test/scala/io/github/jam01/json_schema/SchemaRetrievalExceptionTest.scala` — object/boolean/scalar targets, a referenced subschema carrying `properties` and `allOf`, the memoization, and `$id` carrying no identity.
+* [Core § 9.4.2](https://json-schema.org/draft/2020-12/json-schema-core.html), *References to Possible Non-Schemas* — why this is undefined territory. The suite keeps `refOfUnknownKeyword.json` under `optional/`, and none of its cases puts an `$id` inside the referenced literal.
 * `shared/src/test/resources/test-suite/tests/draft2020-12/optional/refOfUnknownKeyword.json` — the conformance cases.

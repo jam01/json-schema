@@ -67,25 +67,7 @@ discarded `CompiledPattern.toString` is fixed — `matchedPatternSchs` no longer
 
 ## Pointer resolution (`4049895`)
 
-Memoization is in: `ObjSchema.compiledLiteral` compiles a raw literal once per location, pinned by
-`SchemaRetrievalExceptionTest.a_literal_is_compiled_once_per_location`.
-
-- **A literal carrying its own `$id` becomes an unreachable resource — verified.** `SchemaR` skips
-  `reg.addOne` and the ids/anchors flush when `parent` is set, but `ObjectSchema.base` still
-  honours `getId`, so references *inside* the literal resolve against a base the registry never
-  learned. Both of these fail:
-
-  ```json
-  {"$id": "https://ex/root",
-   "unknown": {"$id": "https://ex/sub", "$defs": {"a": {"type": "integer"}}, "$ref": "#/$defs/a"},
-   "$ref": "#/unknown"}
-  ```
-
-  → `NoSuchElementException: Unavailable schema https://ex/sub#/$defs/a` (and the `$anchor`
-  spelling gives `...#aa`). Note the exception type: the review said `SchemaRetrievalException`,
-  but it surfaces from the registry, so callers catching the documented type miss it.
-
-  Either register the compiled subschema under its `$id` and flush its anchors, or decide that a
-  literal reached by pointer does not establish a resource and stop honouring `$id` for it. The
-  first matches Core § Fragment Identifiers; the second is simpler. Until then it is a gap
-  documented only in [decision-010](decisions/010-pointer-into-non-schema.md), not in README.
+Both items resolved. Compilation is memoized per location, and a literal reached by pointer no
+longer establishes a schema resource, so `$id` inside one carries no identity and references
+inside it resolve against the enclosing resource. Rationale and the Core § 9.4.2 reading are in
+[decision-010](decisions/010-pointer-into-non-schema.md).

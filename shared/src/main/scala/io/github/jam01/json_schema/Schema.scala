@@ -323,19 +323,23 @@ final class ObjectSchema private[json_schema](val value: collection.Map[String, 
                         //  mutating the underlying map as it's being parsed. Could possibly create ObjSch builder class?
                         protected val docbase: Uri,
                         protected val parent: Option[ObjectSchema] = None,
-                        protected val prel: Option[String] = None) extends ObjSchema with Schema {
+                        protected val prel: Option[String] = None,
+                        protected val isResource: Boolean = true) extends ObjSchema with Schema {
                         /* relative pointer from parent */
 
   // equals and hashCode ignores parent in order to avoid circular references
   // (schema's children will reference it back)
   // this is ok since the structure is still validated, including the exact parent-child traversal
   // this is only an issue if SchemaR and/or manual object creation incorrectly set parents
+  // isResource participates: two schemas with the same content resolve references differently if
+  // one of them honours `$id` and the other does not, so they are not interchangeable
   override def equals(obj: Any): Boolean = {
     obj match
       case osch: ObjectSchema =>
         value == osch.value &&
           docbase == osch.docbase &&
-          prel == osch.prel
+          prel == osch.prel &&
+          isResource == osch.isResource
       case _ => false
   }
 
@@ -344,7 +348,8 @@ final class ObjectSchema private[json_schema](val value: collection.Map[String, 
     h = MurmurHash3.mix(h, value.##)
     h = MurmurHash3.mix(h, docbase.##)
     h = MurmurHash3.mix(h, prel.##)
-    MurmurHash3.finalizeHash(h, 3)
+    h = MurmurHash3.mix(h, isResource.##)
+    MurmurHash3.finalizeHash(h, 4)
   }
 
   override def toString: String = location.toString

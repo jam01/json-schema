@@ -26,12 +26,27 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
    */
   def location: Uri = {
     if (_loc != null) return _loc
-    _loc = getId.map(id => base.resolve(id))
+    _loc = effectiveId.map(id => base.resolve(id))
       .getOrElse(parent.map(p => p.location)
         .map(u => u.appendedFragment(prel.get))
         .getOrElse(base))
     _loc
   }
+
+  /**
+   * `$id`, unless this schema is one a JSON Pointer landed on inside a non-schema location.
+   *
+   * Such a schema does not establish a schema resource: `SchemaR` neither registers it nor flushes
+   * the `$id`/`$anchor`s under it, so honouring `$id` here would derive a base no [[Registry]] has
+   * ever heard of, and every `$ref` inside it would resolve to a URI nothing can retrieve. Core
+   * § 9.4.2 leaves this undefined precisely because these structures "would be subject to the
+   * processing rules for `$id`" and cannot be identified reliably; of the two readings, not
+   * establishing a resource is the one that never mints an unresolvable URI. See
+   * [[https://github.com/jam01/json-schema/blob/main/docs/decisions/010-pointer-into-non-schema.md decision-010]].
+   *
+   * `$id` is still readable through [[getId]]; it just carries no identity.
+   */
+  private def effectiveId: Option[String] = if (isResource) getId else None
 
   private var _base: Uri = _ // lazy val is overkill
 
@@ -41,7 +56,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   def base: Uri = {
     if (_base != null) return _base
     val effbase = parent.map(_.base).getOrElse(docbase)
-    _base = getId.map(id => effbase.resolve(id)).getOrElse(effbase)
+    _base = effectiveId.map(id => effbase.resolve(id)).getOrElse(effbase)
     _base
   }
 
