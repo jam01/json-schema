@@ -9,7 +9,7 @@ import io.github.jam01.json_schema.vocab.Validation.*
 import upickle.core.Visitor.{MapArrContext, MapObjContext}
 import upickle.core.{ArrVisitor, NoOpVisitor, ObjVisitor, SimpleVisitor, Visitor}
 
-import java.math.{BigInteger, MathContext}
+import java.math.BigInteger
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -110,7 +110,7 @@ final class Validation private(schema: ObjectSchema,
     if (tyype.nonEmpty) accumulateVec(buff, tyype.contains("array"), Tyype, s"Expected $tyype, got array")
 
     val insVisitor: ArrVisitor[Nothing, Seq[OutputUnit]] =
-      if (const.isEmpty && enuum.isEmpty && (uniqueItems.isEmpty || !uniqueItems.get)) NilArrayVis
+      if (const.isEmpty && enuum.isEmpty && !uniqueItems.contains(true)) NilArrayVis
       else new MapArrContext(LiteralVisitor.visitArray(length, index), jsVal => { // Vis[Value, coll.Seq[OUnit]]
         val buff0 = new ListBuffer[OutputUnit]
         const.foreach(c => accumulate(buff0, valueEquals(c, jsVal), Const, "Array does not match expected constant"))
@@ -152,7 +152,9 @@ final class Validation private(schema: ObjectSchema,
 
     val propsVisited = new ListBuffer[String]
     val insVisitor: ObjVisitor[?, Seq[OutputUnit]] =
-      if (const.isEmpty && enuum.isEmpty && (uniqueItems.isEmpty || !uniqueItems.get)) NilObjVis
+      // `uniqueItems` constrains arrays only, so it has no say here: without this,
+      // `{"uniqueItems": true}` against an object materialized the whole thing for nothing.
+      if (const.isEmpty && enuum.isEmpty) NilObjVis
       else new MapObjContext(LiteralVisitor.visitObject(length, index), obj => { // Vis[Value, coll.Seq[OUnit]]
         val buff0 = new ListBuffer[OutputUnit]
         const.foreach(c => accumulate(buff0, valueEquals(c, obj), Const, "Object does not match expected constant"))
@@ -194,24 +196,11 @@ final class Validation private(schema: ObjectSchema,
 }
 
 object Validation extends VocabFactory[Validation] {
-  // NB: must be exact. `BigDecimal(i)` alone applies Scala's default MathContext, and this used to
-  // additionally throw an ArithmeticException past Decimal128's 34 digits - which made the most
-  // ordinary schemas crash on a large instance (`{"minimum": 1.5}` against a 60-digit integer went
-  // through this and blew up). Nothing downstream needs the bound: `compareTo` never consults a
-  // MathContext, and `mod` goes through `%`/`divideToIntegralValue`, which is exact and always
-  // terminating at any width. See README § Numbers.
-  private def decOf(i: BigInt): BigDecimal = BigDecimal(i, MathContext.UNLIMITED)
-
   private def gt(a: Any, b: Any) = compareTo(a, b) == 1
   private def lt(a: Any, b: Any) = compareTo(a, b) == -1
   private def lteq(a: Any, b: Any) = compareTo(a, b) != 1
   private[json_schema] def gteq(a: Any, b: Any) = compareTo(a, b) != -1
 
-  /**
-   * JSON Schema equality: numbers compare by mathematical value regardless of their [[Value]]
-   * subtype (e.g. `0` and `0.0` are equal even though they're represented as [[Int64]] and
-   * [[Float64]] respectively), and arrays/objects compare deeply using the same rule.
-   */
   /**
    * `v` with every number rewritten to one canonical [[Num]] case, at any depth, so that hashing a
    * [[Value]] agrees with [[valueEquals]] on numbers: `1`, `1.0`, `1e0` and `1.00` all collapse to
@@ -234,6 +223,11 @@ object Validation extends VocabFactory[Validation] {
     case Obj(fields) => Obj(fields.map((k, fv) => (k, canonical(fv))))
     case _ => v
 
+  /**
+   * JSON Schema equality: numbers compare by mathematical value regardless of their [[Value]]
+   * subtype (e.g. `0` and `0.0` are equal even though they're represented as [[Int64]] and
+   * [[Float64]] respectively), and arrays/objects compare deeply using the same rule.
+   */
   private[json_schema] def valueEquals(a: Value, b: Value): Boolean = (a, b) match {
     case (an: Num, bn: Num) => compareTo(an.value, bn.value) == 0
     case (Arr(as), Arr(bs)) => as.length == bs.length && as.lazyZip(bs).forall(valueEquals)
@@ -241,11 +235,19 @@ object Validation extends VocabFactory[Validation] {
     case _ => a == b
   }
 
+  /**
+   * Exact at any width, mixing widths freely - see README § Numbers.
+   *
+   * Widening a `BigInt` with plain `BigDecimal(i)` is exact: the `MathContext` it attaches is
+   * sized to the value, so nothing rounds, and `compareTo` never consults one regardless. An
+   * earlier bound here threw past 34 digits, which crashed the most ordinary schemas on a large
+   * instance - `{"minimum": 1.5}` against a 60-digit integer went through this and blew up.
+   */
   private def compareTo(a: Any, b: Any): Int = {
     (a, b) match {
       case (x: Long, y: Long) => x.compareTo(y)
       case (x: Long, y: Double) => _64(x, y)
-      case (x: Long, y: BigInt) => BigDecimal(x).compareTo(decOf(y))
+      case (x: Long, y: BigInt) => BigDecimal(x).compareTo(BigDecimal(y))
       case (x: Long, y: BigDecimal) => BigDecimal(x).compareTo(y)
 
       case (x: Double, y: Long) => -_64(y, x)
@@ -253,17 +255,17 @@ object Validation extends VocabFactory[Validation] {
         if (x == 0 && y == -0) return 0
         if (x == -0 && y == 0) return 0
         x.compareTo(y)
-      case (x: Double, y: BigInt) => BigDecimal(x).compareTo(decOf(y))
+      case (x: Double, y: BigInt) => BigDecimal(x).compareTo(BigDecimal(y))
       case (x: Double, y: BigDecimal) => BigDecimal(x).compareTo(y)
 
       case (x: BigInt, y: Long) => BigDecimal(x).compareTo(BigDecimal(y))
-      case (x: BigInt, y: Double) => decOf(x).compareTo(BigDecimal(y))
+      case (x: BigInt, y: Double) => BigDecimal(x).compareTo(BigDecimal(y))
       case (x: BigInt, y: BigInt) => x.compareTo(y)
-      case (x: BigInt, y: BigDecimal) => decOf(x).compareTo(y)
+      case (x: BigInt, y: BigDecimal) => BigDecimal(x).compareTo(y)
 
       case (x: BigDecimal, y: Long) => x.compareTo(BigDecimal(y))
       case (x: BigDecimal, y: Double) => x.compareTo(BigDecimal(y))
-      case (x: BigDecimal, y: BigInt) => x.compareTo(decOf(y))
+      case (x: BigDecimal, y: BigInt) => x.compareTo(BigDecimal(y))
       case (x: BigDecimal, y: BigDecimal) => x.compareTo(y)
 
       case _ => throw new IllegalStateException
@@ -340,7 +342,7 @@ object Validation extends VocabFactory[Validation] {
   private[json_schema] def numOf(s: String, decIndex: Int, expIndex: Int): Any = {
     if (decIndex == -1 && expIndex == -1) s.toLongOption.getOrElse(BigInt(s))
     else {
-      val digits = sigDigits(s, decIndex, expIndex)
+      val digits = sigDigits(s, expIndex)
       if (digits > DoubleSafeDigits) BigDecimal(s) // more precision than Double can round-trip
       else s.toDoubleOption match
         case Some(d) if digits == 0 => d // the literal is zero, whatever its exponent
@@ -355,10 +357,11 @@ object Validation extends VocabFactory[Validation] {
   private val DoubleSafeDigits = 15
 
   /**
-   * Counts significant digits in `s`'s mantissa (i.e. excluding sign, '.', and any exponent).
+   * Counts significant digits in `s`'s mantissa, i.e. excluding sign, '.', and any exponent.
+   * The '.' needs no position of its own: the scan counts digits and skips everything else.
    * Returns 0 for a literal whose mantissa is all zeros, which `numOf` reads as "this is zero".
    */
-  private def sigDigits(s: String, decIndex: Int, expIndex: Int): Int = {
+  private def sigDigits(s: String, expIndex: Int): Int = {
     val mantissaEnd = if (expIndex == -1) s.length else expIndex
     var i = 0
     var digits = 0

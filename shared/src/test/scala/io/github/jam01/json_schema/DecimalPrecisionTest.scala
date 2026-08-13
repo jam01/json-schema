@@ -137,4 +137,30 @@ class DecimalPrecisionTest {
     val cmp = mkValidator("""{"minimum": 0}""")
     assertTrue(isValid(cmp, "1." + ("1" * 60)))
   }
+
+  // `compareTo` widens a BigInt with plain `BigDecimal(i)`, whose MathContext is sized to the
+  // value rather than fixed, so nothing rounds. Only the mixed-width cases go through that
+  // widening at all - BigInt vs BigInt compares as BigInt - so these pair a wide integer with a
+  // decimal, and differ only in the 40th digit, which a fixed 34-digit context would round away.
+  @Test def wide_integers_compare_past_the_34th_digit(): Unit = {
+    val a = "1" * 40
+    val b = "1" * 39 + "2" // larger than a, and only in the 40th digit
+
+    // schema literal is a BigInt, instance carries '.' so it parses to a BigDecimal
+    assertTrue(isValid(mkValidator(s"""{"const": $a}"""), a + ".0"), "same number, different width")
+    assertFalse(isValid(mkValidator(s"""{"const": $a}"""), b + ".0"), "b differs from a past digit 34")
+    assertFalse(isValid(mkValidator(s"""{"maximum": $a}"""), b + ".0"), "b is the larger of the two")
+    assertTrue(isValid(mkValidator(s"""{"minimum": $a}"""), b + ".0"))
+    assertTrue(isValid(mkValidator("""{"minimum": 1.5}"""), "1" * 60), "mixing widths is fine")
+  }
+
+  // `uniqueItems` constrains arrays only; an object instance is unaffected by it either way.
+  @Test def unique_items_does_not_constrain_an_object(): Unit = {
+    val v = mkValidator("""{"uniqueItems": true}""")
+    assertTrue(isValid(v, """{"a": 1, "b": 1}"""), "duplicate values in an object are irrelevant")
+    assertTrue(isValid(v, """{}"""))
+    assertTrue(isValid(mkValidator("""{"uniqueItems": true, "const": {"a": 1}}"""), """{"a": 1}"""),
+      "const still applies alongside uniqueItems")
+    assertFalse(isValid(mkValidator("""{"uniqueItems": true, "const": {"a": 1}}"""), """{"a": 2}"""))
+  }
 }
