@@ -86,4 +86,58 @@ class SchemaRetrievalExceptionTest {
     val nested = first.schBy(JsonPointer("/properties/a"))
     assertSame(nested, first.schBy(JsonPointer("/properties/a")))
   }
+
+  // A literal reached by pointer is not a schema resource: SchemaR neither registers it nor
+  // flushes the `$id`/`$anchor`s under it, so honouring `$id` would derive a base no Registry has
+  // heard of and every reference inside it would resolve to a URI nothing can retrieve. Core
+  // § 9.4.2 leaves this undefined; of the two readings this is the one that cannot mint an
+  // unresolvable URI. See decision-010.
+  @Test def an_id_inside_a_pointed_at_literal_carries_no_identity(): Unit = {
+    val registry = new MutableRegistry
+    val sch = ujson.Readable.fromString(
+      """{"$id": "https://ex/root",
+        | "unknown": {"$id": "https://ex/sub", "$defs": {"a": {"type": "integer"}},
+        |             "properties": {"p": {"type": "string"}}},
+        | "$ref": "#/unknown"}""".stripMargin)
+      .transform(SchemaR(Uri("https://ex/root"), registry))
+
+    val literal = sch.schBy(JsonPointer("/unknown")).asInstanceOf[ObjectSchema]
+    assertEquals(Some("https://ex/sub"), literal.getId, "$id is still readable")
+    assertEquals(Uri("https://ex/root"), literal.base, "but does not establish a base")
+    assertEquals("https://ex/root#/unknown", literal.location.toString, "nor an identity")
+
+    // and the whole subtree follows, not just the outermost node
+    val nested = literal.schBy(JsonPointer("/properties/p")).asInstanceOf[ObjectSchema]
+    assertEquals(Uri("https://ex/root"), nested.base, "nested schemas keep the enclosing base")
+
+    // an ordinary embedded resource is unaffected
+    val embedded = ujson.Readable.fromString(
+      """{"$id": "https://ex/root",
+        | "properties": {"p": {"$id": "https://ex/embedded", "type": "integer"}}}""".stripMargin)
+      .transform(SchemaR(Uri("https://ex/root"), new MutableRegistry))
+      .schBy(JsonPointer("/properties/p")).asInstanceOf[ObjectSchema]
+    assertEquals(Uri("https://ex/embedded"), embedded.base, "$id in a schema position still counts")
+  }
+
+  // The reference inside the literal now resolves against the enclosing resource, which is
+  // registered, so a bad pointer reports itself as one instead of as a missing resource.
+  @Test def a_reference_inside_a_pointed_at_literal_resolves_against_the_enclosing_resource(): Unit = {
+    val registry = new MutableRegistry
+    val sch = ujson.Readable.fromString(
+      """{"$id": "https://ex/root",
+        | "$defs": {"a": {"type": "integer"}},
+        | "unknown": {"$id": "https://ex/sub", "$ref": "#/$defs/a"},
+        | "$ref": "#/unknown"}""".stripMargin)
+      .transform(SchemaR(Uri("https://ex/root"), registry))
+
+    val v = validator(sch, Config(Dialect.Basic), registry)
+    def isValid(json: String): Boolean = {
+      val res = try ujson.Readable.fromString(json).transform(v)
+      catch { case e: ValidationException => e.result }
+      res.vvalid
+    }
+
+    assertTrue(isValid("1"), "#/$defs/a resolves against https://ex/root, which is registered")
+    assertFalse(isValid("\"no\""), "and still applies")
+  }
 }

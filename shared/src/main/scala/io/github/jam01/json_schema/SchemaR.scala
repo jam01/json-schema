@@ -16,7 +16,11 @@ final class SchemaR private(docbase: Uri,
               ids: mutable.Buffer[(String, ObjectSchema)] = new mutable.ListBuffer,
               anchors: mutable.Buffer[(String, Boolean, ObjectSchema)] = new mutable.ListBuffer,
               parent: Option[ObjectSchema] = None,
-              private var prel: Option[String] = None) extends SimpleVisitor[Value, Schema] {
+              private var prel: Option[String] = None,
+              // false for a literal a JSON Pointer landed on: it and everything under it are read
+              // without establishing schema resources, matching the fact that nothing here is
+              // registered or flushed. See ObjSchema.effectiveId.
+              isResource: Boolean = true) extends SimpleVisitor[Value, Schema] {
 
   override def expectedMsg: String = "Expected boolean or object"
 
@@ -31,7 +35,7 @@ final class SchemaR private(docbase: Uri,
   override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Value, Schema] = new ObjVisitor[Value, ObjectSchema] {
     val lhm: LinkedHashMap[String, Value] = LinkedHashMap()
     var key: String = "?"
-    val sch: ObjectSchema = new ObjectSchema(lhm, docbase, parent, prel)
+    val sch: ObjectSchema = new ObjectSchema(lhm, docbase, parent, prel, isResource)
     if (parent.isEmpty) reg.addOne(docbase, sch)
 
     override def visitKey(index: Int): Visitor[?, ?] = StringVisitor
@@ -41,13 +45,13 @@ final class SchemaR private(docbase: Uri,
     override def subVisitor: Visitor[?, ?] = key match
       // kws with schema
       case "items" | "contains" | "additionalProperties" | "propertyNames" | "if" | "then" | "else" | "not" | "unevaluatedProperties"| "unevaluatedItems" =>
-        new SchemaR(docbase, reg, ids, anchors, Some(sch), Some(s"/$key"))
+        new SchemaR(docbase, reg, ids, anchors, Some(sch), Some(s"/$key"), isResource)
       // kws with map(key -> schema)
       case "$defs" | "properties" | "patternProperties" | "dependentSchemas" => new SimpleVisitor[Schema, Obj] {
         override def expectedMsg: String = "expected object"
 
         override def visitObject(length: Int, jsonableKeys: Boolean, index: Int): ObjVisitor[Schema, Obj] =
-          new CollectObjVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) {
+          new CollectObjVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None, isResource)) {
             override def subVisitor: Visitor[?, ?] = {
               vis.asInstanceOf[SchemaR].prel = Some(s"/$key/$_key") // setting prel using CollectObjVisitor fields
               super.subVisitor
@@ -59,7 +63,7 @@ final class SchemaR private(docbase: Uri,
         override def expectedMsg: String = "expected array"
 
         override def visitArray(length: Int, index: Int): ArrVisitor[Schema, Arr] =
-          new CollectArrVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None)) {
+          new CollectArrVisitor(new SchemaR(docbase, reg, ids, anchors, Some(sch), None, isResource)) {
             private var nextIdx = 0
 
             override def subVisitor: Visitor[?, ?] = {
@@ -118,5 +122,6 @@ object SchemaR {
    * @param prel the JSON Pointer to the literal, relative to `parent`
    */
   private[json_schema] def subschema(docbase: Uri, parent: ObjectSchema, prel: String): SchemaR =
-    new SchemaR(docbase, new MutableRegistry, parent = Some(parent), prel = Some(prel))
+    new SchemaR(docbase, new MutableRegistry, parent = Some(parent), prel = Some(prel),
+      isResource = false)
 }
