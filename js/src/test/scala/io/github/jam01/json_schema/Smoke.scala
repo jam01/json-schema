@@ -100,6 +100,14 @@ object Smoke {
       catch { case _: java.util.regex.PatternSyntaxException => true },
       "an invalid pattern throws PatternSyntaxException")
 
+    // Annex B spellings, which the `u` dialect withdraws. Native RegExp refuses them here; the
+    // canary is that the JVM's translation refuses the same ones rather than taking Java's reading.
+    check(!fmt("""{"format":"regex"}""", ujson.Str("^\\101$")).vvalid, "format:regex rejects a legacy octal escape")
+    check(!fmt("""{"format":"regex"}""", ujson.Str("^\\1$")).vvalid,   "format:regex rejects a dangling backreference")
+    check(!fmt("""{"format":"regex"}""", ujson.Str("^}$")).vvalid,     "format:regex rejects an unescaped }")
+    check(!fmt("""{"format":"regex"}""", ujson.Str("^\\-$")).vvalid,   "format:regex rejects the \\- identity escape")
+    check( fmt("""{"format":"regex"}""", ujson.Str("^(a)\\1$")).vvalid, "format:regex accepts a real backreference")
+
     // idn-hostname: canary for the platform-specific Idn implementation
     check( fmt("""{"format":"idn-hostname"}""", ujson.Str("example.com")).vvalid, "format:idn-hostname accepts valid")
     check(!fmt("""{"format":"idn-hostname"}""", ujson.Str("hello world")).vvalid, "format:idn-hostname rejects space")

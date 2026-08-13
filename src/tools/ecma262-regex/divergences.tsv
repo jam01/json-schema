@@ -6,16 +6,8 @@
 # accepted  a pattern ECMA-262 rejects under `u` that this target takes, with the meaning
 #           ECMA-262 gives it without `u`
 # mismatch  both compile it and they match differently -- the only silent kind
-^[a-d[x-z]]$	accepted				no nested class union
-^[a-z&&[^bc]]$	accepted				no class intersection
-^}$	accepted				a bare } is literal without u
-^]$	accepted				a bare ] is literal without u
-^\-$	accepted				\- identity escape
-^\\u0020$	accepted				escaped space
 ^(?<$x>a)$	rejected				a group name java.util.regex rejects
-^(\2)(a)$	mismatch	a	true	false	forward reference matches empty
-^\1$	accepted				reference to a group that does not exist
-^\101$	accepted				octal-looking escape
+^(\2)(a)$	rejected				forward reference, which java.util.regex cannot express
 ^\p{ASCII_Hex_Digit}$	rejected				binary property
 ^\p{AHex}$	rejected				binary property
 ^\p{Bidi_Control}$	rejected				binary property

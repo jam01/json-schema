@@ -140,6 +140,63 @@ class RegexSupportTest {
     assertFalse(matches("^\\\\\\\\cc$", "\"\\u0003\""), "\\\\cc is not the control-C escape")
   }
 
+  // ---------------------------------------------------------------- `u`-mode strictness
+
+  /**
+   * ECMA-262's two grammars are mutually exclusive, and the one targeted here is `u` — the mode
+   * Scala.js compiles, and the only one in which `\p{...}` exists at all. What `u` gives up for
+   * that is Annex B's legacy spellings. `java.util.regex` takes several of them, so they are
+   * rejected rather than quietly reinterpreted.
+   */
+  @Test def annex_b_spellings_u_withdraws(): Unit = {
+    assertFalse(isValidPattern("^\\\\-$"), "\\- is not an identity escape under u")
+    assertFalse(isValidPattern("^\\\\ $"), "nor is an escaped space")
+    assertFalse(isValidPattern("^\\\\%$"), "nor \\%")
+    assertFalse(isValidPattern("^}$"), "a literal } must be escaped")
+    assertFalse(isValidPattern("^]$"), "a literal ] must be escaped")
+    assertFalse(isValidPattern("^[a-d[x-z]]$"), "the class closes at the first ], leaving a stray one")
+
+    assertTrue(isValidPattern("^\\\\}$"), "escaped, } is a literal")
+    assertTrue(isValidPattern("^\\\\]$"), "and so is ]")
+    assertTrue(isValidPattern("^[\\\\-]$"), "\\- inside a class is a class escape, which u keeps")
+    assertTrue(matches("^[a[]$", "\"[\""), "[ inside a class is still a literal under u")
+  }
+
+  /**
+   * `\1` and `\101` are backreferences in ECMA-262 and legacy octal escapes only under Annex B.
+   * `java.util.regex` reads them as backreferences too, so a reference to a group that does not
+   * exist compiles there and then never matches — a wrong answer with nothing to signal it.
+   */
+  @Test def legacy_octal_and_dangling_backreferences(): Unit = {
+    assertFalse(isValidPattern("^\\\\101$"), "no group 101 exists, and u has no octal escape")
+    assertFalse(isValidPattern("^\\\\1$"), "nor group 1")
+    assertFalse(isValidPattern("^\\\\01$"), "\\0 followed by a digit is legacy octal")
+    assertFalse(isValidPattern("^[\\\\1]$"), "a class escape is never a backreference")
+
+    assertTrue(isValidPattern("^\\\\0$"), "\\0 alone is NUL")
+    assertTrue(matches("^(a)\\\\1$", "\"aa\""), "a backreference to a preceding group still matches")
+  }
+
+  /** Valid ECMA-262 — `(\2)(a)` matches the empty string — and inexpressible in java.util.regex. */
+  @Test def a_forward_reference_is_rejected_rather_than_mismatched(): Unit = {
+    assertFalse(isValidPattern("^(\\\\2)(a)$"), "a forward reference has no java.util.regex form")
+    assertThrows(classOf[java.util.regex.PatternSyntaxException],
+      () => { mkValidator("""{"pattern": "(\\2)(a)"}"""); () },
+      "and pattern refuses it rather than compiling a regex that cannot match")
+  }
+
+  /** Under `u` a brace opens a quantifier or nothing at all; java.util.regex takes some as literal. */
+  @Test def braces_open_a_quantifier_or_are_an_error(): Unit = {
+    assertTrue(matches("^a{2}$", "\"aa\""), "{n} is a quantifier")
+    assertTrue(matches("^a{2,}$", "\"aaa\""), "so is {n,}")
+    assertTrue(matches("^a{2,3}$", "\"aaa\""), "and {n,m}")
+    assertTrue(matches("^a\\\\{2\\\\}$", "\"a{2}\""), "escaped, braces are literals")
+
+    assertFalse(isValidPattern("^a{,3}$"), "{,m} is not an ECMA-262 quantifier")
+    assertFalse(isValidPattern("^a{$"), "an unclosed one is an error")
+    assertFalse(isValidPattern("^{$"), "and a lone brace opens nothing")
+  }
+
   // ---------------------------------------------------------------- property escapes
 
   @Test def pattern_matches_long_form_unicode_general_category_alias(): Unit = {

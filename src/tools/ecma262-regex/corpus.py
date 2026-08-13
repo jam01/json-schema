@@ -166,7 +166,7 @@ case("group:lookahead",   "^a(?=b)",         "ab", "lookahead")
 case("group:neglookahead", "^a(?!b)",        "ac", "negative lookahead")
 case("group:lookbehind",  "(?<=a)b",         "ab", "lookbehind")
 case("group:neglookbehind", "(?<!a)b",       "cb", "negative lookbehind")
-case("group:forwardref",  "^(\\2)(a)$",      "a",  "forward reference matches empty")
+case("group:forwardref",  "^(\\2)(a)$",      "a",  "forward reference, which java.util.regex cannot express")
 case("group:noref",       "^\\1$",           "",   "reference to a group that does not exist")
 case("group:octal",       "^\\101$",         "A",  "octal-looking escape")
 
