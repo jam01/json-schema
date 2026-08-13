@@ -4,6 +4,7 @@
  */
 package io.github.jam01.json_schema.vocab
 
+import java.util.regex.PatternSyntaxException
 import scala.scalajs.js
 
 /**
@@ -28,10 +29,19 @@ private[vocab] object RegexSupport {
     def matches(s: CharSequence): Boolean = rgx.test(s.toString)
   }
 
-  def compilePattern(s: String): CompiledPattern = new JsCompiledPattern(new js.RegExp(s, "u"))
+  def compilePattern(s: String): CompiledPattern = new JsCompiledPattern(rgxOf(s))
 
   /** True if `s` is a syntactically valid ECMA-262 pattern, for `format: regex`. */
   def isValidPattern(s: String): Boolean =
-    try { new js.RegExp(s, "u"); true }
-    catch { case _: js.JavaScriptException => false }
+    try { rgxOf(s); true }
+    catch { case _: PatternSyntaxException => false }
+
+  /**
+   * `js.RegExp` reports a bad pattern as a JS `SyntaxError`, which arrives here as a
+   * `js.JavaScriptException`. Both targets are compiled against by the same cross-platform code,
+   * so an invalid `pattern` has to surface as the `PatternSyntaxException` the JVM target throws.
+   */
+  private def rgxOf(s: String): js.RegExp =
+    try new js.RegExp(s, "u")
+    catch case e: js.JavaScriptException => throw new PatternSyntaxException(e.getMessage, s, -1)
 }

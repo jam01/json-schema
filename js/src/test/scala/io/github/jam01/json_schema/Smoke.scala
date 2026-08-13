@@ -93,6 +93,13 @@ object Smoke {
     check(!fmt("""{"format":"regex"}""", ujson.Str("\\Qa+b\\E")).vvalid, "format:regex rejects \\Q...\\E (Java-only)")
     check( fmt("""{"format":"regex"}""", ujson.Str("^[]$")).vvalid,     "format:regex accepts the empty class")
 
+    // An uncompilable `pattern` reports itself the same way on both targets: java.util.regex's
+    // PatternSyntaxException, not the JS engine's own SyntaxError.
+    check(
+      try { basic("""{"pattern":"("}""", ujson.Str("a")); false }
+      catch { case _: java.util.regex.PatternSyntaxException => true },
+      "an invalid pattern throws PatternSyntaxException")
+
     // idn-hostname: canary for the platform-specific Idn implementation
     check( fmt("""{"format":"idn-hostname"}""", ujson.Str("example.com")).vvalid, "format:idn-hostname accepts valid")
     check(!fmt("""{"format":"idn-hostname"}""", ujson.Str("hello world")).vvalid, "format:idn-hostname rejects space")
