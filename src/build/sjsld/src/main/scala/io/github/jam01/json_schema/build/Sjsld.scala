@@ -51,8 +51,8 @@ object Sjsld {
     val config = StandardConfig()
       .withModuleKind(ModuleKind.NoModule)
       .withCheckIR(false)
-      // ES2018+ needed for RegExp Unicode property escapes (\p{...}), e.g. via the `pattern`
-      // keyword's `(?U)`-flagged patterns; see vocab.RegexSupport.
+      // ES2018+ needed for RegExp Unicode property escapes (\p{...}), which the `pattern` keyword
+      // admits and which are only valid syntax under the `u` flag; see vocab.RegexSupport.
       .withESFeatures(_.withESVersion(ESVersion.ES2018))
     val linker = StandardImpl.linker(config)
     val initializers = List(ModuleInitializer.mainMethodWithArgs(mainClass, "main"))
