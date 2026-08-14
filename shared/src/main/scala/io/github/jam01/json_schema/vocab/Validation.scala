@@ -235,38 +235,20 @@ object Validation extends VocabFactory[Validation] {
     case _ => a == b
   }
 
-  /**
-   * Exact at any width, mixing widths freely - see README § Numbers.
-   *
-   * Widening a `BigInt` with plain `BigDecimal(i)` is exact: the `MathContext` it attaches is
-   * sized to the value, so nothing rounds, and `compareTo` never consults one regardless.
-   */
+  /** Exact at any width, mixing widths freely - see README § Numbers. */
   private def compareTo(a: Any, b: Any): Int = {
     (a, b) match {
       case (x: Long, y: Long) => x.compareTo(y)
       case (x: Long, y: Double) => _64(x, y)
-      case (x: Long, y: BigInt) => BigDecimal(x).compareTo(BigDecimal(y))
-      case (x: Long, y: BigDecimal) => BigDecimal(x).compareTo(y)
-
       case (x: Double, y: Long) => -_64(y, x)
       case (x: Double, y: Double) =>
         if (x == 0 && y == -0) return 0
         if (x == -0 && y == 0) return 0
         x.compareTo(y)
-      case (x: Double, y: BigInt) => BigDecimal(x).compareTo(BigDecimal(y))
-      case (x: Double, y: BigDecimal) => BigDecimal(x).compareTo(y)
 
-      case (x: BigInt, y: Long) => BigDecimal(x).compareTo(BigDecimal(y))
-      case (x: BigInt, y: Double) => BigDecimal(x).compareTo(BigDecimal(y))
-      case (x: BigInt, y: BigInt) => x.compareTo(y)
-      case (x: BigInt, y: BigDecimal) => BigDecimal(x).compareTo(y)
-
-      case (x: BigDecimal, y: Long) => x.compareTo(BigDecimal(y))
-      case (x: BigDecimal, y: Double) => x.compareTo(BigDecimal(y))
-      case (x: BigDecimal, y: BigInt) => x.compareTo(BigDecimal(y))
-      case (x: BigDecimal, y: BigDecimal) => x.compareTo(y)
-
-      case _ => throw new IllegalStateException
+      // BigInt/BigDecimal on either side: widen both to `java.math.BigDecimal`, exactly, and
+      // compare. `java.math.BigDecimal` carries no default rounding context to round through.
+      case _ => unwrap(a).compareTo(unwrap(b))
     }
   }
   private def _64(x: Long, y: Double): Int = {
