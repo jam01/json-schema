@@ -61,6 +61,9 @@ import java.util.regex.PatternSyntaxException
  *  - a literal `]` or `}`, and a `{` opening no quantifier — punctuation under `u`, characters to
  *    `java.util.regex`.
  *  - possessive quantifiers (`a*+`) and the non-ECMA-262 group forms (`(?i)`, `(?x)`, `(?>...)`).
+ *  - a character-class range with `\d \D \w \W \s \S` or a `\p{...}`/`\P{...}` property escape as
+ *    either endpoint (`[\d-z]`, `[a-\s]`). `java.util.regex` accepts these as the union of the
+ *    class and the two characters flanking the `-`, silently discarding the intended range.
  *
  * Rejecting rather than passing them through is what lets `format: regex` answer for the same
  * language `pattern` compiles: a string is valid `format: regex` exactly when `pattern` accepts it.
@@ -191,6 +194,17 @@ private[vocab] object RegexSupport {
     var badRef = 0    // the first `\N` naming none of them, and where it was
     var badRefAt = -1
 
+    // Within a class, \d \D \w \W \s \S and \p{...}/\P{...} denote a set of code points rather
+    // than one, so ECMA-262 forbids using any of them as either endpoint of a `-` range
+    // (`[\d-z]`, `[a-\s]`); `java.util.regex` accepts both without complaint.
+    var atClassStart = false        // true until the class's first atom is emitted
+    var lastAtomClassEscape = false // whether the most recently emitted atom was one of the above
+    def isClassEscapeStart(at: Int): Boolean =
+      at + 1 < s.length && s.charAt(at) == '\\' && (
+        "dDwWsS".indexOf(s.charAt(at + 1)) >= 0 ||
+          ((s.charAt(at + 1) == 'p' || s.charAt(at + 1) == 'P') &&
+            at + 2 < s.length && s.charAt(at + 2) == '{'))
+
     while (i < s.length) {
       val c = s.charAt(i)
 
@@ -250,13 +264,26 @@ private[vocab] object RegexSupport {
           case _ if SyntaxCharacters.indexOf(esc.toInt) >= 0 || esc == '/' => sb.append('\\').append(esc)
           case _ => invalid(s"\\$esc is not an ECMA-262 escape", at)
         }
+
+        if (inClass) {
+          lastAtomClassEscape = "dDwWsSpP".indexOf(esc.toInt) >= 0
+          atClassStart = false
+        }
       } else if (inClass) {
         c match {
           case ']' => inClass = false; sb.append(']')
           case '[' => sb.append(raw"\[")     // ECMA-262 has no nested classes
           case '&' => sb.append(raw"\&")     // nor `&&` intersection
+          case '-' =>
+            val leading = atClassStart
+            val trailing = i + 1 < s.length && s.charAt(i + 1) == ']'
+            if (!leading && !trailing && (lastAtomClassEscape || isClassEscapeStart(i + 1)))
+              invalid("A character class range cannot have \\d, \\w, \\s or a Unicode property escape as an endpoint", i)
+            sb.append('-')
           case _ => sb.append(c)
         }
+        atClassStart = false
+        lastAtomClassEscape = false
         i += 1
       } else {
         c match {
@@ -267,6 +294,8 @@ private[vocab] object RegexSupport {
               sb.append(s"[$AnyCodePoint]"); i += 3
             } else {
               inClass = true
+              atClassStart = true
+              lastAtomClassEscape = false
               sb.append('[')
               i += 1
               if (i < s.length && s.charAt(i) == '^') { sb.append('^'); i += 1 }
