@@ -164,4 +164,31 @@ class SchemaRetrievalExceptionTest {
     assertTrue(isValid("1"), "#/$defs/a resolves against https://ex/root, which is registered")
     assertFalse(isValid("\"no\""), "and still applies")
   }
+
+  // A pointer can cross into a nested embedded resource (its own `$id`) on the way to a literal
+  // further down. The literal's base must be that nested resource's, not the resource the pointer
+  // started from, so a `$ref` inside it resolves relative to what actually encloses it.
+  @Test def a_reference_inside_a_literal_past_a_nested_resource_resolves_against_that_resource(): Unit = {
+    val registry = new MutableRegistry
+    val sch = ujson.Readable.fromString(
+      """{"$id": "https://ex/root",
+        | "properties": {"p": {"$id": "https://ex/nested",
+        |                       "$defs": {"a": {"type": "integer"}},
+        |                       "unknown": {"$ref": "#/$defs/a"}}},
+        | "$ref": "#/properties/p/unknown"}""".stripMargin)
+      .transform(SchemaR(Uri("https://ex/root"), registry))
+
+    val literal = sch.schBy(JsonPointer("/properties/p/unknown")).asInstanceOf[ObjectSchema]
+    assertEquals(Uri("https://ex/nested"), literal.base, "base is the nested resource the pointer crossed, not the root")
+
+    val v = validator(sch, Config(Dialect.Basic), registry)
+    def isValid(json: String): Boolean = {
+      val res = try ujson.Readable.fromString(json).transform(v)
+      catch { case e: ValidationException => e.result }
+      res.vvalid
+    }
+
+    assertTrue(isValid("1"), "#/$defs/a resolves against https://ex/nested, which has it")
+    assertFalse(isValid("\"no\""), "and still applies")
+  }
 }
