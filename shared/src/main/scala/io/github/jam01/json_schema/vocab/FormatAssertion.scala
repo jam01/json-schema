@@ -319,8 +319,6 @@ object FormatAssertion extends VocabFactory[FormatAssertion] {
   private val UriTemplate_r = "^([^\\p{Cntrl}\"'%<>\\\\^`{|}]|%\\p{XDigit}{2}|\\{[+#./;?&=,!@|]?((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?)(,((\\w|%\\p{XDigit}{2})(\\.?(\\w|%\\p{XDigit}{2}))*(:[1-9]\\d{0,3}|\\*)?))*})*$".r // https://stackoverflow.com/a/61645285/4814697
   private val Hostname_r = "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$".r // https://www.rfc-editor.org/rfc/rfc1123.html https://www.rfc-editor.org/rfc/rfc952 https://stackoverflow.com/a/1418724/4814697
 
-  // this is the *vocabulary* identifier used in `$vocabulary` (not the meta-schema `$id`,
-  // which is https://json-schema.org/draft/2020-12/meta/format-assertion)
   override def uri: String = "https://json-schema.org/draft/2020-12/vocab/format-assertion"
   override def shouldApply(schema: ObjectSchema): Boolean = schema.value.contains(FormatKw)
   override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): FormatAssertion =
