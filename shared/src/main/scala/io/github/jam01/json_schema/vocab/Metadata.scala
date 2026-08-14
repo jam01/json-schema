@@ -62,8 +62,6 @@ object Metadata extends VocabFactory[Metadata] {
 
   val Keys: Set[String] = Set(Title, Description, Default, Deprecated, ReadOnly, WriteOnly, Examples)
 
-  // this is the *vocabulary* identifier used in `$vocabulary` (not the meta-schema `$id`,
-  // which is https://json-schema.org/draft/2020-12/meta/meta-data)
   override def uri: String = "https://json-schema.org/draft/2020-12/vocab/meta-data"
   override def shouldApply(schema: ObjectSchema): Boolean = Keys.exists(schema.value.contains) || schema.value.keys.exists(_.startsWith("x-"))
   override def create(schema: ObjectSchema, ctx: Context, path: JsonPointer, dynParent: Option[Vocab[?]]): Metadata =

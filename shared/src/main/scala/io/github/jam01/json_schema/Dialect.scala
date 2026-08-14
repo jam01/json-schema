@@ -128,7 +128,11 @@ trait Vocab[-T](val schema: ObjectSchema,
  */
 trait VocabFactory[B <: Vocab[?]] {
   /**
-   * The URI identifying this vocabulary
+   * The URI identifying this vocabulary, as it appears as a key in a meta-schema's `$vocabulary`.
+   *
+   * This is the *vocabulary* identifier, distinct from the meta-schema `$id` of any dialect that
+   * bundles it - e.g. `Format`'s is `.../vocab/format-annotation`, not the format-annotation
+   * meta-schema's `$id` (`.../meta/format-annotation`).
    */
   def uri: String
 
