@@ -151,6 +151,9 @@ private[vocab] object RegexSupport {
 
   private def isAsciiLetter(c: Char): Boolean = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 
+  // ECMA-262's DecimalDigit is ASCII, so `Char.isDigit` would be too broad here.
+  private def isAsciiDigit(c: Char): Boolean = c >= '0' && c <= '9'
+
   /**
    * The `java.util.regex` class body for an ECMA-262 property name, or `None` where no equivalent
    * exists. `Script=`/`sc=` pass through, which `java.util.regex` understands as written;
@@ -173,7 +176,7 @@ private[vocab] object RegexSupport {
   private def quantifierEnd(s: String, at: Int): Int = {
     def digits(from: Int): Int = {
       var i = from
-      while (i < s.length && s.charAt(i) >= '0' && s.charAt(i) <= '9') i += 1
+      while (i < s.length && isAsciiDigit(s.charAt(i))) i += 1
       i
     }
 
@@ -219,8 +222,7 @@ private[vocab] object RegexSupport {
           case 'S' => sb.append(s"[^$Whitespace]")
           case 'v' => sb.append(raw"\x0B")
           case 'b' if inClass => sb.append(raw"\x08")            // in a class, ECMA-262's backspace
-          // ECMA-262's DecimalDigit is ASCII, so `Char.isDigit` would be too broad here.
-          case '0' if i == s.length || s.charAt(i) < '0' || s.charAt(i) > '9' => sb.append(raw"\x00")
+          case '0' if i == s.length || !isAsciiDigit(s.charAt(i)) => sb.append(raw"\x00")
           case '0' => invalid("\\0 followed by a digit is a legacy octal escape", at)
 
           // A DecimalEscape is a backreference, never an octal escape: the octal spellings are
@@ -229,7 +231,7 @@ private[vocab] object RegexSupport {
           case _ if esc >= '1' && esc <= '9' =>
             if (inClass) invalid(s"\\$esc is not a character class escape", at)
             var j = i
-            while (j < s.length && s.charAt(j) >= '0' && s.charAt(j) <= '9') j += 1
+            while (j < s.length && isAsciiDigit(s.charAt(j))) j += 1
             val digits = s.substring(i - 1, j)
             i = j
             val num = digits.toIntOption.getOrElse(Int.MaxValue)
