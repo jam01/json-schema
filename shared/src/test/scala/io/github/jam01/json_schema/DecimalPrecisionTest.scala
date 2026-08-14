@@ -8,10 +8,10 @@ import org.junit.jupiter.api.Assertions.{assertFalse, assertTrue}
 import org.junit.jupiter.api.Test
 
 /**
- * Regression coverage for the `Validation.numOf` decimal-precision fix: a schema/instance decimal
- * literal with more significant digits than `Double` can hold (~15-17) used to be silently
- * rounded, because `String.toDoubleOption` never signals precision loss the way `toLongOption`
- * does for integers. Must be driven through [[ujson.Readable.fromString]] (a genuine streaming
+ * Regression coverage for `Validation.numOf`: a schema/instance decimal literal with more
+ * significant digits than `Double` can hold (~15-17) must not be silently rounded, since
+ * `String.toDoubleOption` never signals precision loss the way `toLongOption` does for
+ * integers. Must be driven through [[ujson.Readable.fromString]] (a genuine streaming
  * parse) - see [[EnumConstEqualityTest]]'s header comment for why.
  */
 class DecimalPrecisionTest {
@@ -97,9 +97,9 @@ class DecimalPrecisionTest {
   }
 
   @Test def exponent_literal_with_a_long_mantissa_keeps_its_magnitude(): Unit = {
-    // A literal whose mantissa exceeds Double's precision no longer overflows to Infinity, so it
-    // keeps both its integrality and its magnitude. Pre-fix `type: integer` rejected it (Infinity
-    // is not whole) and `maximum` blew up converting Infinity to a BigDecimal.
+    // A literal whose mantissa exceeds Double's precision must not overflow to Infinity: it keeps
+    // both its integrality (`type: integer` would otherwise reject Infinity as not whole) and its
+    // magnitude (`maximum` would otherwise blow up converting Infinity to a BigDecimal).
     assertTrue(isValid(mkValidator("""{"type": "integer"}"""), "1234567890123456789e400"),
       "a large power-of-ten multiple is still an integer")
     assertFalse(isValid(mkValidator("""{"maximum": 2}"""), "1234567890123456789e400"),
@@ -109,7 +109,7 @@ class DecimalPrecisionTest {
   @Test def schema_literal_of_any_precision_compiles_and_compares(): Unit = {
     // 35 significant digits, straight out of optional/bignum.json - one past what Decimal128 can
     // represent. There is no magnitude bound on schema literals: this must compile and compare
-    // exactly, not throw and not round. (It used to throw; see README § Numbers.)
+    // exactly, not throw and not round (see README § Numbers).
     val v = mkValidator("""{"exclusiveMaximum": 972783798187987123879878123.18878137}""")
     assertTrue(isValid(v, "972783798187987123879878123.18878136"), "just under the boundary")
     assertFalse(isValid(v, "972783798187987123879878123.18878137"), "exactly at the boundary (exclusive)")

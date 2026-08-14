@@ -96,8 +96,8 @@ class EnumConstEqualityTest {
   }
 
   @Test def unique_items_false_imposes_nothing_even_alongside_const(): Unit = {
-    // `uniqueItems: false` is a no-op. It was only skipped when it was the sole reason to collect
-    // the array, so pairing it with const/enum re-enabled the check and rejected valid instances.
+    // `uniqueItems: false` must impose nothing, even when const/enum on the same schema already
+    // trigger array collection for their own comparison.
     val v = mkValidator("""{"const": [1, 1], "uniqueItems": false}""")
     assertTrue(isValid(v, "[1, 1]"), "uniqueItems:false must not reject a repeated element")
     assertFalse(isValid(v, "[1, 2]"), "const must still apply")
@@ -107,8 +107,8 @@ class EnumConstEqualityTest {
     // Regression guard: numbers nested inside an array or object are collected by LiteralVisitor
     // into Int128/Decimal for deep uniqueItems/const/enum comparison, and those carry no magnitude
     // bound (see Schema.scala's Int128 scaladoc). uniqueItems is the case with no schema-side
-    // literal at all, so it isolates the instance-only path. This used to throw
-    // IllegalArgumentException from Int128's constructor instead of comparing.
+    // literal at all, so it isolates the instance-only path, which must compare bignums rather
+    // than throw building an Int128.
     val v = mkValidator("""{"uniqueItems": true}""")
     val bignum = "1" * 60
     val otherBignum = "2" * 60

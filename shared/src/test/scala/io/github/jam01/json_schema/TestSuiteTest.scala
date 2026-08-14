@@ -35,12 +35,11 @@ class TestSuiteTest {
 
   /**
    * Runs the rest of `optional/` (i.e. everything but `optional/format/`, which has its own
-   * `args_provider_format`/`optional_format` above). Previously unexercised by `mvn test` at
-   * all — `args_provider`'s `Files.walk(..., 1)` only reaches `draft2020-12/` at depth 1, so
-   * files nested under `optional/` were silently skipped. That gap is why a broken `\p{Letter}`
-   * fix shipped in 0.3.0 undetected: nothing here ran `optional/ecmascript-regex.json`. See
-   * `NotSupportedOptional` for files with known, pre-existing (not regressions) failures that
-   * are excluded until root-caused separately.
+   * `args_provider_format`/`optional_format` above). Exists because `args_provider`'s
+   * `Files.walk(..., 1)` only reaches `draft2020-12/` at depth 1, so files nested under
+   * `optional/` need their own provider to be exercised at all. See `NotSupportedOptional`
+   * for files with known, pre-existing (not regressions) failures that are excluded until
+   * root-caused separately.
    */
   @ParameterizedTest
   @MethodSource(value = Array("args_provider_optional"))
