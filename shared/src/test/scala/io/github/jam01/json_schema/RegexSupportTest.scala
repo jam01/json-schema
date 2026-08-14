@@ -287,6 +287,16 @@ class RegexSupportTest {
     assertFalse(isValidPattern("^\\\\p{IsLatin}$"), "\\p{Is...} is a java.util.regex spelling")
   }
 
+  /**
+   * `(?` with nothing after it, or `(?<` with nothing after that, opens no valid ECMA-262
+   * group - there is no character left to classify as `:`/`=`/`!`/`<` or a lookbehind/named-group
+   * marker, so the pattern must be rejected rather than read past the end of the string.
+   */
+  @Test def dangling_group_opener_at_end_of_pattern_is_invalid(): Unit = {
+    assertFalse(isValidPattern("(?"), "nothing follows '?' to classify the group")
+    assertFalse(isValidPattern("(?<"), "nothing follows '<' to classify a lookbehind or named group")
+  }
+
   /** No java.util.regex equivalent, so they are reported invalid rather than approximated. */
   @Test def format_regex_rejects_properties_java_cannot_express(): Unit = {
     assertFalse(isValidPattern("^\\\\p{Math}$"), "\\p{Math} has no java.util.regex equivalent")
