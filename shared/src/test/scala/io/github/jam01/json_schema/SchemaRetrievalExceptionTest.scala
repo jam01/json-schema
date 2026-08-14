@@ -29,8 +29,7 @@ class SchemaRetrievalExceptionTest {
   // Per Core § Fragment Identifiers a JSON Pointer resolves against the resource as plain JSON, so
   // a pointer can land on a value the parser never recognized as a subschema. An object or boolean
   // found that way is a valid subschema and is compiled on the spot; a scalar is not, and reports
-  // the same SchemaRetrievalException as a pointer that goes nowhere (it used to be a raw
-  // ClassCastException, which no caller could reasonably be catching for).
+  // the same SchemaRetrievalException as a pointer that goes nowhere.
   @Test def pointer_into_an_unrecognized_keyword(): Unit = {
     val sch = ujson.Readable.fromString(
       """{"unknown": {"type": "integer"}, "flag": true, "off": false, "scalar": "hello",

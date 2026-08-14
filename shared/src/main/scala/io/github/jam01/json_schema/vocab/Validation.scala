@@ -239,9 +239,7 @@ object Validation extends VocabFactory[Validation] {
    * Exact at any width, mixing widths freely - see README § Numbers.
    *
    * Widening a `BigInt` with plain `BigDecimal(i)` is exact: the `MathContext` it attaches is
-   * sized to the value, so nothing rounds, and `compareTo` never consults one regardless. An
-   * earlier bound here threw past 34 digits, which crashed the most ordinary schemas on a large
-   * instance - `{"minimum": 1.5}` against a 60-digit integer went through this and blew up.
+   * sized to the value, so nothing rounds, and `compareTo` never consults one regardless.
    */
   private def compareTo(a: Any, b: Any): Int = {
     (a, b) match {
