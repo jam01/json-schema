@@ -266,7 +266,14 @@ object Validation extends VocabFactory[Validation] {
     }
   }
 
-  /** The `java.math.BigDecimal` holding exactly what this number case holds. */
+  /**
+   * The `java.math.BigDecimal` holding exactly what this number case holds.
+   *
+   * Deliberately separate from [[Num.toBigDecimal]]: `java.math.BigDecimal` carries no
+   * `MathContext` to get wrong, where [[Num.toBigDecimal]] must pick one per case so arithmetic a
+   * caller goes on to do with the result doesn't round - a concern this method's callers
+   * (`compareTo`, `divides`) don't have.
+   */
   private def unwrap(x: Any): java.math.BigDecimal = x match {
     case x: Long => java.math.BigDecimal.valueOf(x)
     case x: Double => java.math.BigDecimal.valueOf(x)
