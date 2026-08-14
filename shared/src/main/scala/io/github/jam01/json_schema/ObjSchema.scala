@@ -273,16 +273,28 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
 
   override def schBy0(ptr: JsonPointer): Schema = {
     var res: Value = this
-    val it = ptr.refTokens.iterator; it.next() // skip first empty string token
+    // The nearest ObjectSchema the walk has passed through, and how many tokens were consumed to
+    // reach it. A pointer can cross into a nested embedded resource (its own `$id`) on the way to
+    // a raw literal further down; `anchor` tracks that resource so the literal compiles against
+    // its base, not `this` schema's.
+    var anchor: ObjectSchema = this
+    var anchorTokens = 0
+    val tokens = ptr.refTokens
+    val it = tokens.iterator; it.next() // skip first empty string token
+    var consumed = 0
     for (key <- it) {
+      consumed += 1
       res = res match
         case ObjectSchema(value) => getOrThrow(value, key, ptr)
         case Obj(value) => getOrThrow(value, key, ptr)
         case Arr(value) =>
-          val i = arrayIndex(key)
-          if (i < 0 || value.length <= i) throw refError(ptr)
-          value(i)
+          val idx = arrayIndex(key)
+          if (idx < 0 || value.length <= idx) throw refError(ptr)
+          value(idx)
         case x: Any => throw new IllegalStateException(s"Unsupported type ${x.getClass.getName} for reference $ptr")
+      res match
+        case os: ObjectSchema => anchor = os; anchorTokens = consumed
+        case _ => ()
     }
 
     res match
@@ -290,15 +302,16 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
       // an unknown/arbitrary keyword, or under a known non-applicator like `examples`), so it's still
       // a raw literal here. Per Core § Fragment Identifiers, a JSON Pointer fragment resolves against
       // the schema resource as plain JSON; any object/boolean found this way is a valid subschema
-      // regardless of which keyword contains it - compile it now, anchored to this schema so its
-      // `location`/`base` resolve the same as if it had been recognized up front.
+      // regardless of which keyword contains it - compile it now, anchored to `anchor` (the nearest
+      // enclosing schema resource) so its `location`/`base` resolve the same as if it had been
+      // recognized up front.
       //
       // This runs the literal back through SchemaR rather than just wrapping it in an ObjectSchema:
       // ObjectSchema's keyword accessors don't parse, they assume SchemaR already turned every
       // schema-position child into a Schema, so a wrap-only conversion is one node deep and any
       // applicator inside (`properties`, `items`, `allOf`, ...) blows up on `Value.sch`.
       case sch: Schema => sch
-      case obj: Obj => compiledLiteral(ptr, obj)
+      case obj: Obj => anchor.compiledLiteral(JsonPointer(Seq("") ++ tokens.drop(anchorTokens + 1)), obj)
       case True => TrueSchema
       case False => FalseSchema
       case _ => throw refError(ptr)
@@ -307,7 +320,10 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
   @volatile private var _compiled: java.util.concurrent.ConcurrentHashMap[JsonPointer, Schema] = _ // only allocated if a literal is reached
 
   /**
-   * The compiled form of the raw literal at `ptr`, compiled once per location.
+   * The compiled form of the raw literal at `ptr`, compiled once per location. `ptr` is relative
+   * to the receiver, which callers pick as the nearest enclosing schema resource - not necessarily
+   * the schema `schBy0` was originally invoked on - so the literal's `location`/`base` resolve
+   * against the resource that actually encloses it.
    *
    * Resolution is per-reference and per-`Core`-instance, so without this every `$ref` into the
    * same literal would run the whole subtree back through `SchemaR` again and hand back a
@@ -318,7 +334,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
    * allocation; `ConcurrentHashMap.computeIfAbsent` then serializes compilation per `ptr`, not
    * across every literal this instance ever compiles.
    */
-  private def compiledLiteral(ptr: JsonPointer, obj: Obj): Schema = {
+  private[json_schema] def compiledLiteral(ptr: JsonPointer, obj: Obj): Schema = {
     var m = _compiled
     if (m == null) synchronized {
       m = _compiled
