@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Assertions.{assertEquals, assertFalse, assertNotSam
 import org.junit.jupiter.api.Test
 
 class SchemaRetrievalExceptionTest {
-  // Regression: SchemaRetrievalException used to be a path-dependent inner class of `Schema`,
-  // so `TrueSchema.SchemaRetrievalException` and `FalseSchema.SchemaRetrievalException` were
-  // distinct nominal types — pattern matching across schema instances would have missed.
+  // SchemaRetrievalException is a single top-level class, not path-dependent on the Schema
+  // instance that throws it, so `TrueSchema` and `FalseSchema` report the same exception type
+  // and a single catch site handles both.
   @Test def caught_uniformly_across_schema_instances(): Unit = {
     val osch: Schema = ujson.Readable.fromString("""{"type":"string"}""").transform(SchemaR())
     val bsch: Schema = TrueSchema
