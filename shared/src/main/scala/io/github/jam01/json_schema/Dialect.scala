@@ -54,25 +54,29 @@ object Dialect {
     Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated, vocab.Format, vocab.Metadata, vocab.Content))
 
   /**
+   * Every [[VocabFactory]] this library ships, regardless of which named [[Dialect]] bundles it.
+   *
+   * [[tryDialect]] draws from this set - not from the `dialects` it's given - to build a custom
+   * dialect out of an unrecognized meta-schema's `$vocabulary`, so a vocabulary is resolvable as
+   * soon as its factory is added here, with no dependency on which named `Dialect` happens to list it.
+   */
+  val KnownVocabularies: Seq[VocabFactory[?]] =
+    Seq(vocab.Validation, vocab.Applicator, vocab.Core, vocab.Unevaluated,
+      vocab.Format, vocab.FormatAssertion, vocab.Metadata, vocab.Content)
+
+  /**
    * Attempt to create a dialect for the given schema.
    *
    * This function will attempt to find or create a dialect based on the meta-schema identifier of the given schema. It
    * will lookup the referenced dialect in the given dialects, if not found it will try to create one based on the
-   * referenced vocabularies in the meta-schema and the available vocabularies of the given dialects.
+   * referenced vocabularies in the meta-schema and [[KnownVocabularies]], plus any the given dialects add.
    *
    * @param schema for which to find or create a dialect
-   * @param dialects to lookup existing [[Dialect]] or use their [[Vocab]]s to create a new one
+   * @param dialects to lookup an existing [[Dialect]] by its `$schema` URI
    * @param registry to lookup the meta-schema
    * @return optionally the found or constructed [[Dialect]]
    */
   def tryDialect(schema: Schema,
-                 // `FullSpec` alone omits `vocab.FormatAssertion` (it only carries the annotation-only
-                 // `vocab.Format`), so a custom meta-schema declaring the format-assertion vocabulary -
-                 // with either true or false in `$vocabulary` - could never resolve it: `found0` would
-                 // always be empty, silently dropping the vocab (or, if required, aborting to `None`
-                 // entirely). Including `FormatAssertion` here just widens the pool of vocab factories
-                 // available to build a custom dialect from; it doesn't change resolution of any
-                 // `dialectUri` that's already a known top-level dialect.
                  dialects: Seq[Dialect] = Seq(Dialect.FullSpec, Dialect.FormatAssertion),
                  registry: Registry): Option[Dialect] = {
     if (schema.isInstanceOf[BooleanSchema]) return Some(Dialect.Basic)
@@ -90,7 +94,7 @@ object Dialect {
     val vocabs = msch.get.asInstanceOf[ObjectSchema].getVocabularies
     if (vocabs.isEmpty) return None
 
-    val supported = dialects.flatMap(d => d.vocabularies)
+    val supported = (KnownVocabularies ++ dialects.flatMap(d => d.vocabularies)).distinct
     val res = new mutable.ListBuffer[VocabFactory[?]]
     val it = vocabs.iterator
     while (it.hasNext) {

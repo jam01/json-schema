@@ -52,4 +52,28 @@ class DialectResolutionTest {
     assertFalse(isValid(defaultValidator, """{"numberProperty": 1}"""),
       "without resolveDialect, minimum should still be enforced (unchanged default behavior)")
   }
+
+  /**
+   * `tryDialect` builds a custom dialect's vocabularies from [[Dialect.KnownVocabularies]], not
+   * just from the `dialects` it was given, so every vocabulary this library ships is resolvable
+   * regardless of which named `Dialect`s happen to be in play.
+   */
+  @Test def tryDialect_resolves_a_vocab_absent_from_every_given_dialect(): Unit = {
+    val metaUri = Uri("https://example/meta-content-only")
+    val metaSchemaJson =
+      """{"$vocabulary": {
+        |  "https://json-schema.org/draft/2020-12/vocab/content": true
+        |}}""".stripMargin
+    val registry = new MutableRegistry
+    ujson.Readable.fromString(metaSchemaJson).transform(SchemaR(docbase = metaUri, registry = registry))
+
+    val schemaJson = """{"$schema": "https://example/meta-content-only"}"""
+    val schema = ujson.Readable.fromString(schemaJson).transform(SchemaR())
+
+    // `Dialect.Basic` carries Validation/Applicator/Core/Unevaluated - not Content. Were the vocab
+    // pool sourced only from the given `dialects`, this would resolve to None.
+    val resolved = Dialect.tryDialect(schema, dialects = Seq(Dialect.Basic), registry = registry)
+    assertTrue(resolved.exists(_.vocabularies == Seq(vocab.Content)),
+      "vocab.Content resolves via KnownVocabularies even when no given dialect carries it")
+  }
 }
