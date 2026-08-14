@@ -330,8 +330,8 @@ private[vocab] object RegexSupport {
             sb.append(c)
             i += 1
             if (i < s.length && s.charAt(i) == '?') {
-              val kind = if (i + 1 < s.length) s.charAt(i + 1) else ' '
-              val after = if (i + 2 < s.length) s.charAt(i + 2) else ' '
+              val kind = if (i + 1 < s.length) s.charAt(i + 1) else '\u0000'
+              val after = if (i + 2 < s.length) s.charAt(i + 2) else '\u0000'
               val lookbehind = kind == '<' && (after == '=' || after == '!')
               val named = kind == '<' && !lookbehind &&
                 (after.isLetter || after == '_' || after == '$')
