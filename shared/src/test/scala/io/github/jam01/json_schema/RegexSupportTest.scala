@@ -120,6 +120,26 @@ class RegexSupportTest {
     assertFalse(matches("^[a&&b]$", "\"c\""), "[a&&b] should not match c")
   }
 
+  /**
+   * `\d \D \w \W \s \S` and `\p{...}`/`\P{...}` denote a set of code points, not one, so ECMA-262
+   * forbids using any of them as either endpoint of a `-` range. `java.util.regex` accepts these
+   * without complaint, silently treating the dash and the two flanking atoms as a union instead.
+   */
+  @Test def class_escape_or_property_cannot_be_a_range_endpoint(): Unit = {
+    assertFalse(isValidPattern("[\\\\d-z]"), "\\d cannot be the left endpoint of a range")
+    assertFalse(isValidPattern("[a-\\\\d]"), "\\d cannot be the right endpoint of a range")
+    assertFalse(isValidPattern("[\\\\p{L}-z]"), "a property escape cannot be the left endpoint")
+    assertFalse(isValidPattern("[a-\\\\p{L}]"), "a property escape cannot be the right endpoint")
+    assertThrows(classOf[java.util.regex.PatternSyntaxException],
+      () => { mkValidator("""{"pattern": "[\\d-z]"}"""); () },
+      "and pattern refuses to compile it rather than matching the union of \\d, -, and z")
+
+    assertTrue(isValidPattern("[\\\\d-]"), "a trailing dash after \\d is a literal, not a range")
+    assertTrue(isValidPattern("[-\\\\d]"), "a leading dash before \\d is a literal, not a range")
+    assertTrue(isValidPattern("[a\\\\d]"), "\\d still unions freely outside a range")
+    assertTrue(isValidPattern("[--z]"), "an ordinary character can still be a range endpoint")
+  }
+
   // ---------------------------------------------------------------- escapes
 
   @Test def control_letter_escape_is_case_insensitive(): Unit = {
