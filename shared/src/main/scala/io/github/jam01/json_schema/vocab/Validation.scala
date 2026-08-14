@@ -261,8 +261,7 @@ object Validation extends VocabFactory[Validation] {
 
   private def isMultiple(a: Any, b: Any): Boolean = {
     try { divides(unwrap(b), unwrap(a)) } catch {
-      case e @ (_: ArithmeticException | _: IllegalArgumentException) =>
-        throw new IllegalArgumentException("Number overflow while computing multipleOf", e)
+      case e: ArithmeticException => throw new IllegalArgumentException(e.getMessage, e)
     }
   }
 
