@@ -6,7 +6,7 @@ package io.github.jam01.json_schema
 
 import io.github.jam01.json_schema.ObjSchema.{arrayIndex, getOrThrow, refError}
 
-import scala.collection.{Map, mutable}
+import scala.collection.Map
 
 // see: https://docs.scala-lang.org/tour/self-types.html
 private[json_schema] trait ObjSchema { this: ObjectSchema =>
@@ -304,7 +304,7 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
       case _ => throw refError(ptr)
   }
 
-  private var _compiled: mutable.Map[JsonPointer, Schema] = _ // only allocated if a literal is reached
+  @volatile private var _compiled: java.util.concurrent.ConcurrentHashMap[JsonPointer, Schema] = _ // only allocated if a literal is reached
 
   /**
    * The compiled form of the raw literal at `ptr`, compiled once per location.
@@ -314,17 +314,21 @@ private[json_schema] trait ObjSchema { this: ObjectSchema =>
    * different `Schema` graph for one location. A self-referential literal makes that per level of
    * recursion, which left the depth guard as the only bound on repeated compilation.
    *
-   * Compiling does not resolve `$ref`, so this cannot re-enter; the lock is held only on the
-   * literal path, which every ordinary `$ref` misses.
+   * Compiling does not resolve `$ref`, so this cannot re-enter. The lock guards only the lazy map
+   * allocation; `ConcurrentHashMap.computeIfAbsent` then serializes compilation per `ptr`, not
+   * across every literal this instance ever compiles.
    */
-  private def compiledLiteral(ptr: JsonPointer, obj: Obj): Schema = synchronized {
-    if (_compiled == null) _compiled = mutable.Map.empty
-    _compiled.get(ptr) match
-      case Some(sch) => sch
-      case None =>
-        val sch = SchemaW.transform(obj, SchemaR.subschema(docbase, this, ptr.toString))
-        _compiled.update(ptr, sch)
-        sch
+  private def compiledLiteral(ptr: JsonPointer, obj: Obj): Schema = {
+    var m = _compiled
+    if (m == null) synchronized {
+      m = _compiled
+      if (m == null) {
+        m = new java.util.concurrent.ConcurrentHashMap()
+        _compiled = m
+      }
+    }
+
+    m.computeIfAbsent(ptr, _ => SchemaW.transform(obj, SchemaR.subschema(docbase, this, ptr.toString)))
   }
 }
 
