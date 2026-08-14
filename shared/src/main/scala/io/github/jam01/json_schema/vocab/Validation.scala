@@ -354,7 +354,7 @@ object Validation extends VocabFactory[Validation] {
     var seenNonZero = false
     while (i < mantissaEnd) {
       val c = s.charAt(i)
-      if (c >= '0' && c <= '9') {
+      if (CharSupport.isAsciiDigit(c)) {
         if (c != '0') seenNonZero = true
         if (seenNonZero) digits += 1
       }

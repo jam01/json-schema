@@ -354,8 +354,7 @@ object ObjSchema {
     if (key.isEmpty || (key.charAt(0) == '0' && key.length > 1)) return -1
     var i = 0
     while (i < key.length) {
-      val c = key.charAt(i)
-      if (c < '0' || c > '9') return -1 // Char.isDigit would take non-ASCII decimal digits too
+      if (!CharSupport.isAsciiDigit(key.charAt(i))) return -1
       i += 1
     }
     key.toIntOption.getOrElse(-1)
